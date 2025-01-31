@@ -19,6 +19,48 @@ bun install
 bun run build
 ```
 
+## Quick Start
+
+Log into your Phala Cloud account with your API key:
+
+```bash
+teecloud set-apikey your-phala-cloud-api-key
+```
+
+Deploy Dstack Examples with a Single Command:
+
+### timelock-nts example
+
+```bash
+# Deploy the timelock-nts example
+teecloud deploy -c ./examples/timelock-nts/docker-compose.yml -n timelock-nts
+```
+
+Example Output:
+
+```bash
+Deploying CVM ...
+Deployment successful
+App Id: cc3ee84d7e708aed326d5df6d22296f65b4fd99e
+App URL: https://cloud.phala.network/dashboard/cvms/app_cc3ee84d7e708aed326d5df6d22296f65b4fd99e
+```
+
+### lightclient example
+
+```bash
+# Deploy the lightclient example
+teecloud deploy -c ./examples/lightclient/docker-compose.yml -n lightclient
+```
+
+Example Output:
+
+```bash
+Deploying CVM ...
+Deployment successful
+App Id: c4b66ce50498b3da25555030f714e6ece55d8a35
+App URL: https://cloud.phala.network/dashboard/cvms/app_c4b66ce50498b3da25555030f714e6ece55d8a35
+```
+
 ## Local Development Workflow
 
 ### 1. Start the TEE Simulator
