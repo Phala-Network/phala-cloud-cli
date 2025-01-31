@@ -15,8 +15,8 @@ A command-line tool for managing TEE deployments on Phala Network, from local de
 # Install dependencies
 bun install
 
-# Build and link the CLI globally
-bun run build && bun link
+# Build
+bun run build
 ```
 
 ## Local Development Workflow
