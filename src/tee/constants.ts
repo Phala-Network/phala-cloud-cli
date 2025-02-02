@@ -15,7 +15,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/tappd.sock:/var/run/tappd.sock
     environment:
 {{#each envVars}}      - {{{this}}}
 {{/each}}
@@ -35,7 +35,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/tappd.sock:/var/run/tappd.sock
       - eliza:/app/packages/client-twitter/src/tweetcache
       - eliza:/app/db.sqlite
     environment:
@@ -54,7 +54,7 @@ services:
     image: {{imageName}}:{{tag}}
     container_name: app
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/tappd.sock:/var/run/tappd.sock
     environment:
 {{#each envVars}}      - {{{this}}}
 {{/each}}
