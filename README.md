@@ -19,6 +19,16 @@ bun install
 bun run build
 ```
 
+## Testing
+
+The CLI includes end-to-end tests to ensure that all commands work correctly. To run the tests:
+
+```bash
+npm run test
+```
+
+See the [test README](./test/README.md) for more information about the test structure and how to write tests.
+
 ## Quick Start
 
 Log into your Phala Cloud account with your API key:

@@ -224,12 +224,30 @@ export class DockerOperations {
     const envVars = envContent
       .split('\n')
       .filter(line => line && !line.startsWith('#'))
-      .map(line => line.trim())
+      .map(line => {
+        // Remove inline comments
+        const commentIndex = line.indexOf('#');
+        if (commentIndex > 0) {
+          line = line.substring(0, commentIndex).trim();
+        }
+        return line.trim();
+      })
       .filter(line => line.includes('='))
       .map(line => {
-        const key = line.split('=')[0].trim();
-        return `${key}=${key}`;  // Just create KEY=KEY format
-      });
+        const [key, value] = line.split('=', 2);
+        const trimmedKey = key.trim();
+        const trimmedValue = value ? value.trim() : '';
+        
+        // Skip empty values
+        if (trimmedValue === '') {
+          return null;
+        }
+        
+        // Keep the original key without any transformation
+        return `${trimmedKey}=${trimmedKey}`;  // Create KEY=KEY format
+      })
+      .filter(Boolean); // Remove null entries
+      
     // Create full image name with username
     const fullImageName = `${this.dockerHubUsername}/${this.imageName}`;
 

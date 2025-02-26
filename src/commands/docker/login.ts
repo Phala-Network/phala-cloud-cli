@@ -1,0 +1,74 @@
+import { Command } from 'commander';
+import { DockerService } from '../../utils/docker';
+import { saveDockerCredentials } from '../../utils/credentials';
+import { logger } from '../../utils/logger';
+import prompts from 'prompts';
+
+export const loginCommand = new Command()
+  .name('login')
+  .description('Login to Docker Hub')
+  .option('-u, --username <username>', 'Docker Hub username')
+  .option('-p, --password <password>', 'Docker Hub password')
+  .option('-r, --registry <registry>', 'Docker registry URL')
+  .action(async (options) => {
+    try {
+      let username = options.username;
+      let password = options.password;
+      const registry = options.registry;
+      
+      // If no username is provided, prompt for it
+      if (!username) {
+        const response = await prompts({
+          type: 'text',
+          name: 'username',
+          message: 'Enter your Docker Hub username:',
+          validate: value => value.length > 0 ? true : 'Username cannot be empty'
+        });
+        
+        if (!response.username) {
+          logger.error('Username is required');
+          process.exit(1);
+        }
+        
+        username = response.username;
+      }
+      
+      // If no password is provided, prompt for it
+      if (!password) {
+        const response = await prompts({
+          type: 'password',
+          name: 'password',
+          message: 'Enter your Docker Hub password:',
+          validate: value => value.length > 0 ? true : 'Password cannot be empty'
+        });
+        
+        if (!response.password) {
+          logger.error('Password is required');
+          process.exit(1);
+        }
+        
+        password = response.password;
+      }
+      
+      // Login to Docker Hub
+      const dockerService = new DockerService('', username, registry);
+      const success = await dockerService.login(username, password, registry);
+      
+      if (!success) {
+        logger.error('Failed to login to Docker Hub');
+        process.exit(1);
+      }
+      
+      // Save credentials
+      await saveDockerCredentials({
+        username,
+        password,
+        registry: registry || null
+      });
+      
+      logger.success('Logged in to Docker Hub successfully');
+    } catch (error) {
+      logger.error(`Failed to login to Docker Hub: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+  }); 

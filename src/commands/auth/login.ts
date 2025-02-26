@@ -1,0 +1,51 @@
+import { Command } from 'commander';
+import { saveApiKey } from '../../utils/credentials';
+import { validateApiKey } from '../../api/auth';
+import { logger } from '../../utils/logger';
+import prompts from 'prompts';
+
+export const loginCommand = new Command()
+  .name('login')
+  .description('Set the API key for authentication')
+  .option('-k, --key <key>', 'API key to set')
+  .action(async (options) => {
+    try {
+      let apiKey = options.key;
+      
+      // If no API key is provided, prompt for it
+      if (!apiKey) {
+        const response = await prompts({
+          type: 'password',
+          name: 'apiKey',
+          message: 'Enter your API key:',
+          validate: value => value.length > 0 ? true : 'API key cannot be empty'
+        });
+        
+        if (!response.apiKey) {
+          logger.error('API key is required');
+          process.exit(1);
+        }
+        
+        apiKey = response.apiKey;
+      }
+      
+      // Validate the API key
+      const spinner = logger.startSpinner('Validating API key');
+      const isValid = await validateApiKey(apiKey);
+      
+      if (!isValid) {
+        spinner.stop(false);
+        logger.error('Invalid API key');
+        process.exit(1);
+      }
+      
+      spinner.stop(true);
+      
+      // Save the API key
+      await saveApiKey(apiKey);
+      logger.success('API key saved successfully');
+    } catch (error) {
+      logger.error(`Failed to set API key: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+  }); 
