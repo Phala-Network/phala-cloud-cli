@@ -1,6 +1,19 @@
 import { apiClient } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 import { GetUserInfoResponse, getUserInfoResponseSchema } from './types';
+import { logger } from '../utils/logger';
+
+// Helper function to safely stringify objects that might contain cyclic references
+function safeStringify(obj: any): string {
+  try {
+    return JSON.stringify(obj);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('cyclic')) {
+      return '[Cyclic Object]';
+    }
+    return String(obj);
+  }
+}
 
 /**
  * Get user information
@@ -8,35 +21,20 @@ import { GetUserInfoResponse, getUserInfoResponseSchema } from './types';
  */
 export async function getUserInfo(): Promise<GetUserInfoResponse> {
   try {
-    const response = await apiClient.get<GetUserInfoResponse>(API_ENDPOINTS.USER_INFO);
-    return getUserInfoResponseSchema.parse(response);
+    logger.debug(`Fetching user info from ${API_ENDPOINTS.USER_INFO}`);
+    const response = await apiClient.get<any>(API_ENDPOINTS.USER_INFO);
+    logger.debug(`Received response: ${safeStringify(response)}`);
+    
+    // Try to parse the response with the schema
+    try {
+      return getUserInfoResponseSchema.parse(response);
+    } catch (parseError) {
+      logger.error(`Failed to parse user info response: ${parseError}`);
+      logger.debug(`Response structure: ${safeStringify(response)}`);
+      throw parseError;
+    }
   } catch (error) {
+    logger.error(`Failed to get user info: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Failed to get user info: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
-
-/**
- * Validate API key
- * @param apiKey API key to validate
- * @returns True if the API key is valid
- */
-export async function validateApiKey(apiKey: string): Promise<boolean> {
-  try {
-    // Create a temporary client with the API key to validate
-    const tempClient = apiClient;
-    
-    // Override the API key for this request
-    const config = {
-      headers: {
-        'X-API-Key': apiKey
-      }
-    };
-    
-    // Try to get user info with the API key
-    await tempClient.get(API_ENDPOINTS.USER_INFO, config);
-    
-    return true;
-  } catch (error) {
-    return false;
-  }
-} 

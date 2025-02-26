@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import { logger } from './logger';
 
 // Define the directory and file for storing credentials
@@ -20,11 +21,73 @@ function ensureDirectoryExists(): void {
   }
 }
 
+// Generate a machine-specific encryption key
+function getMachineKey(): Buffer {
+  // Create a deterministic but machine-specific key
+  const machineParts = [
+    os.hostname(),
+    os.platform(),
+    os.arch(),
+    os.cpus()[0]?.model || '',
+    os.userInfo().username
+  ];
+  
+  // Create a hash of the machine parts
+  const hash = crypto.createHash('sha256');
+  hash.update(machineParts.join('|'));
+  return hash.digest();
+}
+
+// Encrypt data
+function encrypt(text: string): string {
+  try {
+    const key = getMachineKey();
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', key.slice(0, 32), iv);
+    
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    // Return IV + encrypted data
+    return iv.toString('hex') + ':' + encrypted;
+  } catch (error) {
+    logger.error('Encryption failed:', error);
+    throw new Error('Failed to encrypt data');
+  }
+}
+
+// Decrypt data
+function decrypt(encryptedText: string): string {
+  try {
+    const key = getMachineKey();
+    const parts = encryptedText.split(':');
+    
+    if (parts.length !== 2) {
+      throw new Error('Invalid encrypted format');
+    }
+    
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key.slice(0, 32), iv);
+    
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (error) {
+    logger.error('Decryption failed:', error);
+    throw new Error('Failed to decrypt data');
+  }
+}
+
 // API Key Management
 export async function saveApiKey(apiKey: string): Promise<void> {
   ensureDirectoryExists();
   try {
-    fs.writeFileSync(API_KEY_FILE, apiKey, { mode: 0o600 }); // Restrict permissions to user only
+    // Encrypt the API key before saving
+    const encryptedApiKey = encrypt(apiKey);
+    fs.writeFileSync(API_KEY_FILE, encryptedApiKey, { mode: 0o600 }); // Restrict permissions to user only
     logger.success('API key saved successfully.');
   } catch (error) {
     logger.error('Failed to save API key:', error);
@@ -35,7 +98,9 @@ export async function saveApiKey(apiKey: string): Promise<void> {
 export async function getApiKey(): Promise<string | null> {
   try {
     if (fs.existsSync(API_KEY_FILE)) {
-      return fs.readFileSync(API_KEY_FILE, 'utf8').trim();
+      const encryptedApiKey = fs.readFileSync(API_KEY_FILE, 'utf8').trim();
+      // Decrypt the API key
+      return decrypt(encryptedApiKey);
     }
     return null;
   } catch (error) {
@@ -68,6 +133,9 @@ interface DockerCredentials {
 export async function saveDockerCredentials(credentials: DockerCredentials): Promise<void> {
   ensureDirectoryExists();
   try {
+    // Encrypt the password
+    credentials.password = encrypt(credentials.password);
+    
     fs.writeFileSync(
       DOCKER_CREDENTIALS_FILE, 
       JSON.stringify(credentials, null, 2), 
@@ -84,7 +152,14 @@ export async function getDockerCredentials(): Promise<DockerCredentials | null> 
   try {
     if (fs.existsSync(DOCKER_CREDENTIALS_FILE)) {
       const data = fs.readFileSync(DOCKER_CREDENTIALS_FILE, 'utf8');
-      return JSON.parse(data) as DockerCredentials;
+      const credentials = JSON.parse(data) as DockerCredentials;
+      
+      // Decrypt the password
+      if (credentials.password) {
+        credentials.password = decrypt(credentials.password);
+      }
+      
+      return credentials;
     }
     return null;
   } catch (error) {

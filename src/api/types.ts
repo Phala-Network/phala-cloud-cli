@@ -108,8 +108,15 @@ export const getCvmByAppIdResponseSchema = z.object({
 
 // Get User Info Response Schema
 export const getUserInfoResponseSchema = z.object({
-  id: z.string(),
-  username: z.string()
+  username: z.string(),
+  email: z.string(),
+  credits: z.number(),
+  role: z.string(),
+  avatar: z.string(),
+  flag_reset_password: z.boolean(),
+  team_name: z.string(),
+  team_tier: z.string(),
+  trial_ended_at: z.string().nullable()
 });
 
 // Get CVMs By User ID Response Schema

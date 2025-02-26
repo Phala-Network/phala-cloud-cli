@@ -6,8 +6,15 @@ import { logger } from '../../utils/logger';
 export const statusCommand = new Command()
   .name('status')
   .description('Check authentication status')
-  .action(async () => {
+  .option('-j, --json', 'Output in JSON format')
+  .option('-d, --debug', 'Enable debug output')
+  .action(async (options) => {
     try {
+      // Enable debug mode if requested
+      if (options.debug) {
+        process.env.DEBUG = 'true';
+      }
+      
       const apiKey = await getApiKey();
       
       if (!apiKey) {
@@ -15,16 +22,44 @@ export const statusCommand = new Command()
         return;
       }
       
+      logger.debug(`Using API key: ${apiKey.substring(0, 5)}...`);
       const spinner = logger.startSpinner('Checking authentication status');
       
       try {
         const userInfo = await getUserInfo();
         spinner.stop(true);
-        logger.success(`Authenticated as ${userInfo.username} (ID: ${userInfo.id})`);
+        
+        if (options.json) {
+          console.log(JSON.stringify(userInfo, null, 2));
+          return;
+        }
+        
+        logger.success(`Authenticated as ${userInfo.username}`);
+        logger.break();
+        
+        // Create a simple object for console.table
+        const tableData = {
+          'Username': userInfo.username,
+          'Email': userInfo.email,
+          'Role': userInfo.role,
+          'Team': `${userInfo.team_name} (${userInfo.team_tier})`,
+          'Credits': userInfo.credits
+        };
+        
+        if (userInfo.trial_ended_at) {
+          tableData['Trial Ended At'] = userInfo.trial_ended_at;
+        }
+        
+        // Display the table
+        console.table(tableData);
       } catch (error) {
         spinner.stop(false);
         logger.error('Authentication failed. Your API key may be invalid or expired.');
         logger.info('Please set a new API key with "teecloud auth login"');
+        
+        if (options.debug) {
+          logger.debug(`Error details: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
     } catch (error) {
       logger.error(`Failed to check authentication status: ${error instanceof Error ? error.message : String(error)}`);

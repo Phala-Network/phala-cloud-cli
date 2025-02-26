@@ -29,46 +29,455 @@ npm run test
 
 See the [test README](./test/README.md) for more information about the test structure and how to write tests.
 
-## Quick Start
+## Command Reference
 
-Log into your Phala Cloud account with your API key:
+The TEE Cloud CLI provides a comprehensive set of commands for managing your TEE deployments. Below is a detailed reference for each command category.
+
+### Authentication Commands
+
+Commands for managing authentication with the Phala Cloud API.
+
+#### Login
 
 ```bash
-teecloud set-apikey your-phala-cloud-api-key
+teecloud auth login [options]
 ```
 
-Deploy Dstack Examples with a Single Command:
+Set the API key for authentication with Phala Cloud. The API key is stored with encryption for enhanced security.
 
-### timelock-nts example
+**Options:**
+- `-k, --key <key>`: API key to set (if not provided, you will be prompted)
 
+**Example:**
 ```bash
-# Deploy the timelock-nts example
-teecloud deploy -c ./examples/timelock-nts/docker-compose.yml -n timelock-nts
+teecloud auth login --key your-phala-cloud-api-key
 ```
 
-Example Output:
+#### Logout
 
 ```bash
-Deploying CVM ...
-Deployment successful
-App Id: cc3ee84d7e708aed326d5df6d22296f65b4fd99e
-App URL: https://cloud.phala.network/dashboard/cvms/app_cc3ee84d7e708aed326d5df6d22296f65b4fd99e
+teecloud auth logout
 ```
 
-### lightclient example
+Remove the stored API key.
 
+**Example:**
 ```bash
-# Deploy the lightclient example
-teecloud deploy -c ./examples/lightclient/docker-compose.yml -n lightclient
+teecloud auth logout
 ```
 
-Example Output:
+#### Status
 
 ```bash
-Deploying CVM ...
-Deployment successful
-App Id: c4b66ce50498b3da25555030f714e6ece55d8a35
-App URL: https://cloud.phala.network/dashboard/cvms/app_c4b66ce50498b3da25555030f714e6ece55d8a35
+teecloud auth status [options]
+```
+
+Check your authentication status with Phala Cloud. Displays user information in a table format.
+
+**Options:**
+- `-j, --json`: Output in JSON format
+
+**Example:**
+```bash
+teecloud auth status
+teecloud auth status --json
+```
+
+### TEEPod Management Commands
+
+Commands for managing TEEPods on Phala Cloud.
+
+#### List TEEPods
+
+```bash
+teecloud teepods list
+```
+
+List all available TEEPods on Phala Cloud.
+
+**Example:**
+```bash
+teecloud teepods list
+```
+
+#### List TEEPod Images
+
+```bash
+teecloud teepods images [options]
+```
+
+List available images for a specific TEEPod.
+
+**Options:**
+- `-t, --teepod-id <teepodId>`: TEEPod ID (required)
+
+**Example:**
+```bash
+teecloud teepods images --teepod-id 2
+```
+
+### Docker Management Commands
+
+Commands for managing Docker images for TEE deployments.
+
+#### Docker Login
+
+```bash
+teecloud docker login [options]
+```
+
+Login to Docker Hub to enable pushing and pulling images.
+
+**Options:**
+- `-u, --username <username>`: Docker Hub username (if not provided, you will be prompted)
+- `-p, --password <password>`: Docker Hub password (if not provided, you will be prompted)
+- `-r, --registry <registry>`: Docker registry URL (optional, defaults to Docker Hub)
+
+**Example:**
+```bash
+teecloud docker login --username your-dockerhub-username
+```
+
+#### Build Docker Image
+
+```bash
+teecloud docker build [options]
+```
+
+Build a Docker image for your TEE application.
+
+**Options:**
+- `-i, --image <image>`: Image name (required)
+- `-t, --tag <tag>`: Image tag (required)
+- `-f, --file <file>`: Path to Dockerfile (defaults to 'Dockerfile')
+
+**Example:**
+```bash
+teecloud docker build --image my-tee-app --tag v1.0.0 --file ./Dockerfile
+```
+
+#### Push Docker Image
+
+```bash
+teecloud docker push [options]
+```
+
+Push a Docker image to Docker Hub.
+
+**Options:**
+- `-i, --image <image>`: Image name (required)
+- `-t, --tag <tag>`: Image tag (required)
+
+**Example:**
+```bash
+teecloud docker push --image my-tee-app --tag v1.0.0
+```
+
+#### List Docker Image Tags
+
+```bash
+teecloud docker tags [options]
+```
+
+List all tags for a Docker image on Docker Hub.
+
+**Options:**
+- `-i, --image <image>`: Image name (required)
+- `-j, --json`: Output in JSON format
+
+**Example:**
+```bash
+teecloud docker tags --image my-tee-app
+```
+
+### TEE Simulator Commands
+
+Commands for managing the local TEE simulator for development and testing.
+
+#### Start Simulator
+
+```bash
+teecloud simulator start [options]
+```
+
+Start the TEE simulator locally for development and testing.
+
+**Options:**
+- `-i, --image <image>`: Simulator image (defaults to 'phalanetwork/phala-pruntime:latest')
+
+**Example:**
+```bash
+teecloud simulator start
+```
+
+#### Stop Simulator
+
+```bash
+teecloud simulator stop
+```
+
+Stop the running TEE simulator.
+
+**Example:**
+```bash
+teecloud simulator stop
+```
+
+### Configuration Commands
+
+Commands for managing CLI configuration settings.
+
+#### Get Configuration Value
+
+```bash
+teecloud config get <key>
+```
+
+Get a specific configuration value.
+
+**Arguments:**
+- `key`: Configuration key to retrieve
+
+**Example:**
+```bash
+teecloud config get apiUrl
+```
+
+#### Set Configuration Value
+
+```bash
+teecloud config set <key> <value>
+```
+
+Set a configuration value.
+
+**Arguments:**
+- `key`: Configuration key to set
+- `value`: Value to set (can be a string, number, boolean, or JSON)
+
+**Example:**
+```bash
+teecloud config set defaultVcpu 2
+teecloud config set apiUrl "https://custom-api.phala.cloud"
+teecloud config set debug true
+teecloud config set customConfig '{"key": "value", "nested": {"array": [1, 2, 3]}}'
+```
+
+#### List Configuration Values
+
+```bash
+teecloud config list [options]
+```
+
+List all configuration values.
+
+**Options:**
+- `-j, --json`: Output in JSON format
+
+**Example:**
+```bash
+teecloud config list
+teecloud config list --json
+```
+
+### Cloud Virtual Machine (CVM) Commands
+
+Commands for managing Cloud Virtual Machines (CVMs) on Phala Cloud.
+
+#### List CVMs
+
+```bash
+teecloud cvms list [options]
+```
+
+List all CVMs associated with your account.
+
+**Options:**
+- `-j, --json`: Output in JSON format
+
+**Example:**
+```bash
+teecloud cvms list
+```
+
+#### Get CVM Details
+
+```bash
+teecloud cvms get [options] <app-id>
+```
+
+Get detailed information about a specific CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM
+
+**Options:**
+- `-j, --json`: Output in JSON format
+
+**Example:**
+```bash
+teecloud cvms get app_123456
+```
+
+#### Create CVM
+
+```bash
+teecloud cvms create [options]
+```
+
+Create a new CVM on Phala Cloud.
+
+**Options:**
+- `-n, --name <name>`: Name of the CVM (required)
+- `-c, --compose <compose>`: Path to Docker Compose file (required)
+- `-t, --type <type>`: Type of CVM (default: 'phala')
+- `-m, --mode <mode>`: Mode of operation (default: 'docker-compose')
+- `--vcpu <vcpu>`: Number of vCPUs (default: 1)
+- `--memory <memory>`: Memory in MB (default: 2048)
+- `--disk-size <diskSize>`: Disk size in GB (default: 20)
+- `-e, --env <env...>`: Environment variables in the form of KEY=VALUE
+- `--env-file <envFile>`: Path to environment file
+- `--debug`: Enable debug mode
+
+**Example:**
+```bash
+teecloud cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --memory 4096 --env-file ./.env
+```
+
+#### Update CVM
+
+```bash
+teecloud cvms update [options] <app-id>
+```
+
+Update an existing CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM to update
+
+**Options:**
+- `-n, --name <name>`: New name for the CVM
+- `-c, --compose <compose>`: Path to new Docker Compose file
+- `--vcpu <vcpu>`: New number of vCPUs
+- `--memory <memory>`: New memory in MB
+- `--disk-size <diskSize>`: New disk size in GB
+- `-e, --env <env...>`: Environment variables to add/update
+- `--env-file <envFile>`: Path to environment file
+- `--debug`: Enable debug mode
+
+**Example:**
+```bash
+teecloud cvms update app_123456 --name updated-app-name --memory 4096
+```
+
+#### Upgrade CVM
+
+```bash
+teecloud cvms upgrade [options] <app-id>
+```
+
+Upgrade a CVM to a new version.
+
+**Arguments:**
+- `app-id`: App ID of the CVM to upgrade
+
+**Options:**
+- `-c, --compose <compose>`: Path to new Docker Compose file
+- `-e, --env <env...>`: Environment variables to add/update
+- `--env-file <envFile>`: Path to environment file
+- `--debug`: Enable debug mode
+
+**Example:**
+```bash
+teecloud cvms upgrade app_123456 --compose ./new-docker-compose.yml
+```
+
+#### Start CVM
+
+```bash
+teecloud cvms start <app-id>
+```
+
+Start a stopped CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM to start
+
+**Example:**
+```bash
+teecloud cvms start app_123456
+```
+
+#### Stop CVM
+
+```bash
+teecloud cvms stop <app-id>
+```
+
+Stop a running CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM to stop
+
+**Example:**
+```bash
+teecloud cvms stop app_123456
+```
+
+#### Restart CVM
+
+```bash
+teecloud cvms restart <app-id>
+```
+
+Restart a CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM to restart
+
+**Example:**
+```bash
+teecloud cvms restart app_123456
+```
+
+#### View CVM Logs
+
+```bash
+teecloud cvms logs [options] <app-id>
+```
+
+View logs for a CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM
+
+**Options:**
+- `-f, --follow`: Follow log output (continuous updates)
+
+**Example:**
+```bash
+teecloud cvms logs app_123456
+teecloud cvms logs --follow app_123456
+```
+
+#### Delete CVM
+
+```bash
+teecloud cvms delete [options] <app-id>
+```
+
+Delete a CVM.
+
+**Arguments:**
+- `app-id`: App ID of the CVM to delete
+
+**Options:**
+- `-f, --force`: Skip confirmation prompt
+
+**Example:**
+```bash
+teecloud cvms delete app_123456
+teecloud cvms delete --force app_123456
 ```
 
 ## Local Development Workflow
@@ -78,7 +487,7 @@ App URL: https://cloud.phala.network/dashboard/cvms/app_c4b66ce50498b3da25555030
 Test your application in a local TEE environment:
 
 ```bash
-teecloud simulator
+teecloud simulator start
 ```
 
 The simulator will be available at http://localhost:8090.
@@ -86,122 +495,54 @@ The simulator will be available at http://localhost:8090.
 ### 2. Build Your Docker Image
 
 ```bash
-teecloud build \
-  -i, --image <name> \         # Required: Docker image name
-  -u, --username <name> \      # Required: Docker Hub username
-  -f, --dockerfile <path> \    # Required: Path to Dockerfile
-  -t, --tag <tag>             # Required: Tag for the Docker image
+teecloud docker build --image my-tee-app --tag v1.0.0
 ```
 
 ### 3. Test Locally
 
-Generate a compose file:
+Generate a Docker Compose file for your application:
+
 ```bash
-teecloud build-compose \
-  -i, --image <name> \         # Required: Docker image name
-  -u, --username <name> \      # Required: Docker Hub username
-  -t, --tag <tag> \           # Required: Tag for the Docker image
-  -e, --env-file <path> \      # Required: Path to environment file
-  -v, --version <version>      # Optional: Version of compose template (default: 'basic')
+# First, create an environment file with your application's environment variables
+echo "API_KEY=test-key" > .env
+echo "DEBUG=true" >> .env
+
+# Build a Docker Compose file using your image and environment file
+teecloud docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
 ```
 
-Run locally:
+Run your application locally:
+
 ```bash
-teecloud run-local \
-  -c, --compose <path> \       # Required: Path to docker-compose file
-  -e, --env-file <path>        # Required: Path to environment file
+teecloud docker run-local --compose ./tee-compose.yaml --env-file ./.env
 ```
 
-The CLI stores generated compose files in:
-```
-.tee-cloud/
-  └── compose-files/     # Generated docker-compose files
-      └── tee-compose.yaml
-```
-
-## Cloud Deployment
+## Cloud Deployment Workflow
 
 ### 1. Configure API Key
 
 ```bash
-teecloud set-apikey your-phala-cloud-api-key
+teecloud auth login
 ```
 
-### 2. Publish Your Image
+### 2. Push Your Image to Docker Hub
 
 ```bash
-teecloud publish \
-  -i, --image <name> \         # Required: Docker image name
-  -u, --username <name> \      # Required: Docker Hub username
-  -t, --tag <tag>             # Required: Tag of the Docker image
+# Login to Docker Hub
+teecloud docker login
+
+# Build your image
+teecloud docker build --image my-tee-app --tag v1.0.0
+
+# Push to Docker Hub
+teecloud docker push --image my-tee-app --tag v1.0.0
 ```
 
-### 3. Deploy to Cloud
+### 3. Deploy to Phala Cloud
 
 ```bash
-teecloud deploy \
-  -t, --type <type> \         # Optional: TEE vendor type (default: "phala")
-  -m, --mode <mode> \         # Optional: Deployment mode (default: "docker-compose")
-  -n, --name <name> \         # Required: Name of docker image
-  -c, --compose <path> \      # Required: Docker compose file path
-  -e, --env <KEY=VALUE...> \  # Optional: Environment variables
-  --env-file <path> \         # Optional: Environment file path
-  --debug                     # Optional: Enable debug mode
-```
-
-List available tags:
-```bash
-teecloud list-tags \
-  -i, --image <name> \        # Required: Docker image name
-  -u, --username <name>       # Required: Docker Hub username
-```
-
-List TEE pods:
-```bash
-teecloud teepods \
-  [--status <active|inactive>] \           # Optional: filter by status
-  [--region <region-name>]                 # Optional: filter by region
-```
-
-View deployed images:
-```bash
-teecloud images \
-  --teepod-id <id>           # Required: ID of the teepod
-```
-
-Upgrade deployment:
-```bash
-teecloud upgrade \
-  -t, --type <type> \        # Optional: TEE vendor type (default: "phala")
-  -m, --mode <mode> \        # Optional: Deployment mode (default: "docker-compose")
-  --app-id <id> \            # Required: Application ID
-  -c, --compose <path> \     # Required: Docker compose file path
-  -e, --env <KEY=VALUE...> \ # Optional: Environment variables
-  --env-file <path>          # Optional: Environment file path
-```
-
-## Managing Deployments
-
-List your TEE pods:
-```bash
-teecloud teepods
-```
-
-List running CVMs:
-```bash
-teecloud list-cvms
-```
-
-View deployed images:
-```bash
-teecloud images
-```
-
-Upgrade an existing deployment:
-```bash
-teecloud upgrade \
-  --tag v1.0.1 \
-  --username your-dockerhub-username
+# Create a CVM with your application
+teecloud cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
 ```
 
 ## Docker Compose Templates
@@ -209,19 +550,22 @@ teecloud upgrade \
 The CLI provides several templates for different use cases:
 
 - `basic`: Simple template for general applications
-  ```bash
-  teecloud run-local --template basic
-  ```
-
 - `eliza-v2`: Modern template with Bun runtime
-  ```bash
-  teecloud run-local --template eliza-v2
-  ```
-
 - `eliza-v1`: Legacy template with character file support
-  ```bash
-  teecloud run-local --template eliza-v1
-  ```
+
+## Configuration
+
+The CLI stores configuration in `~/.tee-cloud/config.json`. Default configuration includes:
+
+- `apiUrl`: API endpoint URL (default: 'https://api.phala.cloud')
+- `cloudUrl`: Cloud dashboard URL (default: 'https://phala.cloud')
+- `defaultTeepodId`: Default TEEPod ID (default: 3)
+- `defaultImage`: Default image (default: 'dstack-dev-0.3.5')
+- `defaultVcpu`: Default vCPU count (default: 1)
+- `defaultMemory`: Default memory in MB (default: 2048)
+- `defaultDiskSize`: Default disk size in GB (default: 20)
+
+You can view and modify these settings using the `config` commands.
 
 ## Troubleshooting
 
@@ -263,3 +607,12 @@ The project uses:
 ## License
 
 tbd
+
+## Security
+
+The TEE Cloud CLI takes security seriously:
+
+1. **Encrypted Credentials**: API keys and Docker credentials are stored with encryption using a machine-specific key.
+2. **Restricted Permissions**: All credential files are stored with 0600 permissions (user-only access).
+3. **No Validation Storage**: API keys are not validated during login, preventing unnecessary transmission of the key.
+4. **Local Storage**: All credentials are stored locally in the `~/.tee-cloud/` directory.

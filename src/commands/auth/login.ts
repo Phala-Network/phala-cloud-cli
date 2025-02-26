@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { saveApiKey } from '../../utils/credentials';
-import { validateApiKey } from '../../api/auth';
 import { logger } from '../../utils/logger';
 import prompts from 'prompts';
 
@@ -29,21 +28,12 @@ export const loginCommand = new Command()
         apiKey = response.apiKey;
       }
       
-      // Validate the API key
-      const spinner = logger.startSpinner('Validating API key');
-      const isValid = await validateApiKey(apiKey);
-      
-      if (!isValid) {
-        spinner.stop(false);
-        logger.error('Invalid API key');
-        process.exit(1);
-      }
-      
-      spinner.stop(true);
-      
-      // Save the API key
+      // Save the API key (encrypted)
       await saveApiKey(apiKey);
+      
       logger.success('API key saved successfully');
+      logger.info('The API key will be validated on your next API call');
+      logger.info('You can check your authentication status with "teecloud auth status"');
     } catch (error) {
       logger.error(`Failed to set API key: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
