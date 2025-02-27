@@ -76,7 +76,7 @@ export const getCommand = new Command()
       if (cvm.vcpu) logger.info(`vCPU: ${cvm.vcpu}`);
       if (cvm.memory) logger.info(`Memory: ${cvm.memory} MB`);
       if (cvm.disk_size) logger.info(`Disk Size: ${cvm.disk_size} GB`);
-      if (cvm.image) logger.info(`Image: ${cvm.image}`);
+      if (cvm.base_image) logger.info(`Dstack Image: ${cvm.base_image}`);
       if (cvm.teepod_id) logger.info(`TEEPod ID: ${cvm.teepod_id}`);
     } catch (error) {
       logger.error(`Failed to get CVM details: ${error instanceof Error ? error.message : String(error)}`);

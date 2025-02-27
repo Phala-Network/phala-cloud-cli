@@ -3,8 +3,6 @@ import { Command } from "commander"
 import { logo } from "./utils/banner"
 import { authCommands } from "./commands/auth"
 import { teepodsCommands } from "./commands/teepods"
-// import { deployCommands } from "./commands/deploy"
-// import { buildCommands } from "./commands/build"
 import { dockerCommands } from "./commands/docker"
 import { simulatorCommands } from "./commands/simulator"
 import { configCommands } from "./commands/config"
@@ -19,16 +17,12 @@ async function main() {
     .name("teecloud")
     .description(`${logo}\nPhala TEE Cloud CLI - Manage your TEE Cloud Deployments`)
     .version("0.0.1")
-
-  // Add command groups
-  authCommands(program)
-  teepodsCommands(program)
-  // deployCommands(program)
-  // buildCommands(program)
-  dockerCommands(program)
-  simulatorCommands(program)
-  configCommands(program)
-  program.addCommand(cvmsCommand)
+    .addCommand(authCommands)
+    .addCommand(teepodsCommands)
+    .addCommand(dockerCommands)
+    .addCommand(simulatorCommands)
+    .addCommand(configCommands)
+    .addCommand(cvmsCommand)
 
   program.parse(process.argv)
 }

@@ -25,7 +25,7 @@ export async function getCvms(): Promise<CvmInstance[]> {
   try {
     const userInfo = await getUserInfo();
     const searchUsersResponse = await searchUsers(userInfo.username);
-    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(searchUsersResponse.users[0].id));
+    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(Number(searchUsersResponse.users[0].id)));
     return z.array(cvmInstanceSchema).parse(response);
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
@@ -87,7 +87,7 @@ export async function getCvmsByUserId(): Promise<CvmInstance[]> {
   try {
     const userInfo = await getUserInfo();
     const searchUsersResponse = await searchUsers(userInfo.username);
-    const response = await apiClient.get(API_ENDPOINTS.CVMS(searchUsersResponse.users[0].id));
+    const response = await apiClient.get(API_ENDPOINTS.CVMS(Number(searchUsersResponse.users[0].id)));
     return response as CvmInstance[];
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);

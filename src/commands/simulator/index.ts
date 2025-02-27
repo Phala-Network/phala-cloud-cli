@@ -2,11 +2,8 @@ import { Command } from 'commander';
 import { startCommand } from './start';
 import { stopCommand } from './stop';
 
-export function simulatorCommands(program: Command): void {
-  const simulator = program
-    .command('simulator')
-    .description('TEE simulator commands');
-
-  simulator.addCommand(startCommand);
-  simulator.addCommand(stopCommand);
-} 
+export const simulatorCommands = new Command()
+  .name('simulator')
+  .description('TEE simulator commands')
+  .addCommand(startCommand)
+  .addCommand(stopCommand);

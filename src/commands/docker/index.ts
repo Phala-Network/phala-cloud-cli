@@ -4,13 +4,10 @@ import { buildCommand } from './build';
 import { pushCommand } from './push';
 import { tagsCommand } from './tags';
 
-export function dockerCommands(program: Command): void {
-  const docker = program
-    .command('docker')
-    .description('Docker management commands');
-
-  docker.addCommand(loginCommand);
-  docker.addCommand(buildCommand);
-  docker.addCommand(pushCommand);
-  docker.addCommand(tagsCommand);
-} 
+export const dockerCommands = new Command()
+  .name('docker')
+  .description('Docker management commands')
+  .addCommand(loginCommand)
+  .addCommand(buildCommand)
+  .addCommand(pushCommand)
+  .addCommand(tagsCommand);
