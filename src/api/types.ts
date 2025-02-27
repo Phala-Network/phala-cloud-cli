@@ -79,8 +79,30 @@ export const cvmInstanceSchema = z.object({
 
 // Create CVM Response Schema
 export const createCvmResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  status: z.string(),
+  teepod_id: z.number(),
+  teepod: z.object({
+    id: z.number(),
+    name: z.string()
+  }),
+  user_id: z.number(),
   app_id: z.string(),
-  app_url: z.string()
+  vm_uuid: z.string().nullable(),
+  instance_id: z.string().nullable(),
+  app_url: z.string().nullable(),
+  base_image: z.string(),
+  vcpu: z.number(),
+  memory: z.number(),
+  disk_size: z.number(),
+  manifest_version: z.number(),
+  version: z.string(),
+  runner: z.string(),
+  docker_compose_file: z.string(),
+  features: z.array(z.string()).nullable(),
+  created_at: z.string(),
+  encrypted_env_pubkey: z.string()
 });
 
 // Get Pubkey From CVM Response Schema
@@ -91,19 +113,26 @@ export const getPubkeyFromCvmResponseSchema = z.object({
 
 // Get CVM By App ID Response Schema
 export const getCvmByAppIdResponseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  app_id: z.string(),
-  app_url: z.string(),
-  encrypted_env_pubkey: z.string(),
-  status: z.string(),
+  id: z.number(),
   teepod_id: z.number(),
-  image: z.string(),
+  teepod: z.object({
+    id: z.number(),
+    name: z.string()
+  }),
+  name: z.string(),
+  status: z.string(),
+  in_progress: z.boolean(),
+  app_id: z.string(),
+  vm_uuid: z.string(),
+  instance_id: z.string(),
   vcpu: z.number(),
   memory: z.number(),
   disk_size: z.number(),
-  compose_manifest: composeFileSchema,
-  listed: z.boolean()
+  base_image: z.string(),
+  encrypted_env_pubkey: z.string(),
+  listed: z.boolean(),
+  project_id: z.string(),
+  project_type: z.string().nullable()
 });
 
 // Get User Info Response Schema
@@ -146,6 +175,18 @@ export const imageSchema = z.object({
   description: z.string().optional()
 });
 
+// User Schema for Search Results
+export const userSearchResultSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  email: z.string().nullable()
+});
+
+// Search Users Response Schema
+export const searchUsersResponseSchema = z.object({
+  users: z.array(userSearchResultSchema)
+});
+
 // Type exports
 export type DockerConfig = z.infer<typeof dockerConfigSchema>;
 export type ComposeFile = z.infer<typeof composeFileSchema>;
@@ -163,6 +204,8 @@ export type UpgradeCvmResponse = z.infer<typeof upgradeCvmResponseSchema>;
 export type EncryptedEnvItem = z.infer<typeof encryptedEnvItemSchema>;
 export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
+export type UserSearchResult = z.infer<typeof userSearchResultSchema>;
+export type SearchUsersResponse = z.infer<typeof searchUsersResponseSchema>;
 
 // Environment variable type
 export interface Env {

@@ -20,18 +20,22 @@ export const DEFAULT_DISK_SIZE = 20; // GB
 export const API_ENDPOINTS = {
   // Auth
   USER_INFO: '/api/v1/auth/me',
-  
+
+  // Users
+  SEARCH_USERS: (username:string) => `/api/v1/users/search?q=${username}`,
+
   // TEEPods
-  TEEPODS: '/api/v1/teepods',
+  TEEPODS: '/api/v1/teepods?enabled=true',
   TEEPOD_IMAGES: (teepodId: string) => `/api/v1/teepods/${teepodId}/images`,
   
   // CVMs
-  CVMS: '/api/v1/cvms',
+  CVMS: (userId: number) => `/api/v1/cvms?user_id=${userId}`,
   CVM_BY_APP_ID: (appId: string) => `/api/v1/cvms/app_${appId}`,
   CVM_START: (appId: string) => `/api/v1/cvms/app_${appId}/start`,
   CVM_STOP: (appId: string) => `/api/v1/cvms/app_${appId}/stop`,
   CVM_RESTART: (appId: string) => `/api/v1/cvms/app_${appId}/restart`,
   CVM_LOGS: (appId: string) => `/api/v1/cvms/app_${appId}/logs`,
-  CVM_PUBKEY: '/api/v1/cvms/pubkey',
+  CVM_FROM_CONFIGURATION: '/api/v1/cvms/from_cvm_configuration',
+  CVM_PUBKEY: '/api/v1/cvms/pubkey/from_cvm_configuration',
   CVM_UPGRADE: (appId: string) => `/api/v1/cvms/app_${appId}/upgrade`,
 }; 

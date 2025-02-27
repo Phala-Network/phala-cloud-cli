@@ -16,14 +16,16 @@ import {
 import { z } from 'zod';
 import * as crypto from 'crypto';
 import { x25519 } from '@noble/curves/ed25519';
-
+import { getUserInfo, searchUsers } from './auth';
 /**
  * Get all CVMs for the current user
  * @returns List of CVMs
  */
 export async function getCvms(): Promise<CvmInstance[]> {
   try {
-    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS);
+    const userInfo = await getUserInfo();
+    const searchUsersResponse = await searchUsers(userInfo.username);
+    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(searchUsersResponse.users[0].id));
     return z.array(cvmInstanceSchema).parse(response);
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
@@ -65,9 +67,14 @@ export async function getPubkeyFromCvm(vmConfig: any): Promise<GetPubkeyFromCvmR
  */
 export async function createCvm(vmConfig: any): Promise<CreateCvmResponse> {
   try {
-    const response = await apiClient.post<CreateCvmResponse>(API_ENDPOINTS.CVMS, vmConfig);
+    const response = await apiClient.post<CreateCvmResponse>(API_ENDPOINTS.CVM_FROM_CONFIGURATION, vmConfig);
     return createCvmResponseSchema.parse(response);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('Schema validation error:', JSON.stringify(error.errors, null, 2));
+      console.error('API response:', JSON.stringify(error.format(), null, 2));
+      throw new Error(`Response validation failed: ${JSON.stringify(error.errors)}`);
+    }
     throw new Error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -76,10 +83,12 @@ export async function createCvm(vmConfig: any): Promise<CreateCvmResponse> {
  * Get CVMs by user ID
  * @returns List of CVMs
  */
-export async function getCvmsByUserId(): Promise<any[]> {
+export async function getCvmsByUserId(): Promise<CvmInstance[]> {
   try {
-    const response = await apiClient.get(API_ENDPOINTS.CVMS);
-    return response as any[];
+    const userInfo = await getUserInfo();
+    const searchUsersResponse = await searchUsers(userInfo.username);
+    const response = await apiClient.get(API_ENDPOINTS.CVMS(searchUsersResponse.users[0].id));
+    return response as CvmInstance[];
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
   }
