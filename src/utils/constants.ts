@@ -37,5 +37,7 @@ export const API_ENDPOINTS = {
   CVM_LOGS: (appId: string) => `/api/v1/cvms/app_${appId}/logs`,
   CVM_FROM_CONFIGURATION: '/api/v1/cvms/from_cvm_configuration',
   CVM_PUBKEY: '/api/v1/cvms/pubkey/from_cvm_configuration',
-  CVM_UPGRADE: (appId: string) => `/api/v1/cvms/app_${appId}/upgrade`,
+  CVM_UPGRADE: (appId: string) => `/api/v1/cvms/app_${appId}/compose`,
+  CVM_ATTESTATION: (appId: string) => `/api/v1/cvms/app_${appId}/attestation`,
+  CVM_RESIZE: (appId: string) => `/api/v1/cvms/app_${appId}/resources`,
 }; 

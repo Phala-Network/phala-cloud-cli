@@ -14,8 +14,8 @@ process.on("SIGTERM", () => process.exit(0))
 
 async function main() {
   const program = new Command()
-    .name("teecloud")
-    .description(`${logo}\nPhala TEE Cloud CLI - Manage your TEE Cloud Deployments`)
+    .name("phala")
+    .description(`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`)
     .version("0.0.1")
     .addCommand(authCommands)
     .addCommand(teepodsCommands)

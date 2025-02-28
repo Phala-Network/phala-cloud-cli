@@ -121,6 +121,17 @@ export class ApiClient {
       throw error;
     }
   }
+
+  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      logger.debug(`PATCH request to: ${url}`);
+      const response = await this.client.patch<T>(url, data, config);
+      return response.data;
+    } catch (error) {
+      logger.debug(`PATCH request failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
 }
 
 // Create and export a singleton instance

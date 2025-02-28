@@ -144,24 +144,10 @@ export async function restartCvm(appId: string): Promise<boolean> {
  */
 export async function upgradeCvm(appId: string, vmConfig: any): Promise<UpgradeCvmResponse> {
   try {
-    const response = await apiClient.post<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
+    const response = await apiClient.put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
     return upgradeCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-/**
- * Get logs for a CVM
- * @param appId App ID
- * @returns Logs
- */
-export async function getCvmLogs(appId: string): Promise<string> {
-  try {
-    const response = await apiClient.get(API_ENDPOINTS.CVM_LOGS(appId));
-    return response as string;
-  } catch (error) {
-    throw new Error(`Failed to get logs: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -252,5 +238,98 @@ export async function updateCvm(updatePayload: any): Promise<any> {
     return response;
   } catch (error) {
     throw new Error(`Failed to update CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Presents a list of CVMs to the user and allows them to select one
+ * @returns The selected CVM app ID or undefined if no CVMs exist
+ */
+export async function selectCvm(): Promise<string | undefined> {
+  const { logger } = await import('../utils/logger');
+  const inquirer = (await import('inquirer')).default;
+  
+  const listSpinner = logger.startSpinner('Fetching available CVMs');
+  const cvms = await getCvmsByUserId();
+  listSpinner.stop(true);
+  
+  if (!cvms || cvms.length === 0) {
+    logger.info('No CVMs found for your account');
+    return undefined;
+  }
+  
+  // Prepare choices for the inquirer prompt
+  const choices = cvms.map(cvm => {
+    // Handle different API response formats
+    const id = cvm.hosted?.app_id || cvm.hosted?.id;
+    const name = cvm.name || (cvm.hosted && cvm.hosted.name);
+    const status = cvm.status || (cvm.hosted && cvm.hosted.status);
+    
+    return {
+      name: `${name || 'Unnamed'} (${id}) - Status: ${status || 'Unknown'}`,
+      value: id
+    };
+  });
+  
+  const { selectedCvm } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'selectedCvm',
+      message: 'Select a CVM:',
+      choices
+    }
+  ]);
+  
+  return selectedCvm;
+}
+
+/**
+ * Get attestation information for a CVM
+ * @param appId App ID
+ * @returns Attestation information
+ */
+export async function getCvmAttestation(appId: string): Promise<any> {
+  try {
+    const response = await apiClient.get(API_ENDPOINTS.CVM_ATTESTATION(appId));
+    return response;
+  } catch (error) {
+    throw new Error(`Failed to get attestation information: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Resize a CVM's resources
+ * @param appId App ID
+ * @param vcpu Number of virtual CPUs (optional)
+ * @param memory Memory size in MB (optional)
+ * @param diskSize Disk size in GB (optional)
+ * @param allowRestart Whether to allow restart (1) or not (0) for the resize operation (optional)
+ * @returns Success status
+ */
+export async function resizeCvm(
+  appId: string, 
+  vcpu?: number, 
+  memory?: number, 
+  diskSize?: number, 
+  allowRestart?: number
+): Promise<boolean> {
+  try {
+    // Only include defined parameters in the payload
+    const resizePayload: Record<string, any> = {};
+    
+    if (vcpu !== undefined) resizePayload.vcpu = vcpu;
+    if (memory !== undefined) resizePayload.memory = memory;
+    if (diskSize !== undefined) resizePayload.disk_size = diskSize;
+    if (allowRestart !== undefined) resizePayload.allow_restart = allowRestart;
+    
+    // Check if any parameters were provided
+    if (Object.keys(resizePayload).length === 0) {
+      throw new Error('At least one resource parameter must be provided');
+    }
+    
+    await apiClient.patch(API_ENDPOINTS.CVM_RESIZE(appId), resizePayload);
+    return true;
+  } catch (error) {
+    throw new Error(`Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`);
   }
 } 

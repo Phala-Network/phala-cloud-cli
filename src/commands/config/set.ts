@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { setConfigValue } from '../../utils/config';
-import { logger } from '../../utils/logger';
+import { setConfigValue } from '@/src/utils/config';
+import { logger } from '@/src/utils/logger';
 
 export const setCommand = new Command()
   .name('set')

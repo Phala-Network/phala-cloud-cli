@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { getConfigValue } from '../../utils/config';
-import { logger } from '../../utils/logger';
+import { getConfigValue } from '@/src/utils/config';
+import { logger } from '@/src/utils/logger';
 
 export const getCommand = new Command()
   .name('get')

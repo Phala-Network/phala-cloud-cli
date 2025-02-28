@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { saveApiKey } from '../../utils/credentials';
-import { logger } from '../../utils/logger';
+import { saveApiKey } from '@/src/utils/credentials';
+import { logger } from '@/src/utils/logger';
 import prompts from 'prompts';
 
 export const loginCommand = new Command()

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { getApiKey } from '../../utils/credentials';
-import { getUserInfo } from '../../api/auth';
-import { logger } from '../../utils/logger';
+import { getApiKey } from '@/src/utils/credentials';
+import { getUserInfo } from '@/src/api/auth';
+import { logger } from '@/src/utils/logger';
 
 export const statusCommand = new Command()
   .name('status')
@@ -18,7 +18,7 @@ export const statusCommand = new Command()
       const apiKey = await getApiKey();
       
       if (!apiKey) {
-        logger.warn('Not authenticated. Please set an API key with "teecloud auth login"');
+        logger.warn('Not authenticated. Please set an API key with "phala auth login"');
         return;
       }
       
@@ -55,7 +55,7 @@ export const statusCommand = new Command()
       } catch (error) {
         spinner.stop(false);
         logger.error('Authentication failed. Your API key may be invalid or expired.');
-        logger.info('Please set a new API key with "teecloud auth login"');
+        logger.info('Please set a new API key with "phala auth login"');
         
         if (options.debug) {
           logger.debug(`Error details: ${error instanceof Error ? error.message : String(error)}`);

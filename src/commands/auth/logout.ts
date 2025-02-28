@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { removeApiKey } from '../../utils/credentials';
-import { logger } from '../../utils/logger';
+import { removeApiKey } from '@/src/utils/credentials';
+import { logger } from '@/src/utils/logger';
 
 export const logoutCommand = new Command()
   .name('logout')

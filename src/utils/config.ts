@@ -9,8 +9,8 @@ const CONFIG_FILE = path.join(TEE_CLOUD_DIR, 'config.json');
 
 // Default configuration
 const DEFAULT_CONFIG = {
-  apiUrl: 'https://api.phala.cloud',
-  cloudUrl: 'https://phala.cloud',
+  apiUrl: 'https://cloud-api.phala.network',
+  cloudUrl: 'https://cloud.phala.network',
   defaultTeepodId: 3,
   defaultImage: 'dstack-dev-0.3.5',
   defaultVcpu: 1,

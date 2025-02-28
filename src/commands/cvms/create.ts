@@ -1,11 +1,10 @@
 import { Command } from 'commander';
-import { createCvm, getPubkeyFromCvm, encryptSecrets } from '../../api/cvms';
-import { getTeepods } from '../../api/teepods';
-import { logger } from '../../utils/logger';
-import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '../../utils/constants';
+import { createCvm, getPubkeyFromCvm, encryptSecrets } from '@/src/api/cvms';
+import { getTeepods } from '@/src/api/teepods';
+import { logger } from '@/src/utils/logger';
+import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
 import fs from 'fs';
-import { Env, TEEPod } from '../../api/types';
-import { prompt } from '../../utils/prompt';
+import { Env } from '@/src/api/types';
 import path from 'path';
 import inquirer from 'inquirer';
 

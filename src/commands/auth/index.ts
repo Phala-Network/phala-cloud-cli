@@ -5,7 +5,7 @@ import { statusCommand } from './status';
 
 export const authCommands = new Command()
   .name('auth')
-  .description('Authentication commands')
+  .description('Authenticate with Phala Cloud')
   .addCommand(loginCommand)
   .addCommand(logoutCommand)
   .addCommand(statusCommand);

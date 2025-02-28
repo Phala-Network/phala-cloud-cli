@@ -5,7 +5,7 @@ import { listCommand } from './list';
 
 export const configCommands = new Command()
   .name('config')
-  .description('Configuration commands')
+  .description('Manage your local configuration')
   .addCommand(getCommand)
   .addCommand(setCommand)
   .addCommand(listCommand);

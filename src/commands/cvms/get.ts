@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { getCvmByAppId, getCvmsByUserId } from '../../api/cvms';
-import { logger } from '../../utils/logger';
-import inquirer from 'inquirer';
+import { getCvmByAppId, getCvmsByUserId, selectCvm } from '@/src/api/cvms';
+import { logger } from '@/src/utils/logger';
+import { CLOUD_URL } from '@/src/tee/constants';
 
 export const getCommand = new Command()
   .name('get')
@@ -14,38 +14,10 @@ export const getCommand = new Command()
       
       // If no app ID is provided, fetch all CVMs and let the user select one
       if (!appId) {
-        const listSpinner = logger.startSpinner('Fetching available CVMs');
-        const cvms = await getCvmsByUserId();
-        listSpinner.stop(true);
-        
-        if (!cvms || cvms.length === 0) {
-          logger.info('No CVMs found for your account');
-          return;
+        appId = await selectCvm();
+        if (!appId) {
+          return; // No CVMs found or user canceled
         }
-        
-        // Prepare choices for the inquirer prompt
-        const choices = cvms.map(cvm => {
-          // Handle different API response formats
-          const id = cvm.hosted?.app_id || cvm.hosted?.id;
-          const name = cvm.name || (cvm.hosted && cvm.hosted.name);
-          const status = cvm.status || (cvm.hosted && cvm.hosted.status);
-          
-          return {
-            name: `${name || 'Unnamed'} (${id}) - Status: ${status || 'Unknown'}`,
-            value: id
-          };
-        });
-        
-        const { selectedCvm } = await inquirer.prompt([
-          {
-            type: 'list',
-            name: 'selectedCvm',
-            message: 'Select a CVM to view details:',
-            choices
-          }
-        ]);
-        
-        appId = selectedCvm;
       }
       
       const spinner = logger.startSpinner(`Fetching CVM with App ID ${appId}`);
@@ -64,20 +36,17 @@ export const getCommand = new Command()
         return;
       }
       
-      logger.info(`CVM Details for App ID ${appId}:`);
-      logger.info(`Name: ${cvm.name}`);
-      logger.info(`Status: ${cvm.status}`);
-      
-      if (cvm.app_url) {
-        logger.info(`App URL: ${cvm.app_url}`);
-      }
-      
       // Display additional details if available
-      if (cvm.vcpu) logger.info(`vCPU: ${cvm.vcpu}`);
-      if (cvm.memory) logger.info(`Memory: ${cvm.memory} MB`);
-      if (cvm.disk_size) logger.info(`Disk Size: ${cvm.disk_size} GB`);
-      if (cvm.base_image) logger.info(`Dstack Image: ${cvm.base_image}`);
-      if (cvm.teepod_id) logger.info(`TEEPod ID: ${cvm.teepod_id}`);
+      logger.keyValueTable({
+        'Name': cvm.name,
+        'Status': cvm.status,
+        'vCPU': cvm.vcpu,
+        'Memory': `${cvm.memory} MB`,
+        'Disk Size': `${cvm.disk_size} GB`,
+        'Dstack Image': cvm.base_image,
+        'TEEPod ID': cvm.teepod_id,
+        'App URL': `${CLOUD_URL}/dashboard/cvms/app_${cvm.app_id}`
+      });
     } catch (error) {
       logger.error(`Failed to get CVM details: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
