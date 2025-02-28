@@ -6,6 +6,13 @@ import { logger } from './logger';
 import { DOCKER_HUB_API_URL } from './constants';
 import { getDockerCredentials } from './credentials';
 import Handlebars from 'handlebars';
+import { exec, spawn } from 'child_process';
+import { promisify } from 'util';
+import os from 'os';
+
+const execAsync = promisify(exec);
+const LOGS_DIR = '.tee-cloud/logs';
+const MAX_CONSOLE_LINES = 10;
 
 export class DockerService {
   private username: string;
@@ -16,6 +23,88 @@ export class DockerService {
     this.image = image;
     this.username = username || '';
     this.registry = registry || '';
+  }
+
+  private ensureLogsDir(): void {
+    const logsPath = path.resolve(LOGS_DIR);
+    if (!fs.existsSync(logsPath)) {
+      fs.mkdirSync(logsPath, { recursive: true });
+    }
+  }
+
+  private getLogFilePath(operation: string): string {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return path.resolve(LOGS_DIR, `${this.image}-${operation}-${timestamp}.log`);
+  }
+
+  private getSystemArchitecture(): string {
+    const arch = os.arch();
+    switch (arch) {
+      case 'arm':
+      case 'arm64':
+        return 'arm64';
+      case 'x64':
+        return 'amd64';
+      default:
+        return arch;
+    }
+  }
+
+  private spawnProcess(command: string, args: string[], operation: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(command, args);
+      const logFile = this.getLogFilePath(operation);
+      const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+      const consoleBuffer: string[] = [];
+
+      const processOutput = (data: Buffer, isError: boolean = false) => {
+        const lines = data.toString().split('\n');
+
+        // Write to log file
+        logStream.write(data);
+
+        // Update console buffer
+        lines.forEach(line => {
+          if (line.trim()) {
+            consoleBuffer.push(line);
+            // Keep only the last MAX_CONSOLE_LINES lines
+            if (consoleBuffer.length > MAX_CONSOLE_LINES) {
+              consoleBuffer.shift();
+            }
+
+            // Clear console and print the buffer
+            console.clear();
+            console.log(`Latest ${MAX_CONSOLE_LINES} lines (full log at ${logFile}):`);
+            console.log('-'.repeat(50));
+            consoleBuffer.forEach(bufferedLine => {
+              if (isError) {
+                console.error(bufferedLine);
+              } else {
+                console.log(bufferedLine);
+              }
+            });
+          }
+        });
+      };
+
+      proc.stdout.on('data', (data) => processOutput(data));
+      proc.stderr.on('data', (data) => processOutput(data, true));
+
+      proc.on('close', (code) => {
+        logStream.end();
+        if (code === 0) {
+          console.log(`\nOperation completed. Full log available at: ${logFile}`);
+          resolve();
+        } else {
+          reject(new Error(`Process exited with code ${code}. Check log file: ${logFile}`));
+        }
+      });
+
+      proc.on('error', (err) => {
+        logStream.end();
+        reject(err);
+      });
+    });
   }
 
   /**
@@ -38,6 +127,9 @@ export class DockerService {
    */
   async buildImage(dockerfile: string, tag: string): Promise<boolean> {
     try {
+      const arch = this.getSystemArchitecture();
+      const fullImageName = `${this.username}/${this.image}:${tag}`;
+
       const spinner = logger.startSpinner(`Building Docker image ${this.username}/${this.image}:${tag}`);
       
       // Ensure the Dockerfile exists
@@ -46,20 +138,19 @@ export class DockerService {
         throw new Error(`Dockerfile not found at ${dockerfile}`);
       }
 
-      // Get the directory containing the Dockerfile
-      const dockerfileDir = path.dirname(dockerfile);
+      const buildArgs = ['build', '-t', fullImageName, '-f', dockerfile];
+
+      if (arch === 'arm64') {
+        console.log('Detected arm64 architecture, using --platform linux/amd64');
+        buildArgs.push('--platform', 'linux/amd64');
+      }
       
       // Build the image
-      await execa('docker', [
-        'build',
-        '-t',
-        `${this.username}/${this.image}:${tag}`,
-        '-f',
-        dockerfile,
-        dockerfileDir
-      ]);
+      buildArgs.push('.');
+
+      await this.spawnProcess('docker', buildArgs, 'build');
       
-      spinner.stop(true, 'Docker image built successfully');
+      spinner.stop(true, `Docker image ${fullImageName} built successfully`);
       return true;
     } catch (error) {
       logger.error(`Failed to build Docker image: ${error instanceof Error ? error.message : String(error)}`);
@@ -80,16 +171,15 @@ export class DockerService {
       const credentials = await getDockerCredentials();
       if (!credentials) {
         spinner.stop(false);
-        throw new Error('Docker credentials not found. Please log in first with "teecloud docker login"');
+        throw new Error('Docker credentials not found. Please log in first with "phala docker login"');
       }
 
-      // Push the image
-      await execa('docker', [
-        'push',
-        `${this.username}/${this.image}:${tag}`
-      ]);
+      const fullImageName = `${this.username}/${this.image}:${tag}`;
+      console.log(`Pushing image ${fullImageName} to Docker Hub...`);
+
+      await this.spawnProcess('docker', ['push', fullImageName], 'push');
       
-      spinner.stop(true, 'Docker image pushed successfully');
+      spinner.stop(true, `Docker image ${fullImageName} pushed successfully`);
       return true;
     } catch (error) {
       logger.error(`Failed to push Docker image: ${error instanceof Error ? error.message : String(error)}`);
@@ -136,7 +226,7 @@ export class DockerService {
       const credentials = await getDockerCredentials();
       if (!credentials) {
         spinner.stop(false);
-        throw new Error('Docker credentials not found. Please log in first with "teecloud docker login"');
+        throw new Error('Docker credentials not found. Please log in first with "phala docker login"');
       }
 
       // Delete the tag using Docker Hub API
@@ -293,23 +383,19 @@ export class DockerService {
    */
   async runSimulator(image: string): Promise<boolean> {
     try {
-      const spinner = logger.startSpinner(`Running TEE simulator with image ${image}`);
+      logger.info(`Running TEE simulator with image ${image}`);
       
-      // Pull the image
-      await execa('docker', ['pull', image]);
+      logger.info('Pulling latest simulator image...');
+      await execAsync(`docker pull ${image}`);
+
+      logger.info('Starting simulator in background...');
+      const { stdout } = await execAsync(`docker run -d --name tee-simulator --rm -p 8090:8090 ${image}`);
+      const containerId = stdout.trim();
       
-      // Run the simulator
-      await execa('docker', [
-        'run',
-        '-d',
-        '--name',
-        'tee-simulator',
-        '-p',
-        '8000:8000',
-        image
-      ]);
-      
-      spinner.stop(true, 'TEE simulator running successfully');
+      logger.success(`TEE simulator running successfully. Container ID: ${containerId}`);
+      logger.info(`\n\nUseful commands:`);
+      logger.info(`- View logs: docker logs -f ${containerId}`);
+      logger.info(`- Stop simulator: docker stop ${containerId}`);
       return true;
     } catch (error) {
       logger.error(`Failed to run TEE simulator: ${error instanceof Error ? error.message : String(error)}`);
@@ -323,13 +409,10 @@ export class DockerService {
    */
   async stopSimulator(): Promise<boolean> {
     try {
-      const spinner = logger.startSpinner('Stopping TEE simulator');
+      const spinner = logger.startSpinner('Stopping TEE simulator...');
       
       // Stop the simulator
-      await execa('docker', ['stop', 'tee-simulator']);
-      
-      // Remove the container
-      await execa('docker', ['rm', 'tee-simulator']);
+      await execAsync(`docker stop tee-simulator`);
       
       spinner.stop(true, 'TEE simulator stopped successfully');
       return true;

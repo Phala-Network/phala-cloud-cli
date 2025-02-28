@@ -35,7 +35,7 @@ export class ApiClient {
       if (!this.apiKey) {
         this.apiKey = await getApiKey();
         if (!this.apiKey) {
-          throw new Error('API key not found. Please set an API key first with "teecloud auth login"');
+          throw new Error('API key not found. Please set an API key first with "phala auth login"');
         }
         logger.debug(`API key loaded: ${this.apiKey.substring(0, 5)}...`);
       }

@@ -15,8 +15,6 @@ export const stopCommand = new Command()
         logger.error('Failed to stop TEE simulator');
         process.exit(1);
       }
-      
-      logger.success('TEE simulator stopped successfully');
     } catch (error) {
       logger.error(`Failed to stop TEE simulator: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

@@ -14,7 +14,7 @@ export const pushCommand = new Command()
       const credentials = await getDockerCredentials();
       
       if (!credentials) {
-        logger.error('Docker credentials not found. Please login first with "teecloud docker login"');
+        logger.error('Docker credentials not found. Please login first with "phala docker login"');
         process.exit(1);
       }
       

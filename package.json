@@ -1,5 +1,5 @@
 {
-  "name": "tee-cloud-cli",
+  "name": "phala-cloud-cli",
   "version": "0.0.1",
   "description": "CLI for Interacting with Phala's TEE Cloud",
   "author": {
@@ -14,12 +14,14 @@
     "dist"
   ],
   "keywords": [
-    "tee"
+    "tee",
+    "phala",
+    "cloud"
   ],
   "type": "module",
   "exports": "./dist/index.js",
   "bin": {
-    "teecloud": "./dist/index.js"
+    "phala": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup && bun link",

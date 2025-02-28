@@ -6,7 +6,7 @@ import { tagsCommand } from './tags';
 
 export const dockerCommands = new Command()
   .name('docker')
-  .description('Docker management commands')
+  .description('Login to Docker Hub and manage Docker images')
   .addCommand(loginCommand)
   .addCommand(buildCommand)
   .addCommand(pushCommand)

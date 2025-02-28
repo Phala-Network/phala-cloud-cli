@@ -17,9 +17,6 @@ export const startCommand = new Command()
         logger.error('Failed to start TEE simulator');
         process.exit(1);
       }
-      
-      logger.success('TEE simulator started successfully');
-      logger.info('The simulator is now running on http://localhost:8000');
     } catch (error) {
       logger.error(`Failed to start TEE simulator: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
