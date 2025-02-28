@@ -12,19 +12,25 @@ A command-line tool for managing TEE deployments on Phala Network, from local de
 ## Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/Phala-Network/phala-cloud-cli.git
+cd tee-cloud-cli
+
 # Install dependencies
 bun install
 
-# Build
+# Build and link the CLI
 bun run build
 ```
+
+After building, the CLI will be available as either `phala` command.
 
 ## Testing
 
 The CLI includes end-to-end tests to ensure that all commands work correctly. To run the tests:
 
 ```bash
-npm run test
+bun test
 ```
 
 See the [test README](./test/README.md) for more information about the test structure and how to write tests.
@@ -40,7 +46,7 @@ Commands for managing authentication with the Phala Cloud API.
 #### Login
 
 ```bash
-teecloud auth login [options]
+phala auth login [options]
 ```
 
 Set the API key for authentication with Phala Cloud. The API key is stored with encryption for enhanced security.
@@ -50,26 +56,26 @@ Set the API key for authentication with Phala Cloud. The API key is stored with 
 
 **Example:**
 ```bash
-teecloud auth login --key your-phala-cloud-api-key
+phala auth login --key your-phala-cloud-api-key
 ```
 
 #### Logout
 
 ```bash
-teecloud auth logout
+phala auth logout
 ```
 
 Remove the stored API key.
 
 **Example:**
 ```bash
-teecloud auth logout
+phala auth logout
 ```
 
 #### Status
 
 ```bash
-teecloud auth status [options]
+phala auth status [options]
 ```
 
 Check your authentication status with Phala Cloud. Displays user information in a table format.
@@ -79,8 +85,8 @@ Check your authentication status with Phala Cloud. Displays user information in 
 
 **Example:**
 ```bash
-teecloud auth status
-teecloud auth status --json
+phala auth status
+phala auth status --json
 ```
 
 ### TEEPod Management Commands
@@ -90,20 +96,20 @@ Commands for managing TEEPods on Phala Cloud.
 #### List TEEPods
 
 ```bash
-teecloud teepods list
+phala teepods list
 ```
 
 List all available TEEPods on Phala Cloud.
 
 **Example:**
 ```bash
-teecloud teepods list
+phala teepods list
 ```
 
 #### List TEEPod Images
 
 ```bash
-teecloud teepods images [options]
+phala teepods images [options]
 ```
 
 List available images for a specific TEEPod.
@@ -113,7 +119,7 @@ List available images for a specific TEEPod.
 
 **Example:**
 ```bash
-teecloud teepods images --teepod-id 2
+phala teepods images --teepod-id 2
 ```
 
 ### Docker Management Commands
@@ -123,7 +129,7 @@ Commands for managing Docker images for TEE deployments.
 #### Docker Login
 
 ```bash
-teecloud docker login [options]
+phala docker login [options]
 ```
 
 Login to Docker Hub to enable pushing and pulling images.
@@ -135,13 +141,13 @@ Login to Docker Hub to enable pushing and pulling images.
 
 **Example:**
 ```bash
-teecloud docker login --username your-dockerhub-username
+phala docker login --username your-dockerhub-username
 ```
 
 #### Build Docker Image
 
 ```bash
-teecloud docker build [options]
+phala docker build [options]
 ```
 
 Build a Docker image for your TEE application.
@@ -153,13 +159,13 @@ Build a Docker image for your TEE application.
 
 **Example:**
 ```bash
-teecloud docker build --image my-tee-app --tag v1.0.0 --file ./Dockerfile
+phala docker build --image my-tee-app --tag v1.0.0 --file ./Dockerfile
 ```
 
 #### Push Docker Image
 
 ```bash
-teecloud docker push [options]
+phala docker push [options]
 ```
 
 Push a Docker image to Docker Hub.
@@ -170,13 +176,13 @@ Push a Docker image to Docker Hub.
 
 **Example:**
 ```bash
-teecloud docker push --image my-tee-app --tag v1.0.0
+phala docker push --image my-tee-app --tag v1.0.0
 ```
 
 #### List Docker Image Tags
 
 ```bash
-teecloud docker tags [options]
+phala docker tags [options]
 ```
 
 List all tags for a Docker image on Docker Hub.
@@ -187,7 +193,44 @@ List all tags for a Docker image on Docker Hub.
 
 **Example:**
 ```bash
-teecloud docker tags --image my-tee-app
+phala docker tags --image my-tee-app
+```
+
+#### Build Docker Compose File
+
+```bash
+phala docker build-compose [options]
+```
+
+Build a Docker Compose file for your TEE application.
+
+**Options:**
+- `-i, --image <image>`: Image name (required)
+- `-t, --tag <tag>`: Image tag (required)
+- `-u, --username <username>`: Docker Hub username
+- `-e, --env-file <envFile>`: Path to environment file
+- `-v, --version <version>`: Template version to use (basic, eliza-v1, eliza-v2)
+
+**Example:**
+```bash
+phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
+```
+
+#### Run Local Docker Compose
+
+```bash
+phala docker run-local [options]
+```
+
+Run a Docker Compose file locally for testing.
+
+**Options:**
+- `-c, --compose <compose>`: Path to Docker Compose file
+- `-e, --env-file <envFile>`: Path to environment file
+
+**Example:**
+```bash
+phala docker run-local --compose ./tee-compose.yaml --env-file ./.env
 ```
 
 ### TEE Simulator Commands
@@ -197,7 +240,7 @@ Commands for managing the local TEE simulator for development and testing.
 #### Start Simulator
 
 ```bash
-teecloud simulator start [options]
+phala simulator start [options]
 ```
 
 Start the TEE simulator locally for development and testing.
@@ -207,20 +250,20 @@ Start the TEE simulator locally for development and testing.
 
 **Example:**
 ```bash
-teecloud simulator start
+phala simulator start
 ```
 
 #### Stop Simulator
 
 ```bash
-teecloud simulator stop
+phala simulator stop
 ```
 
 Stop the running TEE simulator.
 
 **Example:**
 ```bash
-teecloud simulator stop
+phala simulator stop
 ```
 
 ### Configuration Commands
@@ -230,7 +273,7 @@ Commands for managing CLI configuration settings.
 #### Get Configuration Value
 
 ```bash
-teecloud config get <key>
+phala config get <key>
 ```
 
 Get a specific configuration value.
@@ -240,13 +283,13 @@ Get a specific configuration value.
 
 **Example:**
 ```bash
-teecloud config get apiUrl
+phala config get apiUrl
 ```
 
 #### Set Configuration Value
 
 ```bash
-teecloud config set <key> <value>
+phala config set <key> <value>
 ```
 
 Set a configuration value.
@@ -257,16 +300,16 @@ Set a configuration value.
 
 **Example:**
 ```bash
-teecloud config set defaultVcpu 2
-teecloud config set apiUrl "https://custom-api.phala.cloud"
-teecloud config set debug true
-teecloud config set customConfig '{"key": "value", "nested": {"array": [1, 2, 3]}}'
+phala config set defaultVcpu 2
+phala config set apiUrl "https://custom-api.phala.cloud"
+phala config set debug true
+phala config set customConfig '{"key": "value", "nested": {"array": [1, 2, 3]}}'
 ```
 
 #### List Configuration Values
 
 ```bash
-teecloud config list [options]
+phala config list [options]
 ```
 
 List all configuration values.
@@ -276,8 +319,8 @@ List all configuration values.
 
 **Example:**
 ```bash
-teecloud config list
-teecloud config list --json
+phala config list
+phala config list --json
 ```
 
 ### Cloud Virtual Machine (CVM) Commands
@@ -287,7 +330,7 @@ Commands for managing Cloud Virtual Machines (CVMs) on Phala Cloud.
 #### List CVMs
 
 ```bash
-teecloud cvms list [options]
+phala cvms list [options]
 ```
 
 List all CVMs associated with your account.
@@ -297,13 +340,13 @@ List all CVMs associated with your account.
 
 **Example:**
 ```bash
-teecloud cvms list
+phala cvms list
 ```
 
 #### Get CVM Details
 
 ```bash
-teecloud cvms get [options] <app-id>
+phala cvms get [options] <app-id>
 ```
 
 Get detailed information about a specific CVM.
@@ -316,13 +359,13 @@ Get detailed information about a specific CVM.
 
 **Example:**
 ```bash
-teecloud cvms get app_123456
+phala cvms get app_123456
 ```
 
 #### Create CVM
 
 ```bash
-teecloud cvms create [options]
+phala cvms create [options]
 ```
 
 Create a new CVM on Phala Cloud.
@@ -341,13 +384,13 @@ Create a new CVM on Phala Cloud.
 
 **Example:**
 ```bash
-teecloud cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --memory 4096 --env-file ./.env
+phala cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --memory 4096 --env-file ./.env
 ```
 
 #### Update CVM
 
 ```bash
-teecloud cvms update [options] <app-id>
+phala cvms update [options] <app-id>
 ```
 
 Update an existing CVM.
@@ -367,13 +410,13 @@ Update an existing CVM.
 
 **Example:**
 ```bash
-teecloud cvms update app_123456 --name updated-app-name --memory 4096
+phala cvms update app_123456 --name updated-app-name --memory 4096
 ```
 
 #### Upgrade CVM
 
 ```bash
-teecloud cvms upgrade [options] <app-id>
+phala cvms upgrade [options] <app-id>
 ```
 
 Upgrade a CVM to a new version.
@@ -389,13 +432,13 @@ Upgrade a CVM to a new version.
 
 **Example:**
 ```bash
-teecloud cvms upgrade app_123456 --compose ./new-docker-compose.yml
+phala cvms upgrade app_123456 --compose ./new-docker-compose.yml
 ```
 
 #### Start CVM
 
 ```bash
-teecloud cvms start <app-id>
+phala cvms start <app-id>
 ```
 
 Start a stopped CVM.
@@ -405,13 +448,13 @@ Start a stopped CVM.
 
 **Example:**
 ```bash
-teecloud cvms start app_123456
+phala cvms start app_123456
 ```
 
 #### Stop CVM
 
 ```bash
-teecloud cvms stop <app-id>
+phala cvms stop <app-id>
 ```
 
 Stop a running CVM.
@@ -421,13 +464,13 @@ Stop a running CVM.
 
 **Example:**
 ```bash
-teecloud cvms stop app_123456
+phala cvms stop app_123456
 ```
 
 #### Restart CVM
 
 ```bash
-teecloud cvms restart <app-id>
+phala cvms restart <app-id>
 ```
 
 Restart a CVM.
@@ -437,13 +480,13 @@ Restart a CVM.
 
 **Example:**
 ```bash
-teecloud cvms restart app_123456
+phala cvms restart app_123456
 ```
 
 #### View CVM Logs
 
 ```bash
-teecloud cvms logs [options] <app-id>
+phala cvms logs [options] <app-id>
 ```
 
 View logs for a CVM.
@@ -456,14 +499,14 @@ View logs for a CVM.
 
 **Example:**
 ```bash
-teecloud cvms logs app_123456
-teecloud cvms logs --follow app_123456
+phala cvms logs app_123456
+phala cvms logs --follow app_123456
 ```
 
 #### Delete CVM
 
 ```bash
-teecloud cvms delete [options] <app-id>
+phala cvms delete [options] <app-id>
 ```
 
 Delete a CVM.
@@ -476,8 +519,8 @@ Delete a CVM.
 
 **Example:**
 ```bash
-teecloud cvms delete app_123456
-teecloud cvms delete --force app_123456
+phala cvms delete app_123456
+phala cvms delete --force app_123456
 ```
 
 ## Local Development Workflow
@@ -487,7 +530,7 @@ teecloud cvms delete --force app_123456
 Test your application in a local TEE environment:
 
 ```bash
-teecloud simulator start
+phala simulator start
 ```
 
 The simulator will be available at http://localhost:8090.
@@ -495,7 +538,7 @@ The simulator will be available at http://localhost:8090.
 ### 2. Build Your Docker Image
 
 ```bash
-teecloud docker build --image my-tee-app --tag v1.0.0
+phala docker build --image my-tee-app --tag v1.0.0
 ```
 
 ### 3. Test Locally
@@ -508,13 +551,13 @@ echo "API_KEY=test-key" > .env
 echo "DEBUG=true" >> .env
 
 # Build a Docker Compose file using your image and environment file
-teecloud docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
+phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
 ```
 
 Run your application locally:
 
 ```bash
-teecloud docker run-local --compose ./tee-compose.yaml --env-file ./.env
+phala docker run-local --compose ./tee-compose.yaml --env-file ./.env
 ```
 
 ## Cloud Deployment Workflow
@@ -522,28 +565,39 @@ teecloud docker run-local --compose ./tee-compose.yaml --env-file ./.env
 ### 1. Configure API Key
 
 ```bash
-teecloud auth login
+phala auth login
 ```
 
 ### 2. Push Your Image to Docker Hub
 
 ```bash
 # Login to Docker Hub
-teecloud docker login
+phala docker login
 
 # Build your image
-teecloud docker build --image my-tee-app --tag v1.0.0
+phala docker build --image my-tee-app --tag v1.0.0
 
 # Push to Docker Hub
-teecloud docker push --image my-tee-app --tag v1.0.0
+phala docker push --image my-tee-app --tag v1.0.0
 ```
 
 ### 3. Deploy to Phala Cloud
 
 ```bash
 # Create a CVM with your application
-teecloud cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
+phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
 ```
+
+## Examples
+
+The repository includes example applications in the `examples/` directory:
+
+- **lightclient**: A light client implementation
+- **timelock-nts**: A timelock encryption system
+- **ssh-over-tproxy**: SSH over TEE proxy
+- **prelaunch-script**: Pre-launch script examples
+
+These examples demonstrate different use cases and can be used as templates for your own applications.
 
 ## Docker Compose Templates
 
@@ -587,8 +641,8 @@ Common issues and solutions:
 
 For detailed help:
 ```bash
-teecloud --help
-teecloud <command> --help
+phala --help
+phala <command> --help
 ```
 
 ## Development
@@ -606,7 +660,7 @@ The project uses:
 
 ## License
 
-tbd
+TBD
 
 ## Security
 

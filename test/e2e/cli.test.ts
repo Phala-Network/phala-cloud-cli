@@ -13,9 +13,9 @@ describe('TEE Cloud CLI End-to-End Tests', () => {
   });
 
   test('CLI shows help information', async () => {
-    const { stdout, exitCode } = await runCommand(['--help']);
+    const { stdout, exitCode } = await runCommand(['help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('Phala TEE Cloud CLI');
+    expect(stdout).toContain('Phala Cloud CLI - Manage your Phala Cloud Deployments');
     expect(stdout).toContain('Commands:');
   });
 
@@ -39,7 +39,7 @@ describe('TEE Cloud CLI End-to-End Tests', () => {
   test('Docker commands show help information', async () => {
     const { stdout, exitCode } = await runCommand(['docker', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('Docker management commands');
+    expect(stdout).toContain('Login to Docker Hub and manage Docker images');
     expect(stdout).toContain('login');
     expect(stdout).toContain('build');
     expect(stdout).toContain('push');
@@ -57,6 +57,6 @@ describe('TEE Cloud CLI End-to-End Tests', () => {
   test('CVM commands show help information', async () => {
     const { stdout, exitCode } = await runCommand(['cvms', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('Manage Cloud Virtual Machines');
+    expect(stdout).toContain('Manage Phala Confidential Virtual Machines (CVMs)');
   });
 }); 

@@ -15,7 +15,7 @@ describe('CVM Commands E2E Tests', () => {
   test('CVM command shows help', async () => {
     const { stdout, exitCode } = await runCommand(['cvms', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('Manage Cloud Virtual Machines');
+    expect(stdout).toContain('Manage Phala Confidential Virtual Machines (CVMs)');
   });
 
   test('CVM list command shows help', async () => {
