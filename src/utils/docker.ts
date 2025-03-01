@@ -54,6 +54,10 @@ export class DockerService {
     return new Promise((resolve, reject) => {
       const proc = spawn(command, args);
       const logFile = this.getLogFilePath(operation);
+      
+      // Ensure logs directory exists before creating write stream
+      this.ensureLogsDir();
+      
       const logStream = fs.createWriteStream(logFile, { flags: 'a' });
       const consoleBuffer: string[] = [];
 
