@@ -88,7 +88,6 @@ export async function saveApiKey(apiKey: string): Promise<void> {
     // Encrypt the API key before saving
     const encryptedApiKey = encrypt(apiKey);
     fs.writeFileSync(API_KEY_FILE, encryptedApiKey, { mode: 0o600 }); // Restrict permissions to user only
-    logger.success('API key saved successfully.');
   } catch (error) {
     logger.error('Failed to save API key:', error);
     throw error;

@@ -9,6 +9,7 @@ import Handlebars from 'handlebars';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import os from 'os';
+import { validateFileExists } from './prompts';
 
 const execAsync = promisify(exec);
 const LOGS_DIR = '.tee-cloud/logs';
@@ -137,10 +138,7 @@ export class DockerService {
       const spinner = logger.startSpinner(`Building Docker image ${this.username}/${this.image}:${tag}`);
       
       // Ensure the Dockerfile exists
-      if (!fs.existsSync(dockerfile)) {
-        spinner.stop(false);
-        throw new Error(`Dockerfile not found at ${dockerfile}`);
-      }
+      validateFileExists(dockerfile);
 
       const buildArgs = ['build', '-t', fullImageName, '-f', dockerfile];
 
@@ -297,10 +295,7 @@ export class DockerService {
       const templatePath = path.join(__dirname, '..', 'templates', `docker-compose-${version}.hbs`);
       
       // Ensure the template exists
-      if (!fs.existsSync(templatePath)) {
-        spinner.stop(false);
-        throw new Error(`Template not found at ${templatePath}`);
-      }
+      validateFileExists(templatePath);
       
       // Read the template
       const template = fs.readFileSync(templatePath, 'utf8');
@@ -351,16 +346,10 @@ export class DockerService {
       const spinner = logger.startSpinner(`Running Docker Compose file at ${composePath}`);
       
       // Ensure the Docker Compose file exists
-      if (!fs.existsSync(composePath)) {
-        spinner.stop(false);
-        throw new Error(`Docker Compose file not found at ${composePath}`);
-      }
+      validateFileExists(composePath);
       
       // Ensure the environment file exists
-      if (!fs.existsSync(envFile)) {
-        spinner.stop(false);
-        throw new Error(`Environment file not found at ${envFile}`);
-      }
+      validateFileExists(envFile);
       
       // Run the Docker Compose file
       await execa('docker-compose', [

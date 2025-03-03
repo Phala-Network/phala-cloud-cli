@@ -410,7 +410,7 @@ export const createCommand = new Command()
       
       logger.info('');
       logger.info('Your CVM is being created. You can check its status with:');
-      logger.info(`  tee-cloud-cli cvms status ${response.app_id}`);
+      logger.info(`phala cvms status ${response.app_id}`);
     } catch (error) {
       logger.error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

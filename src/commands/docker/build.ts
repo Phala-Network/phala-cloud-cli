@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger';
 import path from 'path';
 import inquirer from 'inquirer';
 import fs from 'fs';
+import { promptForFile } from '../../utils/prompts';
 
 export const buildCommand = new Command()
   .name('build')
@@ -65,23 +66,11 @@ export const buildCommand = new Command()
       if (!fs.existsSync(defaultPath)) {
         logger.info(`Default Dockerfile not found at ${defaultPath}`);
         
-        const response = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'file',
-            message: 'Enter the path to your Dockerfile:',
-            default: 'Dockerfile',
-            validate: (input) => {
-              const filePath = path.resolve(process.cwd(), input);
-              if (!fs.existsSync(filePath)) {
-                return `File not found at ${filePath}`;
-              }
-              return true;
-            }
-          }
-        ]);
-        
-        options.file = response.file;
+        options.file = await promptForFile(
+          'Enter the path to your Dockerfile:',
+          'Dockerfile',
+          'file'
+        );
       }
       
       // Resolve the Dockerfile path

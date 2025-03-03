@@ -10,6 +10,10 @@ import {
     GetCvmsByUserIdResponse,
 } from "@/src/tee/types"
 
+// Import the new helper function
+import { calculateNestedTableWidths, logger, formatTable } from '../utils/logger';
+import chalk from 'chalk';
+
 const headers = {
     "User-Agent": `tee-cli/${CLI_VERSION}`,
     "Content-Type": "application/json",
@@ -77,43 +81,37 @@ function getTerminalWidth(): number {
 }
 
 function calculateColumnWidths(cvms: GetCvmsByUserIdResponse): { [key: string]: number } {
-    const terminalWidth = getTerminalWidth();
-    
-    // Account for all border characters in total width ("|" at start/end and between columns, plus 2 spaces per column)
-    const totalBorderWidth = 13; // | + 4 columns with "| " and " |" = 1 + 4 * 3 = 13
-    const availableContentWidth = terminalWidth - totalBorderWidth;
-    
-    // Calculate the maximum content width for dynamic columns (name and status)
-    const contentWidths = {
-        name: Math.max(10, 'Agent Name'.length, ...cvms.map(cvm => cvm.hosted.name.length)),
-        status: Math.max(6, 'Status'.length, ...cvms.map(cvm => cvm.hosted.status.length))
-    };
-
-    // Calculate remaining width for App ID and App URL
-    const remainingWidth = Math.max(0, availableContentWidth - contentWidths.name - contentWidths.status);
-    
-    // Split remaining width between App ID (1/3) and App URL (2/3)
-    const appIdWidth = Math.max(8, Math.floor(remainingWidth * 0.33));
-    const appUrlWidth = Math.max(7, remainingWidth - appIdWidth);
-
-    // If total width would exceed terminal, scale everything down proportionally
-    const totalWidth = contentWidths.name + contentWidths.status + appIdWidth + appUrlWidth + totalBorderWidth;
-    if (totalWidth > terminalWidth) {
-        const scale = availableContentWidth / (totalWidth - totalBorderWidth);
-        return {
-            name: Math.max(10, Math.floor(contentWidths.name * scale)),
-            status: Math.max(6, Math.floor(contentWidths.status * scale)),
-            appId: Math.max(8, Math.floor(appIdWidth * scale)),
-            appUrl: Math.max(7, Math.floor(appUrlWidth * scale))
-        };
-    }
-
-    return {
-        name: contentWidths.name,
-        status: contentWidths.status,
-        appId: appIdWidth,
-        appUrl: appUrlWidth
-    };
+    return calculateNestedTableWidths(
+        cvms,
+        [
+            { 
+                key: 'name',
+                header: 'Agent Name', 
+                minWidth: 10, 
+                accessor: (cvm) => cvm.hosted.name 
+            },
+            { 
+                key: 'status',
+                header: 'Status', 
+                minWidth: 6,
+                accessor: (cvm) => cvm.hosted.status 
+            },
+            { 
+                key: 'appId',
+                header: 'App ID', 
+                minWidth: 8, 
+                weight: 1,
+                accessor: (cvm) => cvm.hosted.app_id 
+            },
+            { 
+                key: 'appUrl',
+                header: 'App URL', 
+                minWidth: 7, 
+                weight: 2,
+                accessor: (cvm) => cvm.hosted.app_url 
+            }
+        ]
+    );
 }
 
 function formatCvmsTable(cvms: GetCvmsByUserIdResponse): void {
@@ -338,6 +336,321 @@ async function listCvms(): Promise<void> {
     formatCvmsTable(cvms);
 }
 
+/**
+ * Display CVMs in a nicely formatted table using the enhanced table functionality
+ */
+async function listCvmsEnhanced(): Promise<void> {
+    console.log("Fetching your CVMs...");
+    const cvms = await queryCvmsByUserId();
+    
+    if (!cvms || cvms.length === 0) {
+        console.log("No CVMs found for your account.");
+        return;
+    }
+
+    // Transform the data for tabular display
+    const tableData = cvms.map(cvm => ({
+        name: cvm.hosted.name,
+        status: cvm.hosted.status,
+        vcpu: cvm.hosted.configuration.vcpu,
+        memory: `${cvm.hosted.configuration.memory} MB`,
+        diskSize: `${cvm.hosted.configuration.disk_size} GB`,
+        image: cvm.hosted.configuration.image,
+        appId: cvm.hosted.app_id,
+        node: cvm.node.name,
+        description: `This is a ${cvm.hosted.status} instance running on ${cvm.node.name} with ${cvm.hosted.configuration.vcpu} vCPU(s) and ${cvm.hosted.configuration.memory} MB memory. The app can be accessed at ${cvm.hosted.app_url}`,
+    }));
+
+    // Use the enhanced table formatter with text wrapping
+    formatTable(tableData, {
+        columns: [
+            { 
+                key: 'name', 
+                header: 'Name', 
+                minWidth: 10
+            },
+            { 
+                key: 'status', 
+                header: 'Status',
+                minWidth: 8,
+                formatter: (value) => {
+                    if (value === 'running') return chalk.green(value);
+                    if (value === 'stopped') return chalk.red(value);
+                    return chalk.yellow(value);
+                }
+            },
+            { 
+                key: 'vcpu', 
+                header: 'vCPU',
+                minWidth: 5
+            },
+            { 
+                key: 'memory', 
+                header: 'Memory',
+                minWidth: 8
+            },
+            { 
+                key: 'diskSize', 
+                header: 'Disk Size',
+                minWidth: 9
+            },
+            { 
+                key: 'image', 
+                header: 'Image',
+                minWidth: 15,
+                weight: 1
+            },
+            { 
+                key: 'node', 
+                header: 'TEEPod',
+                minWidth: 10
+            },
+            { 
+                key: 'description', 
+                header: 'Description',
+                minWidth: 20,
+                weight: 2
+            }
+        ],
+        borderStyle: 'rounded',
+        headerStyle: (text) => chalk.cyan.bold(text),
+        enableTextWrapping: true // Enable text wrapping for all columns
+    });
+    
+    // Show app URL separately with clickable link formatting
+    console.log('\nApp URLs:');
+    tableData.forEach(cvm => {
+        console.log(`${chalk.cyan(cvm.name)}: ${chalk.blue.underline(`https://cloud.phala.network/dashboard/cvms/app_${cvm.appId}`)}`);
+    });
+}
+
+/**
+ * Display CVMs using the simplified logger.table function
+ */
+async function listCvmsSimple(): Promise<void> {
+    console.log("Fetching your CVMs...");
+    const cvms = await queryCvmsByUserId();
+    
+    if (!cvms || cvms.length === 0) {
+        console.log("No CVMs found for your account.");
+        return;
+    }
+
+    // Transform the data for tabular display with a long description that will wrap
+    const tableData = cvms.map(cvm => ({
+        name: cvm.hosted.name,
+        status: cvm.hosted.status,
+        details: `Running on ${cvm.node.name} with ${cvm.hosted.configuration.vcpu} vCPU, ${cvm.hosted.configuration.memory}MB RAM, and ${cvm.hosted.configuration.disk_size}GB storage.`,
+        appId: cvm.hosted.app_id.substring(0, 10) + '...' // Truncate the App ID
+    }));
+
+    // Only call this once to demonstrate, not twice
+    logger.info("Basic table using string array for column names:");
+    logger.table(tableData, ['name', 'status', 'details', 'appId']);
+    
+    logger.break();
+    logger.info("Enhanced table with column configurations:");
+    const columnConfig: any[] = [
+        { key: 'name', header: 'Agent Name', minWidth: 10 },
+        { 
+            key: 'status', 
+            header: 'Status',
+            formatter: (value: string) => value === 'running' ? 
+                chalk.green('✓ ' + value) : chalk.red('✗ ' + value)
+        },
+        { key: 'details', header: 'System Details', minWidth: 20, weight: 2 },
+        { key: 'appId', header: 'App ID', minWidth: 12 }
+    ];
+    logger.table(tableData, columnConfig);
+}
+
+/**
+ * Display detailed information about a single CVM in a key-value table format
+ * @param appId The CVM's app ID
+ * @param useRawKeys Whether to display raw, unformatted keys (default: false)
+ */
+async function showCvmDetails(appId: string, useRawKeys: boolean = false): Promise<void> {
+    console.log(`Fetching details for CVM with App ID: ${appId}...`);
+    
+    // Get basic CVM info
+    const basicCvmInfo = await getCvmByAppId(appId);
+    
+    if (!basicCvmInfo) {
+        logger.error(`No CVM found with App ID: ${appId}`);
+        return;
+    }
+    
+    // Get full CVM details by querying all CVMs and finding the matching one
+    const allCvms = await queryCvmsByUserId();
+    
+    if (!allCvms || allCvms.length === 0) {
+        logger.error("Could not retrieve full CVM details");
+        return;
+    }
+    
+    // Find the matching CVM with detailed information
+    const cvm = allCvms.find(c => c.hosted.app_id === appId);
+    
+    if (!cvm) {
+        // If we can't find the full details, display what we have
+        logger.info("Basic CVM Details:");
+        logger.keyValueTable(basicCvmInfo, {
+            valueFormatter: (value, key) => {
+                if (key === 'status') {
+                    return value === 'running' ? chalk.green(value) : chalk.red(value);
+                }
+                if (key === 'app_url') {
+                    return chalk.blue.underline(value);
+                }
+                return String(value || '');
+            },
+            formatKeys: !useRawKeys
+        });
+        return;
+    }
+    
+    // Create a flattened view of the CVM with the most important properties
+    const cvmDetails = {
+        name: cvm.hosted.name,
+        status: cvm.hosted.status,
+        appId: cvm.hosted.app_id,
+        appUrl: cvm.hosted.app_url,
+        createdAt: cvm.hosted.exited_at ? new Date(cvm.hosted.exited_at).toLocaleString() : 'N/A',
+        node: cvm.node.name,
+        nodeId: cvm.node.id,
+        image: cvm.hosted.configuration.image,
+        vcpu: cvm.hosted.configuration.vcpu,
+        memory: `${cvm.hosted.configuration.memory} MB`,
+        diskSize: `${cvm.hosted.configuration.disk_size} GB`,
+        ports: `${cvm.hosted.configuration.ports?.length || 0} ports configured`,
+        // Adding the full configuration for demonstration
+        fullConfiguration: cvm.hosted.configuration
+    };
+
+    // Display the details using the keyValueTable
+    logger.info(`CVM Details${useRawKeys ? ' (with raw keys)' : ''}:`);
+    logger.keyValueTable(cvmDetails, {
+        // Optional: Exclude some fields
+        exclude: ['fullConfiguration'],
+        // Optional: Style the values based on field name
+        valueFormatter: (value, key) => {
+            if (key === 'status') {
+                return value === 'running' 
+                    ? chalk.green(value) 
+                    : value === 'stopped' 
+                        ? chalk.red(value) 
+                        : chalk.yellow(value);
+            }
+            if (key === 'appUrl') {
+                return chalk.blue.underline(value);
+            }
+            return String(value || '');
+        },
+        borderStyle: 'rounded',
+        keyHeader: 'Property',
+        valueHeader: 'Value',
+        formatKeys: !useRawKeys // Use raw keys if specified
+    });
+    
+    // Show the full configuration separately
+    logger.info(`\nFull Configuration${useRawKeys ? ' (with raw keys)' : ''}:`);
+    logger.keyValueTable(cvmDetails.fullConfiguration, {
+        maxDepth: 3, // Allow deeper nesting for configuration details
+        formatKeys: !useRawKeys // Use raw keys if specified
+    });
+}
+
+/**
+ * Demonstrate both key-value table display formats
+ * @param appId The CVM's app ID
+ */
+async function demonstrateKeyValueTable(appId: string): Promise<void> {
+    // Get basic CVM info
+    const basicCvmInfo = await getCvmByAppId(appId);
+    
+    if (!basicCvmInfo) {
+        logger.error(`No CVM found with App ID: ${appId}`);
+        return;
+    }
+    
+    // Method 1: Using the dedicated keyValueTable function with formatted keys
+    logger.info("Method 1: Using the dedicated keyValueTable function with formatted keys");
+    logger.keyValueTable(basicCvmInfo, {
+        valueFormatter: (value, key) => {
+            if (key === 'status') {
+                return value === 'running' ? chalk.green(value) : chalk.red(value);
+            }
+            return String(value || '');
+        },
+        borderStyle: 'rounded',
+        formatKeys: true // Default, can be omitted
+    });
+    
+    logger.break();
+    
+    // Method 1B: Using unformatted keys (original API response keys)
+    logger.info("Method 1B: Same data with unformatted keys (original API property names)");
+    logger.keyValueTable(basicCvmInfo, {
+        valueFormatter: (value, key) => {
+            if (key === 'status') {
+                return value === 'running' ? chalk.green(value) : chalk.red(value);
+            }
+            return String(value || '');
+        },
+        borderStyle: 'rounded',
+        formatKeys: false // Show original key names
+    });
+    
+    logger.break();
+    
+    // Method 2: Using the regular table function with keyValueMode option
+    logger.info("Method 2: Using formatTable with keyValueMode option");
+    formatTable([basicCvmInfo], {
+        columns: [
+            { key: 'name', header: 'Name' },
+            { key: 'status', header: 'Status', 
+              formatter: (value) => value === 'running' ? chalk.green(value) : chalk.red(value) },
+            { key: 'app_id', header: 'App ID' },
+            { key: 'app_url', header: 'App URL',
+              formatter: (value) => chalk.blue.underline(value) }
+        ],
+        keyValueMode: true,
+        borderStyle: 'rounded',
+        headerStyle: (text) => chalk.cyan.bold(text)
+    });
+    
+    // Get CVMs to demonstrate formatTable with multiple objects
+    const cvms = await queryCvmsByUserId();
+    
+    if (!cvms || cvms.length === 0) {
+        return;
+    }
+    
+    logger.break();
+    logger.info("For comparison - regular table with multiple rows:");
+    
+    // Transform data for display
+    const tableData = cvms.map(cvm => ({
+        name: cvm.hosted.name,
+        status: cvm.hosted.status,
+        appId: cvm.hosted.app_id,
+        resources: `${cvm.hosted.configuration.vcpu} vCPU, ${cvm.hosted.configuration.memory}MB RAM`
+    }));
+    
+    // Display as regular table
+    formatTable(tableData, {
+        columns: [
+            { key: 'name', header: 'Name', minWidth: 10 },
+            { key: 'status', header: 'Status', minWidth: 8,
+              formatter: (value) => value === 'running' ? chalk.green(value) : chalk.red(value) },
+            { key: 'appId', header: 'App ID', minWidth: 10 },
+            { key: 'resources', header: 'Resources', minWidth: 20 }
+        ],
+        borderStyle: 'rounded',
+        headerStyle: (text) => chalk.cyan.bold(text)
+    });
+}
+
 export {
     createCvm,
     queryTeepods,
@@ -349,4 +662,8 @@ export {
     startCvm,
     queryCvmsByUserId,
     listCvms,
+    listCvmsEnhanced,
+    listCvmsSimple,
+    showCvmDetails,
+    demonstrateKeyValueTable,
 };
