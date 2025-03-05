@@ -4,6 +4,9 @@ import { logger } from '@/src/utils/logger';
 import fs from 'fs';
 import { Env } from '@/src/api/types';
 import inquirer from 'inquirer';
+import path from 'path';
+import { promptForFile } from '@/src/utils/prompts';
+import { parseEnv } from '@/src/utils/secrets';
 
 export const upgradeCommand = new Command()
   .name('upgrade')
@@ -39,21 +42,11 @@ export const upgradeCommand = new Command()
 
       // If compose path not provided, prompt with examples
       if (!options.compose) {
-        const { customPath } = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'customPath',
-            message: 'Enter the path to your Docker Compose file:',
-            validate: (input) => {
-              if (!input.trim()) {
-                return 'Docker Compose file path is required';
-              }
-              return true;
-            }
-          }
-        ]);
-
-        options.compose = customPath;
+          options.compose = await promptForFile(
+            'Enter the path to your Docker Compose file:',
+            'docker-compose.yml',
+            'file'
+        );
       }
       
       // Update Docker Compose file if provided
@@ -70,20 +63,13 @@ export const upgradeCommand = new Command()
       // Process environment variables if provided
       let encrypted_env = "";
       if (options.envFile) {
-        const envs: Env[] = [];
+        let envs: Env[] = [];
         
         // Process environment variables from file
         if (options.envFile) {
           try {
             const envFileContent = fs.readFileSync(options.envFile, 'utf8');
-            for (const line of envFileContent.split('\n')) {
-              if (line.includes('=')) {
-                const [key, value] = line.split('=');
-                if (key && value) {
-                  envs.push({ key: key.trim(), value: value.trim() });
-                }
-              }
-            }
+            envs = parseEnv([], envFileContent);
             encrypted_env = await encryptSecrets(envs, currentCvm.encrypted_env_pubkey);
           } catch (error) {
             logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
