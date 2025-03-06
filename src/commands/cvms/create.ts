@@ -44,15 +44,15 @@ export const createCommand = new Command()
       // Get examples directories
       const examplesDir = path.join(process.cwd(), 'examples');
       const examples = [];
-      
+
       if (fs.existsSync(examplesDir)) {
         const exampleDirs = fs.readdirSync(examplesDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory() && !dirent.name.startsWith('.'))
           .map(dirent => dirent.name);
-        
+
         examples.push(...exampleDirs);
       }
-      
+
       // Validate and read the Docker Compose file
       let composeString = '';
       try {
@@ -61,14 +61,14 @@ export const createCommand = new Command()
           if (examples.length > 0) {
             // Prepare choices for the inquirer prompt
             const choices = [
-              ...examples.map((example, index) => ({ 
-                name: example, 
-                value: { type: 'example', name: example } 
+              ...examples.map((example, index) => ({
+                name: example,
+                value: { type: 'example', name: example }
               })),
               new inquirer.Separator(),
               { name: 'Enter a file path', value: { type: 'custom' } }
             ];
-            
+
             const { selection } = await inquirer.prompt([
               {
                 type: 'list',
@@ -77,12 +77,12 @@ export const createCommand = new Command()
                 choices
               }
             ]);
-            
+
             if (selection.type === 'example') {
               // User selected an example
               const exampleDir = path.join(examplesDir, selection.name);
               const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
-              
+
               let foundCompose = false;
               for (const file of possibleFiles) {
                 const composePath = path.join(exampleDir, file);
@@ -93,7 +93,7 @@ export const createCommand = new Command()
                   break;
                 }
               }
-              
+
               if (!foundCompose) {
                 logger.error(`Could not find docker-compose.yml or docker-compose.yaml in ${exampleDir}`);
                 process.exit(1);
@@ -113,7 +113,7 @@ export const createCommand = new Command()
                   }
                 }
               ]);
-              
+
               options.compose = customPath;
             }
           } else {
@@ -131,11 +131,11 @@ export const createCommand = new Command()
                 }
               }
             ]);
-            
+
             options.compose = customPath;
           }
         }
-        
+
         const composePath = path.resolve(options.compose);
         if (!fs.existsSync(composePath)) {
           logger.error(`Docker Compose file not found: ${composePath}`);
@@ -146,25 +146,23 @@ export const createCommand = new Command()
         logger.error(`Failed to read Docker Compose file: ${error instanceof Error ? error.message : String(error)}`);
         process.exit(1);
       }
-      
+
       // Process environment variables
       let envs: Env[] = [];
-      
+
       // Process environment variables from file
       if (options.envFile) {
         try {
-          const envFileContent = fs.readFileSync(options.envFile, 'utf8');
-          envs = parseEnv([], envFileContent);
-          
+          envs = parseEnv([], options.envFile);
         } catch (error) {
           logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
           process.exit(1);
         }
       }
-      
+
       // Prompt for resource configuration if needed
       const resourceQuestions = [];
-      
+
       if (options.vcpu === String(DEFAULT_VCPU)) {
         resourceQuestions.push({
           type: 'input',
@@ -212,56 +210,56 @@ export const createCommand = new Command()
           }
         });
       }
-      
+
       if (resourceQuestions.length > 0) {
         const resources = await inquirer.prompt(resourceQuestions);
-        
+
         if (resources.vcpu) {
           options.vcpu = resources.vcpu;
         }
-        
+
         if (resources.memory) {
           options.memory = resources.memory;
         }
-        
+
         if (resources.diskSize) {
           options.diskSize = resources.diskSize;
         }
       }
-      
+
       // Fetch available TEEPods
       if (!options.teepodId) {
         const teepodsSpinner = logger.startSpinner('Fetching available TEEPods');
         const teepods = await getTeepods();
         teepodsSpinner.stop(true);
-        
-      if (teepods.length === 0) {
-        logger.error('No TEEPods available. Please try again later.');
-        process.exit(1);
-      }
-      
-      // Use inquirer to select a TEEPod
-      const { selectedTeepodId } = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'selectedTeepodId',
-          message: 'Select a TEEPod:',
-          choices: teepods.map(pod => ({
-            name: `${pod.name} (${pod.status})`,
-            value: pod.id
-          }))
+
+        if (teepods.length === 0) {
+          logger.error('No TEEPods available. Please try again later.');
+          process.exit(1);
         }
-      ]);
-      
-      // Find the selected TEEPod
-      const selectedTeepod = teepods.find(pod => pod.id === selectedTeepodId);
-      if (!selectedTeepod) {
-        logger.error('Failed to find selected TEEPod');
-        process.exit(1);
+
+        // Use inquirer to select a TEEPod
+        const { selectedTeepodId } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'selectedTeepodId',
+            message: 'Select a TEEPod:',
+            choices: teepods.map(pod => ({
+              name: `${pod.name} (${pod.status})`,
+              value: pod.id
+            }))
+          }
+        ]);
+
+        // Find the selected TEEPod
+        const selectedTeepod = teepods.find(pod => pod.id === selectedTeepodId);
+        if (!selectedTeepod) {
+          logger.error('Failed to find selected TEEPod');
+          process.exit(1);
         }
 
         logger.info(`Selected TEEPod: ${selectedTeepod.name}`);
-        options.teepodId = selectedTeepod.id.toString();
+        options.teepodId = selectedTeepod.id;
       }
 
       if (!options.image) {
@@ -270,7 +268,7 @@ export const createCommand = new Command()
           name: `${image.name}`,
           value: image.name
         }));
-        
+
         const { selectedImage } = await inquirer.prompt([
           {
             type: 'list',
@@ -284,9 +282,9 @@ export const createCommand = new Command()
 
       // Prepare VM configuration
       const vmConfig = {
-        teepod_id: options.teepodId,
+        teepod_id: options.teepodId || 3,
         name: options.name,
-        image: options.image,
+        image: options.image || 'dstack-dev-0.3.5',
         vcpu: parseInt(options.vcpu),
         memory: parseInt(options.memory),
         disk_size: parseInt(options.diskSize),
@@ -307,28 +305,28 @@ export const createCommand = new Command()
         },
         listed: false,
       };
-      
+
       // Get public key from CVM
       const spinner = logger.startSpinner('Getting public key from CVM');
       const pubkey = await getPubkeyFromCvm(vmConfig);
       spinner.stop(true);
-      
+
       if (!pubkey) {
         logger.error('Failed to get public key from CVM');
         process.exit(1);
       }
-      
+
       // Encrypt environment variables
       const encryptSpinner = logger.startSpinner('Encrypting environment variables');
       const encrypted_env = await encryptSecrets(envs, pubkey.app_env_encrypt_pubkey);
       encryptSpinner.stop(true);
-      
+
       if (options.debug) {
         logger.debug('Public key:', pubkey.app_env_encrypt_pubkey);
         logger.debug('Encrypted environment variables:', encrypted_env);
         logger.debug('Environment variables:', JSON.stringify(envs));
       }
-      
+
       // Create the CVM
       const createSpinner = logger.startSpinner('Creating CVM');
       const response = await createCvm({
@@ -338,24 +336,24 @@ export const createCommand = new Command()
         app_id_salt: pubkey.app_id_salt,
       });
       createSpinner.stop(true);
-      
+
       if (!response) {
         logger.error('Failed to create CVM');
         process.exit(1);
       }
-      
+
       logger.success('CVM created successfully');
       logger.info(`CVM ID: ${response.id}`);
       logger.info(`Name: ${response.name}`);
       logger.info(`Status: ${response.status}`);
       logger.info(`App ID: ${response.app_id}`);
-      
+
       if (response.app_url) {
         logger.info(`App URL: ${response.app_url}`);
       } else {
         logger.info(`App URL: ${CLOUD_URL}/dashboard/cvms/app_${response.app_id}`);
       }
-      
+
       logger.info('');
       logger.info('Your CVM is being created. You can check its status with:');
       logger.info(`phala cvms status ${response.app_id}`);

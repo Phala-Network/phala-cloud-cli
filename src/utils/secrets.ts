@@ -10,22 +10,10 @@ export const parseEnv = (envs: string[], envFile: string): Env[] => {
     const envVars: Record<string, string> = {};
     if (envs) {
         for (const env of envs) {
-            // Skip if it's a comment line
-            if (env.trim().startsWith('#')) continue;
-            
             if (env.includes("=")) {
-                // Split only on the first equals sign
-                const [key, ...valueParts] = env.split("=");
-                let value = valueParts.join("=");
-                
-                // Remove inline comments (anything after # with whitespace before it)
-                const commentIndex = value.search(/\s+#/);
-                if (commentIndex !== -1) {
-                    value = value.substring(0, commentIndex).trim();
-                }
-                
+                const [key, value] = env.split("=");
                 if (key && value) {
-                    envVars[key.trim()] = value.trim();
+                    envVars[key] = value;
                 }
             }
         }

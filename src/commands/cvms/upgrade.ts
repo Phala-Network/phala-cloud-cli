@@ -68,8 +68,7 @@ export const upgradeCommand = new Command()
         // Process environment variables from file
         if (options.envFile) {
           try {
-            const envFileContent = fs.readFileSync(options.envFile, 'utf8');
-            envs = parseEnv([], envFileContent);
+            envs = parseEnv([], options.envFile);
             encrypted_env = await encryptSecrets(envs, currentCvm.encrypted_env_pubkey);
           } catch (error) {
             logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
