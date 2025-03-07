@@ -414,4 +414,31 @@ export class DockerService {
       return false;
     }
   }
+
+  /**
+   * List local Docker images and their tags
+   * @returns Array of objects with image name and tag
+   */
+  static async listLocalImages(): Promise<Array<{name: string, tag: string}>> {
+    try {
+      // Query Docker for local images in format that outputs repository and tag
+      const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}}"');
+      
+      // Parse the output and filter out any <none> tags or images
+      const imageList = stdout.split('\n')
+        .filter(line => line && !line.includes('<none>'))
+        .map(line => {
+          const [repo, tag] = line.split(':');
+          // Separate username/image format if available
+          const nameParts = repo.split('/');
+          const name = nameParts.length > 1 ? nameParts[1] : repo;
+          return { name, tag };
+        });
+      
+      return imageList;
+    } catch (error) {
+      logger.error(`Failed to list local Docker images: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
+  }
 } 

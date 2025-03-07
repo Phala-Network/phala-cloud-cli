@@ -3,6 +3,7 @@ import { loginCommand } from './login';
 import { buildCommand } from './build';
 import { pushCommand } from './push';
 import { tagsCommand } from './tags';
+import { runCommand } from './run';
 
 export const dockerCommands = new Command()
   .name('docker')
@@ -10,4 +11,5 @@ export const dockerCommands = new Command()
   .addCommand(loginCommand)
   .addCommand(buildCommand)
   .addCommand(pushCommand)
-  .addCommand(tagsCommand);
+  .addCommand(tagsCommand)
+  .addCommand(runCommand);

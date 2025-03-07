@@ -8,6 +8,7 @@ import { Env } from '@/src/api/types';
 import path from 'path';
 import inquirer from 'inquirer';
 import { parseEnv } from '@/src/utils/secrets';
+import { promptForFile } from '@/src/utils/prompts';
 
 export const createCommand = new Command()
   .name('create')
@@ -20,6 +21,7 @@ export const createCommand = new Command()
   .option('--teepod-id <teepodId>', 'TEEPod ID to use')
   .option('--image <image>', 'Version of dstack image to use')
   .option('-e, --env-file <envFile>', 'Path to environment file')
+  .option('--skip-env', 'Skip environment variable prompt', false)
   .option('--debug', 'Enable debug mode', false)
   .action(async (options) => {
     try {
@@ -158,6 +160,13 @@ export const createCommand = new Command()
           logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
           process.exit(1);
         }
+      } else if (!options.skipEnv) {  
+        const envVars = await promptForFile(
+          'Enter the path to your environment file:',
+          '.env',
+          'file',
+        );
+        envs = parseEnv([], envVars);
       }
 
       // Prompt for resource configuration if needed
