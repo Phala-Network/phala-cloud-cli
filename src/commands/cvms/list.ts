@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getCvmsByUserId } from '@/src/api/cvms';
+import { getCvms } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import { CLOUD_URL } from '@/src/utils/constants';
 
@@ -11,7 +11,7 @@ export const listCommand = new Command()
     try {
       const spinner = logger.startSpinner('Fetching CVMs');
       
-      const cvms = await getCvmsByUserId();
+      const cvms = await getCvms();
       
       spinner.stop(true);
       

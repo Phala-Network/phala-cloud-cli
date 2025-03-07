@@ -72,7 +72,7 @@ export const cvmInstanceSchema = z.object({
   listed: z.boolean(),
   status: z.string(),
   in_progress: z.boolean(),
-  dapp_dashboard_url: z.string(),
+  dapp_dashboard_url: z.string().nullable(),
   syslog_endpoint: z.string(),
   allow_upgrade: z.boolean()
 });

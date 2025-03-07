@@ -40,4 +40,40 @@ export const API_ENDPOINTS = {
   CVM_UPGRADE: (appId: string) => `/api/v1/cvms/app_${appId}/compose`,
   CVM_ATTESTATION: (appId: string) => `/api/v1/cvms/app_${appId}/attestation`,
   CVM_RESIZE: (appId: string) => `/api/v1/cvms/app_${appId}/resources`,
-}; 
+};
+
+export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+        - POSTGRES_PASSWORD=postgres
+        - POSTGRES_USER=postgres
+        - POSTGRES_DB=eliza
+    volumes:
+        - postgres-data:/var/lib/postgresql/data
+    ports:
+        - "5432:5432"
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+    restart: always
+  eliza:
+    image: {{imageName}}:{{tag}}
+    container_name: elizav2
+    command: bun run start
+    stdin_open: true
+    tty: true
+    volumes:
+      - /var/run/tappd.sock:/var/run/tappd.sock
+    environment:
+{{#each envVars}}      - {{{this}}}
+{{/each}}
+    ports:
+      - "3000:3000"
+    restart: always
+
+volumes:
+  eliza:`;

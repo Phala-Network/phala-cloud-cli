@@ -23,9 +23,7 @@ import { getUserInfo, searchUsers } from './auth';
  */
 export async function getCvms(): Promise<CvmInstance[]> {
   try {
-    const userInfo = await getUserInfo();
-    const searchUsersResponse = await searchUsers(userInfo.username);
-    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(Number(searchUsersResponse.users[0].id)));
+    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(0));
     return z.array(cvmInstanceSchema).parse(response);
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
@@ -250,7 +248,7 @@ export async function selectCvm(): Promise<string | undefined> {
   const inquirer = (await import('inquirer')).default;
   
   const listSpinner = logger.startSpinner('Fetching available CVMs');
-  const cvms = await getCvmsByUserId();
+  const cvms = await getCvms();
   listSpinner.stop(true);
   
   if (!cvms || cvms.length === 0) {

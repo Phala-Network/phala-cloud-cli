@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { getCvmByAppId, getCvmsByUserId, selectCvm } from '@/src/api/cvms';
+import { getCvmByAppId, getCvms, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
-import { CLOUD_URL } from '@/src/tee/constants';
+import { CLOUD_URL } from '@/src/utils/constants';
 
 export const getCommand = new Command()
   .name('get')
