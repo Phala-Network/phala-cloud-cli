@@ -175,18 +175,6 @@ export const imageSchema = z.object({
   description: z.string().optional()
 });
 
-// User Schema for Search Results
-export const userSearchResultSchema = z.object({
-  id: z.string(),
-  username: z.string(),
-  email: z.string().nullable()
-});
-
-// Search Users Response Schema
-export const searchUsersResponseSchema = z.object({
-  users: z.array(userSearchResultSchema)
-});
-
 // Type exports
 export type DockerConfig = z.infer<typeof dockerConfigSchema>;
 export type ComposeFile = z.infer<typeof composeFileSchema>;
@@ -204,8 +192,6 @@ export type UpgradeCvmResponse = z.infer<typeof upgradeCvmResponseSchema>;
 export type EncryptedEnvItem = z.infer<typeof encryptedEnvItemSchema>;
 export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
-export type UserSearchResult = z.infer<typeof userSearchResultSchema>;
-export type SearchUsersResponse = z.infer<typeof searchUsersResponseSchema>;
 
 // Environment variable type
 export interface Env {

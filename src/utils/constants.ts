@@ -21,9 +21,6 @@ export const API_ENDPOINTS = {
   // Auth
   USER_INFO: '/api/v1/auth/me',
 
-  // Users
-  SEARCH_USERS: (username:string) => `/api/v1/users/search?q=${username}`,
-
   // TEEPods
   TEEPODS: '/api/v1/teepods?enabled=true',
   TEEPOD_IMAGES: (teepodId: string) => `/api/v1/teepods/${teepodId}/images`,

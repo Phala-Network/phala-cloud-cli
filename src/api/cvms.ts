@@ -16,7 +16,7 @@ import {
 import { z } from 'zod';
 import * as crypto from 'crypto';
 import { x25519 } from '@noble/curves/ed25519';
-import { getUserInfo, searchUsers } from './auth';
+
 /**
  * Get all CVMs for the current user
  * @returns List of CVMs
@@ -74,21 +74,6 @@ export async function createCvm(vmConfig: any): Promise<CreateCvmResponse> {
       throw new Error(`Response validation failed: ${JSON.stringify(error.errors)}`);
     }
     throw new Error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-/**
- * Get CVMs by user ID
- * @returns List of CVMs
- */
-export async function getCvmsByUserId(): Promise<CvmInstance[]> {
-  try {
-    const userInfo = await getUserInfo();
-    const searchUsersResponse = await searchUsers(userInfo.username);
-    const response = await apiClient.get(API_ENDPOINTS.CVMS(Number(searchUsersResponse.users[0].id)));
-    return response as CvmInstance[];
-  } catch (error) {
-    throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
