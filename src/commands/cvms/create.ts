@@ -1,10 +1,11 @@
 import { Command } from 'commander';
-import { createCvm, getPubkeyFromCvm, encryptSecrets } from '@/src/api/cvms';
+import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
 import { getTeepodImages, getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
+import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+
 import fs from 'fs';
-import { Env } from '@/src/api/types';
 import path from 'path';
 import inquirer from 'inquirer';
 import { parseEnv } from '@/src/utils/secrets';
@@ -150,7 +151,7 @@ export const createCommand = new Command()
       }
 
       // Process environment variables
-      let envs: Env[] = [];
+      let envs: EnvVar[] = [];
 
       // Process environment variables from file
       if (options.envFile) {
@@ -327,7 +328,7 @@ export const createCommand = new Command()
 
       // Encrypt environment variables
       const encryptSpinner = logger.startSpinner('Encrypting environment variables');
-      const encrypted_env = await encryptSecrets(envs, pubkey.app_env_encrypt_pubkey);
+      const encrypted_env = await encryptEnvVars(envs, pubkey.app_env_encrypt_pubkey);
       encryptSpinner.stop(true);
 
       if (options.debug) {

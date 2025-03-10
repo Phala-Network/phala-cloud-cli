@@ -1,12 +1,10 @@
 import { Command } from 'commander';
-import { upgradeCvm, getCvmByAppId, getPubkeyFromCvm, encryptSecrets, selectCvm } from '@/src/api/cvms';
+import { upgradeCvm, getCvmByAppId, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'fs';
-import { Env } from '@/src/api/types';
-import inquirer from 'inquirer';
-import path from 'path';
 import { promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
+import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
 export const upgradeCommand = new Command()
   .name('upgrade')
@@ -63,13 +61,13 @@ export const upgradeCommand = new Command()
       // Process environment variables if provided
       let encrypted_env = "";
       if (options.envFile) {
-        let envs: Env[] = [];
+        let envs: EnvVar[] = [];
         
         // Process environment variables from file
         if (options.envFile) {
           try {
             envs = parseEnv([], options.envFile);
-            encrypted_env = await encryptSecrets(envs, currentCvm.encrypted_env_pubkey);
+            encrypted_env = await encryptEnvVars(envs, currentCvm.encrypted_env_pubkey);
           } catch (error) {
             logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
             process.exit(1);

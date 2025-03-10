@@ -192,9 +192,3 @@ export type UpgradeCvmResponse = z.infer<typeof upgradeCvmResponseSchema>;
 export type EncryptedEnvItem = z.infer<typeof encryptedEnvItemSchema>;
 export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
-
-// Environment variable type
-export interface Env {
-  key: string;
-  value: string;
-} 

@@ -232,7 +232,11 @@ export const generateCommand = new Command()
       const dockerService = new DockerService(selectedImage, credentials.username, credentials.registry);
 
       // Generate the Docker Compose file
-      logger.info(`Generating Docker Compose file for ${selectedImage}:${selectedTag} using env file: ${envFilePath}`);
+      if (envFilePath) {
+        logger.info(`Generating Docker Compose file for ${selectedImage}:${selectedTag} using env file: ${envFilePath}`);
+      } else {
+        logger.info(`Generating Docker Compose file for ${selectedImage}:${selectedTag} without env file`);
+      }
       const composePath = await dockerService.buildComposeFile(selectedTag, envFilePath);
       
       // Copy the generated file to the output path if needed

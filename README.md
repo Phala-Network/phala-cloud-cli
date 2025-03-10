@@ -14,7 +14,7 @@ A command-line tool for managing TEE deployments on Phala Network, from local de
 ```bash
 # Clone the repository
 git clone https://github.com/Phala-Network/phala-cloud-cli.git
-cd tee-cloud-cli
+cd phala-cloud-cli
 
 # Install dependencies
 bun install

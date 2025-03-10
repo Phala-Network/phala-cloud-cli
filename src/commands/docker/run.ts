@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { DockerService } from '../../utils/docker';
-import { getDockerCredentials } from '../../utils/credentials';
 import { logger } from '../../utils/logger';
 import inquirer from 'inquirer';
 import fs from 'fs';
@@ -12,6 +11,7 @@ export const runCommand = new Command()
   .description('Run a Docker Compose setup')
   .option('-c, --compose <compose>', 'Path to docker-compose.yml file')
   .option('-e, --env <env>', 'Path to environment variables file')
+  .option('--skip-env', 'Skip environment variables file prompt', true)
   .action(async (options) => {
     try {
       let composePath = options.compose;
@@ -46,12 +46,10 @@ export const runCommand = new Command()
               name: 'composePath',
               message: 'Enter path to docker-compose.yml file:',
               validate: (input) => {
-                try {
-                  validateFileExists(input);
+                if (validateFileExists(input)) {
                   return true;
-                } catch (error) {
-                  return `File not found: ${input}`;
                 }
+                return 'File not found';
               }
             }
           ]);
@@ -68,7 +66,7 @@ export const runCommand = new Command()
       }
 
       // If env file path is not provided, prompt the user
-      if (!envFilePath) {
+      if (!envFilePath && !options.skipEnv) {
         // Check if .env exists in current directory
         const defaultEnvPath = path.join(process.cwd(), '.env');
         const hasDefaultEnv = fs.existsSync(defaultEnvPath);
@@ -107,21 +105,23 @@ export const runCommand = new Command()
           ]);
           envFilePath = envPath;
         }
-      } else {
-        // Validate the provided env file path
-        try {
-          validateFileExists(envFilePath);
-        } catch (error) {
-          logger.error(`File not found: ${envFilePath}`);
-          process.exit(1);
-        }
       }
 
       // Create a DockerService instance (empty image name as we're just using it for compose)
       const dockerService = new DockerService('');
       
       // Run the compose setup
-      logger.info(`Running Docker Compose with compose file: ${composePath} and env file: ${envFilePath}`);
+      if (envFilePath) {
+        try {
+          validateFileExists(envFilePath);
+        } catch (error) {
+          logger.error(`File not found: ${envFilePath}`);
+          process.exit(1);
+        }
+        logger.info(`Running Docker Compose with compose file: ${composePath} and env file: ${envFilePath}`);
+      } else {
+        logger.info(`Running Docker Compose with compose file: ${composePath} without env file`);
+      }
       const success = await dockerService.runComposeLocally(composePath, envFilePath);
       
       if (!success) {

@@ -285,11 +285,11 @@ export class DockerService {
   /**
    * Build a Docker Compose file
    * @param tag Tag for the image
-   * @param envFile Path to environment file
+   * @param envFile Optional path to environment file
    * @param version Version of the template to use
    * @returns Path to the generated Docker Compose file
    */
-  async buildComposeFile(tag: string, envFile: string): Promise<string> {
+  async buildComposeFile(tag: string, envFile?: string): Promise<string> {
     if (!this.username) {
       throw new Error('Docker Hub username is required for building compose file');
     }
@@ -308,34 +308,39 @@ export class DockerService {
       fs.mkdirSync(composePath, { recursive: true });
     }
 
-    // Parse env file to get variable names
-    const envContent = fs.readFileSync(envFile, 'utf-8');
-    const envVars = envContent
-      .split('\n')
-      .filter(line => line && !line.startsWith('#'))
-      .map(line => {
-        // Remove inline comments
-        const commentIndex = line.indexOf('#');
-        if (commentIndex > 0) {
-          line = line.substring(0, commentIndex).trim();
-        }
-        return line.trim();
-      })
-      .filter(line => line.includes('='))
-      .map(line => {
-        const [key, value] = line.split('=', 2);
-        const trimmedKey = key.trim();
-        const trimmedValue = value ? value.trim() : '';
+    let envVars: string[] = [];
+    
+    // Only parse env file if it's provided
+    if (envFile) {
+      // Parse env file to get variable names
+      const envContent = fs.readFileSync(envFile, 'utf-8');
+      envVars = envContent
+        .split('\n')
+        .filter(line => line && !line.startsWith('#'))
+        .map(line => {
+          // Remove inline comments
+          const commentIndex = line.indexOf('#');
+          if (commentIndex > 0) {
+            line = line.substring(0, commentIndex).trim();
+          }
+          return line.trim();
+        })
+        .filter(line => line.includes('='))
+        .map(line => {
+          const [key, value] = line.split('=', 2);
+          const trimmedKey = key.trim();
+          const trimmedValue = value ? value.trim() : '';
 
-        // Skip empty values
-        if (trimmedValue === '') {
-          return null;
-        }
+          // Skip empty values
+          if (trimmedValue === '') {
+            return null;
+          }
 
-        // Keep the original key without any transformation
-        return `${trimmedKey}=${trimmedKey}`;  // Create KEY=KEY format
-      })
-      .filter(Boolean); // Remove null entries
+          // Keep the original key without any transformation
+          return `${trimmedKey}=${trimmedKey}`;  // Create KEY=KEY format
+        })
+        .filter(Boolean as any); // Remove null entries
+    }
 
     // Create full image name with username
     const fullImageName = `${this.username}/${this.image}`;
@@ -362,25 +367,30 @@ export class DockerService {
    * @param envFile Path to environment file
    * @returns Success status
    */
-  async runComposeLocally(composePath: string, envFile: string): Promise<boolean> {
+  async runComposeLocally(composePath: string, envFile?: string): Promise<boolean> {
     try {
       const spinner = logger.startSpinner(`Running Docker Compose file at ${composePath}`);
 
       // Ensure the Docker Compose file exists
       validateFileExists(composePath);
 
-      // Ensure the environment file exists
-      validateFileExists(envFile);
-
-      // Run the Docker Compose file
-      await execa('docker-compose', [
+      // Build the command arguments
+      const composeArgs = [
         '-f',
         composePath,
-        '--env-file',
-        envFile,
         'up',
         '-d'
-      ]);
+      ];
+
+      // Only add env-file if it's provided
+      if (envFile) {
+        // Ensure the environment file exists
+        validateFileExists(envFile);
+        composeArgs.splice(2, 0, '--env-file', envFile);
+      }
+
+      // Run the Docker Compose file
+      await execa('docker-compose', composeArgs);
 
       spinner.stop(true, 'Docker Compose file running successfully');
       return true;
