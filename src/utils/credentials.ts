@@ -5,17 +5,17 @@ import crypto from 'crypto';
 import { logger } from './logger';
 
 // Define the directory and file for storing credentials
-const TEE_CLOUD_DIR = path.join(os.homedir(), '.tee-cloud');
-const API_KEY_FILE = path.join(TEE_CLOUD_DIR, 'api-key');
-const DOCKER_CREDENTIALS_FILE = path.join(TEE_CLOUD_DIR, 'docker-credentials.json');
+const PHALA_CLOUD_DIR = path.join(os.homedir(), '.phala-cloud');
+const API_KEY_FILE = path.join(PHALA_CLOUD_DIR, 'api-key');
+const DOCKER_CREDENTIALS_FILE = path.join(PHALA_CLOUD_DIR, 'docker-credentials.json');
 
-// Ensure the .tee-cloud directory exists
+// Ensure the .phala-cloud directory exists
 function ensureDirectoryExists(): void {
-  if (!fs.existsSync(TEE_CLOUD_DIR)) {
+  if (!fs.existsSync(PHALA_CLOUD_DIR)) {
     try {
-      fs.mkdirSync(TEE_CLOUD_DIR, { recursive: true });
+      fs.mkdirSync(PHALA_CLOUD_DIR, { recursive: true });
     } catch (error) {
-      logger.error(`Failed to create directory ${TEE_CLOUD_DIR}:`, error);
+      logger.error(`Failed to create directory ${PHALA_CLOUD_DIR}:`, error);
       throw error;
     }
   }

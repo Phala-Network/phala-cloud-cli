@@ -4,8 +4,8 @@ import os from 'os';
 import { logger } from './logger';
 
 // Define the directory and file for storing configuration
-const TEE_CLOUD_DIR = path.join(os.homedir(), '.tee-cloud');
-const CONFIG_FILE = path.join(TEE_CLOUD_DIR, 'config.json');
+const PHALA_CLOUD_DIR = path.join(os.homedir(), '.phala-cloud');
+const CONFIG_FILE = path.join(PHALA_CLOUD_DIR, 'config.json');
 
 // Default configuration
 const DEFAULT_CONFIG = {
@@ -18,13 +18,13 @@ const DEFAULT_CONFIG = {
   defaultDiskSize: 20,
 };
 
-// Ensure the .tee-cloud directory exists
+// Ensure the .phala-cloud directory exists
 function ensureDirectoryExists(): void {
-  if (!fs.existsSync(TEE_CLOUD_DIR)) {
+  if (!fs.existsSync(PHALA_CLOUD_DIR)) {
     try {
-      fs.mkdirSync(TEE_CLOUD_DIR, { recursive: true });
+      fs.mkdirSync(PHALA_CLOUD_DIR, { recursive: true });
     } catch (error) {
-      logger.error(`Failed to create directory ${TEE_CLOUD_DIR}:`, error);
+      logger.error(`Failed to create directory ${PHALA_CLOUD_DIR}:`, error);
       throw error;
     }
   }

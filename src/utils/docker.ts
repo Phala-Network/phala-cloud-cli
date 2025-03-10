@@ -13,8 +13,8 @@ import { validateFileExists } from './prompts';
 import { ComposeTemplateSchema } from './types';
 
 const execAsync = promisify(exec);
-const LOGS_DIR = '.tee-cloud/logs';
-const COMPOSE_FILES_DIR = '.tee-cloud/compose';
+const LOGS_DIR = '.phala-cloud/logs';
+const COMPOSE_FILES_DIR = '.phala-cloud/compose';
 const MAX_CONSOLE_LINES = 10;
 
 export class DockerService {

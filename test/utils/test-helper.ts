@@ -11,7 +11,7 @@ const CLI_PATH = './dist/index.js';
  * @returns An object with the test environment
  */
 export function createTestEnvironment(testName: string) {
-  const testConfigDir = path.join(os.tmpdir(), `.tee-cloud-test-${testName}`);
+  const testConfigDir = path.join(os.tmpdir(), `.phala-cloud-test-${testName}`);
 
   /**
    * Helper function to run CLI commands
