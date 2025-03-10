@@ -1,5 +1,5 @@
 import { z } from 'zod';
-
+import { ZodDecimal as zodDecimal } from '../utils/types';
 // Docker Config Schema
 export const dockerConfigSchema = z.object({
   password: z.string(),
@@ -139,7 +139,7 @@ export const getCvmByAppIdResponseSchema = z.object({
 export const getUserInfoResponseSchema = z.object({
   username: z.string(),
   email: z.string(),
-  credits: z.number(),
+  credits: zodDecimal.create({ coerce: true }),
   role: z.string(),
   avatar: z.string(),
   flag_reset_password: z.boolean(),
