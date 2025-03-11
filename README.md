@@ -738,7 +738,7 @@ phala <command> --help
 
 ## 📝 License
 
-TBD
+Apache 2.0
 
 ## 🤝 Contributing
 
