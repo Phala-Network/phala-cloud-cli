@@ -37,7 +37,7 @@ Phala Cloud is a confidential cloud platform that enables developers to deploy a
    Install via npm
    ```bash
    # Install the CLI globally
-   npm install -g @phala/phala-cloud-cli
+   npm install -g @phala/phala-cli
    ```
    
    or clone git repository
