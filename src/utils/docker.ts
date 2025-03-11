@@ -369,7 +369,8 @@ export class DockerService {
    */
   async runComposeLocally(composePath: string, envFile?: string): Promise<boolean> {
     try {
-      const spinner = logger.startSpinner(`Running Docker Compose file at ${composePath}`);
+      // TODO: Update log when optimized simulator is implemented
+      const spinner = logger.startSpinner(`Running Docker Compose file at ${composePath}\n- If you run with the simulator, set DSTACK_SIMULATOR_ENDPOINT to http://host.docker.internal:8090`);
 
       // Ensure the Docker Compose file exists
       validateFileExists(composePath);
