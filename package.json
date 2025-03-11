@@ -1,14 +1,14 @@
 {
-  "name": "phala-cloud-cli",
-  "version": "0.0.1",
-  "description": "CLI for Interacting with Phala's TEE Cloud",
+  "name": "@phala/phala-cli",
+  "version": "0.0.1-alpha",
+  "description": "CLI for Managing Phala Cloud Services",
   "author": {
     "name": "Phala Network",
     "url": "https://github.com/Phala-Network"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Phala-Network/tee-cloud-cli.git"
+    "url": "https://github.com/Phala-Network/phala-cloud-cli.git"
   },
   "files": [
     "dist"

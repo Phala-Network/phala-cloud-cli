@@ -14,6 +14,7 @@ export const generateCommand = new Command()
   .option('-t, --tag <tag>', 'Docker image tag to use in the compose file')
   .option('-e, --env-file <envFile>', 'Path to environment variables file')
   .option('-o, --output <output>', 'Output path for generated docker-compose.yml')
+  .option('--template <template>', 'Template to use for the generated docker-compose.yml', )
   .option('--manual', 'Skip automatic image detection and enter image/tag manually')
   .action(async (options) => {
     try {
@@ -213,14 +214,13 @@ export const generateCommand = new Command()
               default: false
             }
           ]);
-          
           if (!confirmOverwrite) {
             const { customPath } = await inquirer.prompt([
               {
                 type: 'input',
                 name: 'customPath',
                 message: 'Enter alternative output path:',
-                default: path.join(process.cwd(), 'docker-compose.generated.yml')
+                default: path.join(process.cwd(), 'docker-generated-compose.yml')
               }
             ]);
             outputPath = customPath;
@@ -237,7 +237,7 @@ export const generateCommand = new Command()
       } else {
         logger.info(`Generating Docker Compose file for ${selectedImage}:${selectedTag} without env file`);
       }
-      const composePath = await dockerService.buildComposeFile(selectedTag, envFilePath);
+      const composePath = await dockerService.buildComposeFile(selectedTag, envFilePath, options.template);
       
       // Copy the generated file to the output path if needed
       if (composePath !== outputPath) {

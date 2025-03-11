@@ -39,7 +39,7 @@ export const API_ENDPOINTS = {
   CVM_RESIZE: (appId: string) => `/api/v1/cvms/app_${appId}/resources`,
 };
 
-export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3'
+export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3.8'
 services:
   postgres:
     image: postgres:15
@@ -70,7 +70,31 @@ services:
 {{/each}}
     ports:
       - "3000:3000"
+      - "5173:5173"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: always
+    networks:
+      - eliza-network
+
+
+networks:
+  eliza-network:
+    driver: bridge
 
 volumes:
-  eliza:`;
+  postgres-data:`;
+
+export const DOCKER_COMPOSE_BASIC_TEMPLATE = `version: '3.8'
+services:
+  app:
+    image: {{imageName}}:{{tag}}
+    container_name: app
+    volumes:
+      - /var/run/tappd.sock:/var/run/tappd.sock
+    environment:
+{{#each envVars}}      - {{{this}}}
+{{/each}}
+    restart: always
+`

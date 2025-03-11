@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { logger } from './logger';
-import { DOCKER_COMPOSE_ELIZA_V2_TEMPLATE, DOCKER_HUB_API_URL } from './constants';
+import { DOCKER_COMPOSE_BASIC_TEMPLATE, DOCKER_COMPOSE_ELIZA_V2_TEMPLATE, DOCKER_HUB_API_URL } from './constants';
 import { getDockerCredentials } from './credentials';
 import Handlebars from 'handlebars';
 import { exec, spawn } from 'child_process';
@@ -289,12 +289,12 @@ export class DockerService {
    * @param version Version of the template to use
    * @returns Path to the generated Docker Compose file
    */
-  async buildComposeFile(tag: string, envFile?: string): Promise<string> {
+  async buildComposeFile(tag: string, envFile?: string, templateType?: string): Promise<string> {
     if (!this.username) {
       throw new Error('Docker Hub username is required for building compose file');
     }
 
-    const template = DOCKER_COMPOSE_ELIZA_V2_TEMPLATE;
+    const template = (templateType == 'eliza') ? DOCKER_COMPOSE_ELIZA_V2_TEMPLATE : DOCKER_COMPOSE_BASIC_TEMPLATE;
 
     // Validate template structure
     const validatedTemplate = ComposeTemplateSchema.parse({ template });
@@ -357,7 +357,7 @@ export class DockerService {
     const composeFile = path.join(composePath, `${this.image}-${tag}-tee-compose.yaml`);
     fs.writeFileSync(composeFile, composeContent);
 
-    console.log(`Docker compose file created at: ${composeFile}`);
+    logger.success(`Backup of docker compose file created at: ${composeFile}`);
     return composeFile;
   }
 
