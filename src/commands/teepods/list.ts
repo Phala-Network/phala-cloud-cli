@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { getTeepods } from '../../api/teepods';
-import { logger } from '../../utils/logger';
+import { getTeepods } from '@/src/api/teepods';
+import { logger } from '@/src/utils/logger';
 
 export const listCommand = new Command()
   .name('list')

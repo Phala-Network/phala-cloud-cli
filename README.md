@@ -1,43 +1,219 @@
-# TEE Cloud CLI
+# Phala Cloud CLI
 
-A command-line tool for managing TEE deployments on Phala Network, from local development to cloud deployment.
+A command-line tool for managing Trusted Execution Environment (TEE) deployments on Phala Cloud, from local development to cloud deployment.
 
-## Prerequisites
+<p align="center">
+  <img src="https://phala.network/images/logo-colored.svg" alt="Phala Network Logo" width="180"/>
+</p>
 
-- Docker installed and running
-- [Bun](https://bun.sh) installed
-- Docker Hub account for publishing images
-- [Phala Cloud](https://cloud.phala.network/login) API key
+<p align="center">
+  <b>Secure. Confidential. Verifiable.</b>
+</p>
 
-## Installation
+## 📖 What is Phala Cloud?
+
+Phala Cloud is a confidential cloud platform that enables developers to deploy applications in a Trusted Execution Environment (TEE) using the [Dstack SDK](https://github.com/Dstack-TEE/dstack). TEEs provide hardware-level isolation and encryption, ensuring your application's code and data remain completely private and secure—even from the infrastructure providers hosting them.
+
+**Key Benefits:**
+
+- **Confidentiality**: Your code and data remain encrypted in memory during execution
+- **Integrity**: Hardware guarantees that your application runs unmodified
+- **Attestation**: Remote attestation quote to prove that your docker app is running in a genuine TEE
+- **Simplified Deployment**: The CLI handles the complexity of TEE deployment using the Phala Cloud API
+
+## 🚀 Quick Start (5 Minutes)
+
+1. **Install Prerequisites**:
+   ```bash
+   # Install Bun
+   curl -fsSL https://bun.sh/install | bash
+   
+   # Verify Docker is installed
+   docker --version
+   ```
+
+2. **Install TEE Cloud CLI**:
+
+   Install via npm
+   ```bash
+   # Install the CLI globally
+   npm install -g @phala/phala-cloud-cli
+   ```
+   
+   or clone git repository
+   
+   ```bash
+   # Clone the repository
+   git clone --recurse-submodules https://github.com/Phala-Network/phala-cloud-cli.git
+   cd phala-cloud-cli
+
+   # Install and build
+   bun install
+   bun run build
+
+   # Phala CLI help menu
+   phala help
+   ```
+
+3. **Sign Up and Get API Key**:
+   
+   To deploy applications to Phala Cloud, you'll need an API key:
+
+   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, register with this link with [PROMO_CODE](https://cloud.phala.network/register?invite=PHALACLI).
+   - After logging in, navigate to the "API Keys" section in your profile
+   - Create a new API key with an appropriate name (e.g., "CLI Access")
+   - Copy the generated API key - you'll need it for authentication
+   - You can verify your API key using:
+     ```bash
+     phala auth login [your-phala-cloud-api-key]
+     phala auth status
+     ```
+
+4. **Deploy Your First Confidential App**:
+   ```bash
+   # Deploy the webshell Dstack example
+   phala cvms create
+   ```
+
+   Provide a name and select from the drop down of examples
+
+   ```bash
+   # ? Enter a name for the CVM: webshell
+   # ? Choose a Docker Compose example or enter a custom path:
+
+   #  lightclient
+   #   private-docker-image-deployment
+   #   ❯ webshell
+   #   custom-domain
+   #   prelaunch-script
+   #   timelock-nts
+   #   ssh-over-tproxy
+   #   Using example: webshell (~/phala-cloud-cli/examples/webshell/docker-compose.yaml)
+   #   ✔ Enter number of vCPUs (default: 1): 1
+
+   #   ✔ Enter memory in MB (default: 2048): 2048
+   #   ✔ Enter disk size in GB (default: 20): 20
+   #   ⟳ Fetching available TEEPods... ✓
+   #   ? Select a TEEPod: (Use arrow keys)
+   #   ❯ prod5 (online)
+   #   prod2 (online)
+   #   ℹ Selected TEEPod: prod5
+
+   #   ✔ Select an image: dstack-dev-0.3.5
+   #   ⟳ Getting public key from CVM... ✓
+   #   ⟳ Encrypting environment variables... ✓
+   #   ⟳ Creating CVM... ✓
+   #   ✓ CVM created successfully
+   #   ℹ CVM ID: 2755
+   #   ℹ Name: webshell
+   #   ℹ Status: creating
+   #   ℹ App ID: e15c1a29a9dfb522da528464a8d5ce40ac28039f
+   #   ℹ App URL: <https://cloud.phala.network/dashboard/cvms/app_e15c1a29a9dfb522da528464a8d5ce40ac28039f>
+   #    ℹ
+   #    ℹ Your CVM is being created. You can check its status with:
+   #    ℹ phala cvms status e15c1a29a9dfb522da528464a8d5ce40ac28039f
+   ```
+
+   Now interact with your application in Phala Cloud by going to the url on port 7681 (Example of what a url at port 7681 would look like https://e15c1a29a9dfb522da528464a8d5ce40ac28039f-7681.dstack-prod5.phala.network)
+
+5. **Check the CVM's Attestation**:
+   ```bash
+   phala cvms attestation
+
+   # ℹ No CVM specified, fetching available CVMs...
+   # ⟳ Fetching available CVMs... ✓
+   # ✔ Select a CVM: testing (88721d1685bcd57166a8cbe957cd16f733b3da34) - Status: running
+   # ℹ Fetching attestation information for CVM 88721d1685bcd57166a8cbe957cd16f733b3da34...
+   # ⟳ Fetching attestation information... ✓
+   # ✓ Attestation Summary:
+
+   # or list the app-id
+   phala cvms attestation 88721d1685bcd57166a8cbe957cd16f733b3da34
+   ```
+
+
+## 🏗️ Development Workflow
+
+### 1️⃣ Local Development
+
+Develop and test your application locally with the built-in TEE simulator:
 
 ```bash
-# Clone the repository
-git clone https://github.com/Phala-Network/phala-cloud-cli.git
-cd phala-cloud-cli
+# Start the TEE simulator
+phala simulator start
 
-# Install dependencies
-bun install
+# Build your Docker image
+phala docker build --image my-tee-app --tag v1.0.0
 
-# Build and link the CLI
-bun run build
+# Create an environment file
+echo "API_KEY=test-key" > .env
+echo "DEBUG=true" >> .env
+
+# Generate and run Docker Compose
+phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
+phala docker run -c ./phala-compose.yaml -e ./.env
+
 ```
 
-After building, the CLI will be available as either `phala` command.
+### 2️⃣ Cloud Deployment
 
-## Testing
-
-The CLI includes end-to-end tests to ensure that all commands work correctly. To run the tests:
+Deploy your application to Phala's decentralized TEE Cloud:
 
 ```bash
-bun test
+# Set your Phala Cloud API key
+phala auth login
+
+# Login to Docker and Push your image to Docker Hub
+phala docker login
+phala docker build --image my-tee-app --tag v1.0.0
+phala docker push --image my-tee-app --tag v1.0.0
+
+# Deploy to Phala Cloud
+phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
+
+# Access your app via the provided URL
 ```
 
-See the [test README](./test/README.md) for more information about the test structure and how to write tests.
+## 💼 Real-World Use Cases for Confidential Computing
 
-## Command Reference
+### 🏦 Financial Services
+- **Private Trading Algorithms**: Execute proprietary trading strategies without revealing algorithms
+- **Secure Multi-Party Computation**: Perform financial calculations across organizations without exposing sensitive data
+- **Compliant Data Processing**: Process regulated financial data with provable security guarantees
 
-The TEE Cloud CLI provides a comprehensive set of commands for managing your TEE deployments. Below is a detailed reference for each command category.
+### 🏥 Healthcare
+- **Medical Research**: Analyze sensitive patient data while preserving privacy
+- **Drug Discovery**: Collaborate on pharmaceutical research without exposing intellectual property
+- **Health Record Processing**: Process electronic health records with HIPAA-compliant confidentiality
+
+### 🔐 Cybersecurity
+- **Secure Key Management**: Generate and store cryptographic keys in hardware-protected environments
+- **Threat Intelligence Sharing**: Share cyber threat data across organizations without exposing sensitive details
+- **Password Verification**: Perform credential validation without exposing password databases
+
+### 🏢 Enterprise Applications
+- **Confidential Analytics**: Process sensitive business data without exposure to cloud providers
+- **IP Protection**: Run proprietary algorithms and software while preventing reverse engineering
+- **Secure Supply Chain**: Validate and process sensitive supply chain data across multiple organizations
+
+### 🌐 Web3 and Blockchain
+- **Private Smart Contracts**: Execute contracts with confidential logic and data
+- **Decentralized Identity**: Process identity verification without exposing personal information
+- **Trustless Oracles**: Provide verified external data to blockchain applications
+
+## 🧩 Project Structure
+
+The Phala Cloud CLI is organized around core workflows:
+
+1. **Authentication**: Connect to your Phala Cloud account
+2. **TEEPod Info**: Fetch information about TEEPods (TEEPods are where your docker apps deploy to)
+3. **Docker Management**: Build and manage Docker images for TEE
+4. **TEE Simulation**: Local development environment
+5. **Cloud Deployment**: Deploy to production and manage TEE Cloud deployments
+
+## 📚 Command Reference
+
+The Phala Cloud CLI provides a comprehensive set of commands for managing your TEE deployments. Below is a detailed reference for each command category.
 
 ### Authentication Commands
 
@@ -52,11 +228,12 @@ phala auth login [options]
 Set the API key for authentication with Phala Cloud. The API key is stored with encryption for enhanced security.
 
 **Options:**
-- `-k, --key <key>`: API key to set (if not provided, you will be prompted)
+
+- `[api-key]`: Phala Cloud API key to set
 
 **Example:**
 ```bash
-phala auth login --key your-phala-cloud-api-key
+phala auth login [your-phala-cloud-api-key]
 ```
 
 #### Logout
@@ -90,6 +267,9 @@ phala auth status --json
 ```
 
 ### TEEPod Management Commands
+
+> WTF is TEEPod?
+> You can think of a TEEPod as the TEE server that the docker app with be hosted on. These TEEPods support published base images of the [Dstack Releases](https://github.com/Dstack-TEE/dstack/releases) which is the base image used to launch your Docker app. The Dstack base image is important as you can provide evidence to reproduce the RA Quote of your docker app deployment. More details on this later.
 
 Commands for managing TEEPods on Phala Cloud.
 
@@ -135,6 +315,7 @@ phala docker login [options]
 Login to Docker Hub to enable pushing and pulling images.
 
 **Options:**
+
 - `-u, --username <username>`: Docker Hub username (if not provided, you will be prompted)
 - `-p, --password <password>`: Docker Hub password (if not provided, you will be prompted)
 - `-r, --registry <registry>`: Docker registry URL (optional, defaults to Docker Hub)
@@ -219,7 +400,7 @@ phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
 #### Run Local Docker Compose
 
 ```bash
-phala docker run-local [options]
+phala docker run [options]
 ```
 
 Run a Docker Compose file locally for testing.
@@ -230,7 +411,7 @@ Run a Docker Compose file locally for testing.
 
 **Example:**
 ```bash
-phala docker run-local --compose ./tee-compose.yaml --env-file ./.env
+phala docker run --compose ./tee-compose.yaml --env-file ./.env
 ```
 
 ### TEE Simulator Commands
@@ -246,7 +427,8 @@ phala simulator start [options]
 Start the TEE simulator locally for development and testing.
 
 **Options:**
-- `-i, --image <image>`: Simulator image (defaults to 'phalanetwork/phala-pruntime:latest')
+
+- `-i, --image <image>`: Simulator image (defaults to 'phalanetwork/tappd-simulator:latest')
 
 **Example:**
 ```bash
@@ -373,44 +555,18 @@ Create a new CVM on Phala Cloud.
 **Options:**
 - `-n, --name <name>`: Name of the CVM (required)
 - `-c, --compose <compose>`: Path to Docker Compose file (required)
-- `-t, --type <type>`: Type of CVM (default: 'phala')
-- `-m, --mode <mode>`: Mode of operation (default: 'docker-compose')
 - `--vcpu <vcpu>`: Number of vCPUs (default: 1)
 - `--memory <memory>`: Memory in MB (default: 2048)
 - `--disk-size <diskSize>`: Disk size in GB (default: 20)
-- `-e, --env <env...>`: Environment variables in the form of KEY=VALUE
-- `--env-file <envFile>`: Path to environment file
+- `--teepod-id <teepodId>`: TEEPod ID to launch the CVM to
+- `--image <image>`: Version of dstack image to use (i.e. dstack-dev-0.3.5)
+- `-e, --env-file <envFile>`: Environment variables in the form of KEY=VALUE
+- `--skip-env`: Path to environment file (default: false)
 - `--debug`: Enable debug mode
 
 **Example:**
 ```bash
-phala cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --memory 4096 --env-file ./.env
-```
-
-#### Update CVM
-
-```bash
-phala cvms update [options] <app-id>
-```
-
-Update an existing CVM.
-
-**Arguments:**
-- `app-id`: App ID of the CVM to update
-
-**Options:**
-- `-n, --name <name>`: New name for the CVM
-- `-c, --compose <compose>`: Path to new Docker Compose file
-- `--vcpu <vcpu>`: New number of vCPUs
-- `--memory <memory>`: New memory in MB
-- `--disk-size <diskSize>`: New disk size in GB
-- `-e, --env <env...>`: Environment variables to add/update
-- `--env-file <envFile>`: Path to environment file
-- `--debug`: Enable debug mode
-
-**Example:**
-```bash
-phala cvms update app_123456 --name updated-app-name --memory 4096
+phala cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --memory 4096 --diskSize 60 --teepod-id 3 --image dstack-dev-0.3.5 --env-file ./.env
 ```
 
 #### Upgrade CVM
@@ -426,13 +582,12 @@ Upgrade a CVM to a new version.
 
 **Options:**
 - `-c, --compose <compose>`: Path to new Docker Compose file
-- `-e, --env <env...>`: Environment variables to add/update
 - `--env-file <envFile>`: Path to environment file
 - `--debug`: Enable debug mode
 
 **Example:**
 ```bash
-phala cvms upgrade app_123456 --compose ./new-docker-compose.yml
+phala cvms upgrade app_123456 --compose ./new-docker-compose.yml --env-file ./.env
 ```
 
 #### Start CVM
@@ -448,7 +603,7 @@ Start a stopped CVM.
 
 **Example:**
 ```bash
-phala cvms start app_123456
+phala cvms start e15c1a29a9dfb522da528464a8d5ce40ac28039f
 ```
 
 #### Stop CVM
@@ -464,7 +619,7 @@ Stop a running CVM.
 
 **Example:**
 ```bash
-phala cvms stop app_123456
+phala cvms stop e15c1a29a9dfb522da528464a8d5ce40ac28039f
 ```
 
 #### Restart CVM
@@ -480,27 +635,7 @@ Restart a CVM.
 
 **Example:**
 ```bash
-phala cvms restart app_123456
-```
-
-#### View CVM Logs
-
-```bash
-phala cvms logs [options] <app-id>
-```
-
-View logs for a CVM.
-
-**Arguments:**
-- `app-id`: App ID of the CVM
-
-**Options:**
-- `-f, --follow`: Follow log output (continuous updates)
-
-**Example:**
-```bash
-phala cvms logs app_123456
-phala cvms logs --follow app_123456
+phala cvms restart e15c1a29a9dfb522da528464a8d5ce40ac28039f
 ```
 
 #### Delete CVM
@@ -519,109 +654,59 @@ Delete a CVM.
 
 **Example:**
 ```bash
-phala cvms delete app_123456
-phala cvms delete --force app_123456
+phala cvms delete e15c1a29a9dfb522da528464a8d5ce40ac28039f
+phala cvms delete --force e15c1a29a9dfb522da528464a8d5ce40ac28039f
 ```
 
-## Local Development Workflow
+## 📋 Sample Applications
 
-### 1. Start the TEE Simulator
+Explore these example applications to understand different use cases for TEE deployment:
 
-Test your application in a local TEE environment:
+- **[Timelock Encryption](./examples/timelock-nts/)**: Encrypt messages that can only be decrypted after a specified time
+- **[Light Client](./examples/lightclient/)**: A lightweight blockchain client implementation
+- **[SSH Over TEE Proxy](./examples/ssh-over-tproxy/)**: Secure SSH tunneling through a TEE
+- **[Web Shell](./examples/webshell/)**: Browser-based secure terminal
+- **[Custom Domain](./examples/custom-domain/)**: Deploy with your own domain name
+- **[Private Docker Image](./examples/private-docker-image-deployment/)**: Deploy using private Docker registries
+
+## 🛠️ Advanced Features
+
+### Docker Compose Templates
+
+> This feature is still being developed. Best to build your own docker-compose file for now.
+
+(WIP) Choose from docker compose file for your application:
 
 ```bash
-phala simulator start
+phala docker generate --image my-app --tag v1.0.0 --env
 ```
 
-The simulator will be available at http://localhost:8090.
+### Customizing Resource Allocation
 
-### 2. Build Your Docker Image
+Resize specific resources for your existing CVM:
 
 ```bash
-phala docker build --image my-tee-app --tag v1.0.0
+phala cvms resize e15c1a29a9dfb522da528464a8d5ce40ac28039f --name resource-intensive-app --compose ./compose.yml \
+  --vcpu 4 --memory 8192 --disk-size 50 -r true -y
 ```
 
-### 3. Test Locally
-
-Generate a Docker Compose file for your application:
+### Environment Variables Management
 
 ```bash
-# First, create an environment file with your application's environment variables
-echo "API_KEY=test-key" > .env
-echo "DEBUG=true" >> .env
-
-# Build a Docker Compose file using your image and environment file
-phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
+# Using env file
+phala cvms create --name env-app --compose ./compose.yml --env-file ./.env
 ```
 
-Run your application locally:
+## 🔒 Security
 
-```bash
-phala docker run-local --compose ./tee-compose.yaml --env-file ./.env
-```
+The TEE Cloud CLI employs several security measures:
 
-## Cloud Deployment Workflow
+1. **Encrypted Credentials**: API keys and Docker credentials are stored with encryption using a machine-specific key
+2. **Restricted Permissions**: All credential files are stored with 0600 permissions (user-only access)
+3. **No Validation Storage**: API keys are not validated during login, preventing unnecessary transmission
+4. **Local Storage**: All credentials are stored locally in the `~/.phala-cloud/` directory
 
-### 1. Configure API Key
-
-```bash
-phala auth login
-```
-
-### 2. Push Your Image to Docker Hub
-
-```bash
-# Login to Docker Hub
-phala docker login
-
-# Build your image
-phala docker build --image my-tee-app --tag v1.0.0
-
-# Push to Docker Hub
-phala docker push --image my-tee-app --tag v1.0.0
-```
-
-### 3. Deploy to Phala Cloud
-
-```bash
-# Create a CVM with your application
-phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
-```
-
-## Examples
-
-The repository includes example applications in the `examples/` directory:
-
-- **lightclient**: A light client implementation
-- **timelock-nts**: A timelock encryption system
-- **ssh-over-tproxy**: SSH over TEE proxy
-- **prelaunch-script**: Pre-launch script examples
-
-These examples demonstrate different use cases and can be used as templates for your own applications.
-
-## Docker Compose Templates
-
-The CLI provides several templates for different use cases:
-
-- `basic`: Simple template for general applications
-- `eliza-v2`: Modern template with Bun runtime
-- `eliza-v1`: Legacy template with character file support
-
-## Configuration
-
-The CLI stores configuration in `~/.tee-cloud/config.json`. Default configuration includes:
-
-- `apiUrl`: API endpoint URL (default: 'https://api.phala.cloud')
-- `cloudUrl`: Cloud dashboard URL (default: 'https://phala.cloud')
-- `defaultTeepodId`: Default TEEPod ID (default: 3)
-- `defaultImage`: Default image (default: 'dstack-dev-0.3.5')
-- `defaultVcpu`: Default vCPU count (default: 1)
-- `defaultMemory`: Default memory in MB (default: 2048)
-- `defaultDiskSize`: Default disk size in GB (default: 20)
-
-You can view and modify these settings using the `config` commands.
-
-## Troubleshooting
+## 🔍 Troubleshooting
 
 Common issues and solutions:
 
@@ -645,7 +730,17 @@ phala --help
 phala <command> --help
 ```
 
-## Development
+## 👥 Community & Support
+
+- [Phala Network Discord](https://discord.gg/phala-network)
+- [GitHub Issues](https://github.com/Phala-Network/phala-cloud-cli/issues)
+- [Phala Documentation](https://docs.phala.network)
+
+## 📝 License
+
+TBD
+
+## 🤝 Contributing
 
 To contribute or run in development mode:
 ```bash
@@ -653,20 +748,11 @@ bun run src/index.ts
 ```
 
 The project uses:
+
+- [Dstack-TEE: Dstack](https://github.com/Dstack-TEE/dstack)
 - Bun for runtime and package management
 - TypeScript for type safety
 - Commander.js for CLI interface
 - Zod for runtime validation
 
-## License
-
-TBD
-
-## Security
-
-The TEE Cloud CLI takes security seriously:
-
-1. **Encrypted Credentials**: API keys and Docker credentials are stored with encryption using a machine-specific key.
-2. **Restricted Permissions**: All credential files are stored with 0600 permissions (user-only access).
-3. **No Validation Storage**: API keys are not validated during login, preventing unnecessary transmission of the key.
-4. **Local Storage**: All credentials are stored locally in the `~/.tee-cloud/` directory.
+We welcome contributions! Please see our [contributing guide](CONTRIBUTING.md) for details.

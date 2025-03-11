@@ -10,7 +10,7 @@ export const runCommand = new Command()
   .name('run')
   .description('Run a Docker Compose setup')
   .option('-c, --compose <compose>', 'Path to docker-compose.yml file')
-  .option('-e, --env <env>', 'Path to environment variables file')
+  .option('-e, --env-file <env-file>', 'Path to environment variables file')
   .option('--skip-env', 'Skip environment variables file prompt', true)
   .action(async (options) => {
     try {

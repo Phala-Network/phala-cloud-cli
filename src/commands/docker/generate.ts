@@ -12,7 +12,7 @@ export const generateCommand = new Command()
   .description('Generate a Docker Compose file')
   .option('-i, --image <image>', 'Docker image name to use in the compose file')
   .option('-t, --tag <tag>', 'Docker image tag to use in the compose file')
-  .option('-e, --env <env>', 'Path to environment variables file')
+  .option('-e, --env-file <envFile>', 'Path to environment variables file')
   .option('-o, --output <output>', 'Output path for generated docker-compose.yml')
   .option('--manual', 'Skip automatic image detection and enter image/tag manually')
   .action(async (options) => {
@@ -148,7 +148,7 @@ export const generateCommand = new Command()
       }
 
       // Get environment file path from options or prompt
-      let envFilePath = options.env;
+      let envFilePath = options.envFile;
       if (!envFilePath) {
         // Check if .env exists in current directory
         const defaultEnvPath = path.join(process.cwd(), '.env');
