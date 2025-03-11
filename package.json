@@ -1,5 +1,5 @@
 {
-  "name": "@phala/phala-cli",
+  "name": "phala",
   "version": "0.0.1-alpha",
   "description": "CLI for Managing Phala Cloud Services",
   "author": {

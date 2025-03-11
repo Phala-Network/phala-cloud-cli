@@ -34,10 +34,14 @@ Phala Cloud is a confidential cloud platform that enables developers to deploy a
 
 2. **Install TEE Cloud CLI**:
 
-   Install via npm
+   Install via npm or use npx/bunx
    ```bash
    # Install the CLI globally
-   npm install -g @phala/phala-cli
+   npm install -g phala
+
+   # Use npx/bunx
+   npx phala help
+   bunx phala help
    ```
    
    or clone git repository
