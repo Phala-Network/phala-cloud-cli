@@ -5,6 +5,7 @@ import { CLOUD_URL } from '@/src/utils/constants';
 
 export const listCommand = new Command()
   .name('list')
+  .alias('ls')
   .description('List all CVMs')
   .option('-j, --json', 'Output in JSON format')
   .action(async (options) => {

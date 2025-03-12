@@ -18,6 +18,8 @@ export const loginCommand = new Command()
       
       // If no username is provided, prompt for it
       if (!username) {
+        logger.info('First we need your Docker Hub username to check if you are already logged in.');
+
         const response = await prompts({
           type: 'text',
           name: 'username',
@@ -31,6 +33,14 @@ export const loginCommand = new Command()
         }
         
         username = response.username;
+      }
+
+      // Check if Docker is already logged in
+      const dockerService = new DockerService('', username, registry);
+      const loggedIn = await dockerService.login(username);
+      if (loggedIn) {
+        logger.success(`${username} is logged in to Docker Hub`);
+        return;
       }
       
       // If no password is provided, prompt for it
@@ -51,7 +61,6 @@ export const loginCommand = new Command()
       }
       
       // Login to Docker Hub
-      const dockerService = new DockerService('', username, registry);
       const success = await dockerService.login(username, password, registry);
       
       if (!success) {
@@ -62,7 +71,6 @@ export const loginCommand = new Command()
       // Save credentials
       await saveDockerCredentials({
         username,
-        password,
         registry: registry || null
       });
       

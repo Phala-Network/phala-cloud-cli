@@ -125,24 +125,21 @@ export async function removeApiKey(): Promise<void> {
 // Docker Credentials Management
 interface DockerCredentials {
   username: string;
-  password: string;
   registry?: string;
 }
 
 export async function saveDockerCredentials(credentials: DockerCredentials): Promise<void> {
   ensureDirectoryExists();
   try {
-    // Encrypt the password
-    credentials.password = encrypt(credentials.password);
     
     fs.writeFileSync(
       DOCKER_CREDENTIALS_FILE, 
       JSON.stringify(credentials, null, 2), 
       { mode: 0o600 } // Restrict permissions to user only
     );
-    logger.success('Docker credentials saved successfully.');
+    logger.success('Docker information saved successfully.');
   } catch (error) {
-    logger.error('Failed to save Docker credentials:', error);
+    logger.error('Failed to save Docker information:', error);
     throw error;
   }
 }
@@ -152,11 +149,6 @@ export async function getDockerCredentials(): Promise<DockerCredentials | null> 
     if (fs.existsSync(DOCKER_CREDENTIALS_FILE)) {
       const data = fs.readFileSync(DOCKER_CREDENTIALS_FILE, 'utf8');
       const credentials = JSON.parse(data) as DockerCredentials;
-      
-      // Decrypt the password
-      if (credentials.password) {
-        credentials.password = decrypt(credentials.password);
-      }
       
       return credentials;
     }

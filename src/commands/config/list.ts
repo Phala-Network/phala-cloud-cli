@@ -4,6 +4,7 @@ import { logger } from '@/src/utils/logger';
 
 export const listCommand = new Command()
   .name('list')
+  .alias('ls')
   .description('List all configuration values')
   .option('-j, --json', 'Output in JSON format')
   .action((options) => {

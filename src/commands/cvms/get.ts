@@ -6,17 +6,16 @@ import { CLOUD_URL } from '@/src/utils/constants';
 export const getCommand = new Command()
   .name('get')
   .description('Get details of a CVM')
-  .option('-i, --id <app-id>', 'App ID of the CVM (optional)')
+  .argument('[app-id]', 'App ID of the CVM (optional)')
   .option('-j, --json', 'Output in JSON format')
-  .action(async (options) => {
+  .action(async (appId, options) => {
     try {
-      let appId = options.id;
-      
       // If no app ID is provided, fetch all CVMs and let the user select one
       if (!appId) {
         appId = await selectCvm();
         if (!appId) {
-          return; // No CVMs found or user canceled
+          logger.info('No CVMs found or selection cancelled');
+          return;
         }
       }
       

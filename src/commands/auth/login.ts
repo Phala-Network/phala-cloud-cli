@@ -10,6 +10,7 @@ export const loginCommand = new Command()
   .argument('[api-key]', 'Phala Cloud API key to set')
   .action(async (apiKey?: string) => {
     try {
+      let checkUserInfo;
       // If no API key is provided, prompt for it
       if (!apiKey) {
         const response = await prompts({
@@ -22,7 +23,7 @@ export const loginCommand = new Command()
             } else {
               try {
                 await saveApiKey(value);
-                const checkUserInfo = await getUserInfo();
+                checkUserInfo = await getUserInfo();
                 if (!checkUserInfo.username) {
                   await removeApiKey();
                   return 'Invalid API key';
@@ -38,15 +39,16 @@ export const loginCommand = new Command()
         apiKey = response.apiKey;
       } else {
         // Validate the API key
-        const checkUserInfo = await getUserInfo();
+        checkUserInfo = await getUserInfo();
         if (!checkUserInfo.username) {
           await removeApiKey();
           return 'Invalid API key';
         }
       }
       
-      logger.success('API key validated and saved successfully');
-      logger.info('\nYou can check your authentication status with "phala auth status"');
+      logger.success(`Welcome ${checkUserInfo.username}! API key validated and saved successfully\n`);
+      
+      logger.info(`\nOpen in Web UI at https://phala.cloud/dashboard`);
     } catch (error) {
       logger.error(`Failed to set API key: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

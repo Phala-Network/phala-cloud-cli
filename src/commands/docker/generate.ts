@@ -21,7 +21,7 @@ export const generateCommand = new Command()
       // Get Docker credentials to create the Docker service
       const credentials = await getDockerCredentials();
       if (!credentials || !credentials.username) {
-        logger.error('Docker Hub username not found. Please login first with `tcc docker login`');
+        logger.error('Docker Hub username not found. Please login first with `phala docker login`');
         process.exit(1);
       }
 

@@ -217,40 +217,6 @@ export class DockerService {
     }
   }
 
-  /**
-   * Delete a Docker image tag
-   * @param tag Tag to delete
-   * @returns Success status
-   */
-  async deleteTag(tag: string): Promise<boolean> {
-    try {
-      const spinner = logger.startSpinner(`Deleting tag ${this.username}/${this.image}:${tag}`);
-
-      // Check if user is logged in
-      const credentials = await getDockerCredentials();
-      if (!credentials) {
-        spinner.stop(false);
-        throw new Error('Docker credentials not found. Please log in first with "phala docker login"');
-      }
-
-      // Delete the tag using Docker Hub API
-      const response = await axios.delete(
-        `${DOCKER_HUB_API_URL}/repositories/${this.username}/${this.image}/tags/${tag}`,
-        {
-          auth: {
-            username: credentials.username,
-            password: credentials.password
-          }
-        }
-      );
-
-      spinner.stop(true, 'Tag deleted successfully');
-      return true;
-    } catch (error) {
-      logger.error(`Failed to delete tag: ${error instanceof Error ? error.message : String(error)}`);
-      return false;
-    }
-  }
 
   /**
    * Login to Docker Hub
@@ -259,9 +225,17 @@ export class DockerService {
    * @param registry Docker registry
    * @returns Success status
    */
-  async login(username: string, password: string, registry?: string): Promise<boolean> {
+  async login(username: string, password?: string, registry?: string): Promise<boolean> {
     try {
       const spinner = logger.startSpinner(`Logging in to Docker Hub as ${username}`);
+
+      // Check if already logged in
+      const loggedIn = await this.checkLogin();
+      if (loggedIn) {
+        spinner.stop(true, `Logged in as ${username}`);
+        this.setCredentials(username, registry);
+        return true;
+      }
 
       // Login to Docker
       await execa('docker', [
@@ -278,6 +252,19 @@ export class DockerService {
       return true;
     } catch (error) {
       logger.error(`Failed to login to Docker Hub: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Check if Docker is logged in
+   * @returns Success status
+   */
+  async checkLogin(): Promise<boolean> {
+    try {
+      const { stdout } = await execa('docker', ['login']);
+      return stdout.includes('Login Succeeded');
+    } catch (error) {
       return false;
     }
   }
@@ -391,7 +378,7 @@ export class DockerService {
       }
 
       // Run the Docker Compose file
-      await execa('docker-compose', composeArgs);
+      await execAsync(`docker compose ${composeArgs.join(' ')}`);
 
       spinner.stop(true, 'Docker Compose file running successfully');
       return true;
@@ -455,10 +442,12 @@ export class DockerService {
     try {
       // Query Docker for local images in format that outputs repository and tag
       const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}}"');
-
+      const credentials = await getDockerCredentials();
+      const username = credentials?.username;
       // Parse the output and filter out any <none> tags or images
       const imageList = stdout.split('\n')
         .filter(line => line && !line.includes('<none>'))
+        .filter(line => line.includes(`${username}/`))
         .map(line => {
           const [repo, tag] = line.split(':');
           // Separate username/image format if available
