@@ -1,6 +1,6 @@
 {
   "name": "phala",
-  "version": "0.0.1-alpha",
+  "version": "0.0.1-alpha-4",
   "description": "CLI for Managing Phala Cloud Services",
   "author": {
     "name": "Phala Network",
@@ -21,7 +21,8 @@
   "type": "module",
   "exports": "./dist/index.js",
   "bin": {
-    "phala": "./dist/index.js"
+    "phala": "./dist/index.js",
+    "pha": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup && bun link",
