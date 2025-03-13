@@ -5,6 +5,7 @@ import fs from 'fs';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
 
 export const upgradeCommand = new Command()
   .name('upgrade')
@@ -58,6 +59,9 @@ export const upgradeCommand = new Command()
         }
       }
       
+      // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
+      await deleteSimulatorEndpointEnv();
+
       // Process environment variables if provided
       let encrypted_env = "";
       if (options.envFile) {

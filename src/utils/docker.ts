@@ -11,7 +11,7 @@ import { promisify } from 'util';
 import os from 'os';
 import { validateFileExists } from './prompts';
 import { ComposeTemplateSchema } from './types';
-
+import { deleteSimulatorEndpointEnv, setSimulatorEndpointEnv } from './simulator';
 const execAsync = promisify(exec);
 const LOGS_DIR = '.phala-cloud/logs';
 const COMPOSE_FILES_DIR = '.phala-cloud/compose';
@@ -407,7 +407,10 @@ export class DockerService {
       logger.success(`TEE simulator running successfully. Container ID: ${containerId}`);
       logger.info(`\n\nUseful commands:`);
       logger.info(`- View logs: docker logs -f ${containerId}`);
-      logger.info(`- Stop simulator: docker stop ${containerId}`);
+      logger.info(`- Stop simulator: docker stop ${containerId}\n`);
+
+      setSimulatorEndpointEnv(`http://localhost:${port}`);
+      
       return true;
     } catch (error) {
       logger.error(`Failed to run TEE simulator: ${error instanceof Error ? error.message : String(error)}`);
@@ -425,6 +428,7 @@ export class DockerService {
 
       // Stop the simulator
       await execAsync(`docker stop tee-simulator`);
+      await deleteSimulatorEndpointEnv();
 
       spinner.stop(true, 'TEE simulator stopped successfully');
       return true;

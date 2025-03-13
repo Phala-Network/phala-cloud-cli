@@ -13,7 +13,7 @@ export const stopCommand = new Command()
         // Stop the simulator
         const dockerService = new DockerService('');
         const success = await dockerService.stopSimulator();
-        
+
         if (!success) {
           logger.error('Failed to stop TEE simulator');
           process.exit(1);

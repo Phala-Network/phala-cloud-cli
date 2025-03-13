@@ -10,6 +10,7 @@ import path from 'path';
 import inquirer from 'inquirer';
 import { parseEnv } from '@/src/utils/secrets';
 import { promptForFile } from '@/src/utils/prompts';
+import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
 
 export const createCommand = new Command()
   .name('create')
@@ -62,6 +63,9 @@ export const createCommand = new Command()
         process.exit(1);
       }
       const composeString = fs.readFileSync(composePath, 'utf8');
+
+      // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
+      await deleteSimulatorEndpointEnv();
 
       // Process environment variables
       let envs: EnvVar[] = [];

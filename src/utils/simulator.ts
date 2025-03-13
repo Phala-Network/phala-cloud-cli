@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execSync, spawn, exec } from 'child_process';
 import * as net from 'net';
+import { logger } from './logger';
 
 // Configuration for simulator
 const SIMULATOR_CONFIG = {
@@ -25,7 +26,7 @@ const SIMULATOR_CONFIG = {
     win32: {
       filename: 'tappd-simulator-0.1.4-x86_64-pc-windows-msvc.tgz',
       extractedFolder: 'tappd-simulator-0.1.4-x86_64-pc-windows-msvc',
-      socketArg: '127.0.0.1:8080'
+      socketArg: '127.0.0.1:8090'
     }
   }
 };
@@ -62,7 +63,7 @@ export function isSimulatorInstalled(): boolean {
     const executablePath = path.join(extractedFolderPath, executableName);
     return fs.existsSync(executablePath);
   } catch (error) {
-    console.error('Error checking if simulator is installed:', error);
+    logger.error('Error checking if simulator is installed:', error);
     return false;
   }
 }
@@ -99,7 +100,7 @@ export async function installSimulator(
     
     // Create installation directory if it doesn't exist
     if (!fs.existsSync(SIMULATOR_CONFIG.installDir)) {
-      log(`Creating installation directory at ${SIMULATOR_CONFIG.installDir}`);
+      logger.info(`Creating installation directory at ${SIMULATOR_CONFIG.installDir}`);
       fs.mkdirSync(SIMULATOR_CONFIG.installDir, { recursive: true });
     }
 
@@ -108,16 +109,16 @@ export async function installSimulator(
     
     // Download the simulator
     const downloadUrl = `${SIMULATOR_CONFIG.baseUrl}/${platformConfig.filename}`;
-    log(`Downloading simulator from ${downloadUrl}`);
+    logger.info(`Downloading simulator from ${downloadUrl}`);
     execSync(`wget ${downloadUrl}`, { stdio: 'inherit' });
     
     // Extract the archive
-    log(`Extracting ${platformConfig.filename}`);
+    logger.info(`Extracting ${platformConfig.filename}`);
     execSync(`tar -xvf ${platformConfig.filename}`, { stdio: 'inherit' });
     
-    log('Simulator installation completed successfully');
+    logger.success('Simulator installation completed successfully');
   } catch (error) {
-    console.error('Error installing simulator:', error);
+    logger.error('Error installing simulator:', error);
     throw new Error(`Failed to install simulator: ${error}`);
   }
 }
@@ -127,11 +128,11 @@ export async function installSimulator(
  * @param options Configuration options for running the simulator
  * @returns A child process representing the running simulator
  */
-export function runSimulator(options: {
+export async function runSimulator(options: {
   background?: boolean;
   logToFile?: boolean;
   logFilePath?: string;
-} = {}): ReturnType<typeof spawn> {
+} = {}): Promise<ReturnType<typeof spawn>> {
   try {
     const platform = getPlatform();
     const platformConfig = SIMULATOR_CONFIG.platforms[platform];
@@ -159,10 +160,10 @@ export function runSimulator(options: {
       if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
       }
-      console.log(`Simulator logs will be written to: ${runOptions.logFilePath}`);
+      logger.info(`Simulator logs will be written to: ${runOptions.logFilePath}`);
     }
     
-    console.log(`Starting simulator with: ${executableName} -l ${platformConfig.socketArg}`);
+    logger.info(`Starting simulator with: ${executableName} -l ${platformConfig.socketArg}`);
     
     // Configure stdio based on logging preferences
     let stdio: any = 'inherit';
@@ -192,9 +193,10 @@ export function runSimulator(options: {
     // If running in background, unref to allow the parent process to exit
     if (runOptions.background) {
       simulatorProcess.unref();
-      console.log('Simulator is running in the background');
+      logger.success('Simulator is running in the background');
     }
     
+    await setSimulatorEndpointEnv();
     return simulatorProcess;
   } catch (error) {
     console.error('Error running simulator:', error);
@@ -213,17 +215,17 @@ export async function ensureSimulatorRunning(options: {
   logFilePath?: string;
 } = {}): Promise<ReturnType<typeof spawn>> {
   if (!isSimulatorInstalled()) {
-    console.log('Simulator not installed. Installing now...');
-    await installSimulator((message) => console.log(`Installation progress: ${message}`));
+    logger.info('Simulator not installed. Installing now...');
+    await installSimulator((message) => logger.info(`Installation progress: ${message}`));
   }
   
   if (await isSimulatorRunning()) {
-    console.log('Simulator is already running');
+    logger.info('Simulator is already running');
     return null;
   }
   
-  console.log('Starting simulator...');
-  return runSimulator(options);
+  logger.info('Starting simulator...');
+  return await runSimulator(options);
 }
 
 /**
@@ -319,11 +321,12 @@ export async function stopSimulator(): Promise<boolean> {
     // Verify the simulator has stopped
     const stopped = !(await isSimulatorRunning());
     if (stopped) {
-      console.log('Simulator stopped successfully');
+      logger.success('Simulator stopped successfully');
     } else {
-      console.log('Failed to stop simulator');
+      logger.error('Failed to stop simulator');
     }
     
+    await deleteSimulatorEndpointEnv();
     return stopped;
   } catch (error) {
     console.error('Error stopping simulator:', error);
@@ -364,7 +367,51 @@ export function getSimulatorLogs(options: {
     const lines = logContent.split('\n');
     return lines.slice(-maxLines).join('\n');
   } catch (error) {
-    console.error('Error reading simulator logs:', error);
+    logger.error('Error reading simulator logs:', error);
     return null;
   }
+}
+
+/**
+ * Gets the simulator endpoint URL based on the current platform
+ * @returns The endpoint URL for the simulator
+ */
+export function getSimulatorEndpoint(): string {
+  const platform = getPlatform();
+  
+  if (platform === 'win32') {
+    return 'http://127.0.0.1:8090';
+  } else {
+    return 'unix:///tmp/tappd.sock';
+  }
+}
+
+/**
+ * Sets the DSTACK_SIMULATOR_ENDPOINT environment variable based on the current platform
+ * @param options Configuration options for setting the environment variable
+ * @returns The endpoint URL that was set
+ */
+export async function setSimulatorEndpointEnv(endpoint?: string): Promise<string> {
+  try {
+    const simulatorEndpoint = getSimulatorEndpoint();
+    // Set for the current Node.js process
+    const envEndpoint  =  (endpoint) ? endpoint : simulatorEndpoint;
+    await execSync(`export DSTACK_SIMULATOR_ENDPOINT=${envEndpoint}`);
+    logger.success(`Setting DSTACK_SIMULATOR_ENDPOINT=${envEndpoint} for current process`);
+        
+    return endpoint;
+  } catch (error) {
+    logger.error('Error setting simulator endpoint environment variable:', error);
+    throw new Error(`Failed to set simulator endpoint: ${error}`);
+  }
+}
+
+/**
+ * Deletes the DSTACK_SIMULATOR_ENDPOINT environment variable
+ * @returns boolean indicating if deletion was successful
+ */
+export async function deleteSimulatorEndpointEnv(): Promise<boolean> {
+    await execSync(`unset DSTACK_SIMULATOR_ENDPOINT`);
+    logger.success('Deleted DSTACK_SIMULATOR_ENDPOINT from current process');
+    return true;
 }
