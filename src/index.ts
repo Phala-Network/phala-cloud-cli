@@ -18,11 +18,11 @@ async function main() {
     .description(`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`)
     .version("0.0.1")
     .addCommand(authCommands)
-    .addCommand(teepodsCommands)
+    .addCommand(cvmsCommand)
     .addCommand(dockerCommands)
     .addCommand(simulatorCommands)
-    .addCommand(configCommands)
-    .addCommand(cvmsCommand)
+    .addCommand(teepodsCommands)
+    // .addCommand(configCommands)
 
   program.parse(process.argv)
 }
