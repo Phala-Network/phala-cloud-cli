@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
 import { parseEnv } from '@/src/utils/secrets';
-import { promptForFile } from '@/src/utils/prompts';
+import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
 
 export const createCommand = new Command()

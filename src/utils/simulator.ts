@@ -90,7 +90,7 @@ export async function installSimulator(
   progressCallback?: (message: string) => void
 ): Promise<void> {
   const log = (message: string) => {
-    console.log(message);
+    logger.info(message);
     if (progressCallback) progressCallback(message);
   };
 
@@ -199,7 +199,7 @@ export async function runSimulator(options: {
     await setSimulatorEndpointEnv();
     return simulatorProcess;
   } catch (error) {
-    console.error('Error running simulator:', error);
+    logger.error('Error running simulator:', error);
     throw new Error(`Failed to run simulator: ${error}`);
   }
 }
@@ -268,7 +268,7 @@ export async function isSimulatorRunning(): Promise<boolean> {
     } else if (platform === 'win32') {
       // For Windows, try to connect to the TCP port
       const host = '127.0.0.1';
-      const port = 8080;
+      const port = 8090;
       
       return new Promise<boolean>((resolve) => {
         const client = net.createConnection({ host, port })
@@ -290,7 +290,7 @@ export async function isSimulatorRunning(): Promise<boolean> {
     
     return false;
   } catch (error) {
-    console.error('Error checking if simulator is running:', error);
+    logger.error('Error checking if simulator is running:', error);
     return false;
   }
 }
@@ -304,11 +304,11 @@ export async function stopSimulator(): Promise<boolean> {
     const platform = getPlatform();
     
     if (!await isSimulatorRunning()) {
-      console.log('Simulator is not running');
+      logger.info('Simulator is not running');
       return true;
     }
     
-    console.log('Stopping simulator...');
+    logger.info('Stopping simulator...');
     
     if (platform === 'win32') {
       // For Windows, find the process listening on port 8080 and kill it
@@ -329,7 +329,7 @@ export async function stopSimulator(): Promise<boolean> {
     await deleteSimulatorEndpointEnv();
     return stopped;
   } catch (error) {
-    console.error('Error stopping simulator:', error);
+    logger.error('Error stopping simulator:', error);
     return false;
   }
 }

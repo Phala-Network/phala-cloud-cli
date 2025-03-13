@@ -1,25 +1,28 @@
-# Phala Cloud CLI
-
-A command-line tool for managing Trusted Execution Environment (TEE) deployments on Phala Cloud, from local development to cloud deployment.
-
-<p align="center">
-  <img src="https://phala.network/images/logo-colored.svg" alt="Phala Network Logo" width="180"/>
-</p>
-
+<h1 align="center">Phala Cloud CLI</h1>
 <p align="center">
   <b>Secure. Confidential. Verifiable.</b>
 </p>
 
-## 📖 What is Phala Cloud?
+A command-line tool for managing Trusted Execution Environment (TEE) deployments on Phala Cloud, from local development to cloud deployment.
+___
 
-Phala Cloud is a confidential cloud platform that enables developers to deploy applications in a Trusted Execution Environment (TEE) using the [Dstack SDK](https://github.com/Dstack-TEE/dstack). TEEs provide hardware-level isolation and encryption, ensuring your application's code and data remain completely private and secure—even from the infrastructure providers hosting them.
+<p align="center">
+   <b>👥 Community & Support</b>
 
-**Key Benefits:**
+<div align="center">
 
-- **Confidentiality**: Your code and data remain encrypted in memory during execution
-- **Integrity**: Hardware guarantees that your application runs unmodified
-- **Attestation**: Remote attestation quote to prove that your docker app is running in a genuine TEE
-- **Simplified Deployment**: The CLI handles the complexity of TEE deployment using the Phala Cloud API
+[Phala Network Discord](https://discord.gg/phala-network) | [GitHub Issues](https://github.com/Phala-Network/phala-cloud-cli/issues) | [Phala Documentation](https://docs.phala.network)
+
+</div>
+</p>
+
+## Usage
+
+- [Dstack-TEE: Dstack](https://github.com/Dstack-TEE/dstack)
+- Bun for runtime and package management
+- TypeScript for type safety
+- Commander.js for CLI interface
+- Zod for runtime validation
 
 ## 🚀 Quick Start (5 Minutes)
 
@@ -38,13 +41,20 @@ Phala Cloud is a confidential cloud platform that enables developers to deploy a
    ```bash
    # Install the CLI globally
    npm install -g phala
-
-   # Use npx/bunx
-   npx phala help
-   bunx phala help
    ```
-   
-   or clone git repository
+
+   > **NOTE**
+   >
+   > You can use `npx` or `bunx` to call the `phala` command
+   >
+   > ```bash
+   > # Use npx/bunx
+   >
+   > npx phala help
+   > bunx phala help
+   > ```
+
+   or clone source
    
    ```bash
    # Clone the repository
@@ -74,6 +84,11 @@ Phala Cloud is a confidential cloud platform that enables developers to deploy a
      ```
 
 4. **Deploy Your First Confidential App**:
+   Clone the [Dstack Examples](https://github.com/Dstack-TEE/dstack-examples) repo and cd into the webshell directory
+   ```bash
+   git clone https://github.com/Dstack-TEE/dstack-examples.git && cd dstack-examples/webshell
+   ```
+   
    ```bash
    # Deploy the webshell Dstack example
    phala cvms create
@@ -83,16 +98,9 @@ Phala Cloud is a confidential cloud platform that enables developers to deploy a
 
    ```bash
    # ? Enter a name for the CVM: webshell
-   # ? Choose a Docker Compose example or enter a custom path:
+   # ℹ Detected docker compose file: ./docker-compose.yml
 
-   #  lightclient
-   #   private-docker-image-deployment
-   #   ❯ webshell
-   #   custom-domain
-   #   prelaunch-script
-   #   timelock-nts
-   #   ssh-over-tproxy
-   #   Using example: webshell (~/phala-cloud-cli/examples/webshell/docker-compose.yaml)
+   # ? Enter the path to your Docker Compose file:(docker-compose.yml)
    #   ✔ Enter number of vCPUs (default: 1): 1
 
    #   ✔ Enter memory in MB (default: 2048): 2048
@@ -562,8 +570,8 @@ Create a new CVM on Phala Cloud.
 - `--vcpu <vcpu>`: Number of vCPUs (default: 1)
 - `--memory <memory>`: Memory in MB (default: 2048)
 - `--disk-size <diskSize>`: Disk size in GB (default: 20)
-- `--teepod-id <teepodId>`: TEEPod ID to launch the CVM to
-- `--image <image>`: Version of dstack image to use (i.e. dstack-dev-0.3.5)
+- `--teepod-id <teepodId>`: TEEPod ID to launch the CVM to (default: 3)
+- `--image <image>`: Version of dstack image to use (i.e. dstack-0.3.5)
 - `-e, --env-file <envFile>`: Environment variables in the form of KEY=VALUE
 - `--skip-env`: Path to environment file (default: false)
 - `--debug`: Enable debug mode
@@ -701,6 +709,7 @@ phala cvms resize e15c1a29a9dfb522da528464a8d5ce40ac28039f --name resource-inten
 phala cvms create --name env-app --compose ./compose.yml --env-file ./.env
 ```
 
+
 ## 🔒 Security
 
 The TEE Cloud CLI employs several security measures:
@@ -734,12 +743,6 @@ phala --help
 phala <command> --help
 ```
 
-## 👥 Community & Support
-
-- [Phala Network Discord](https://discord.gg/phala-network)
-- [GitHub Issues](https://github.com/Phala-Network/phala-cloud-cli/issues)
-- [Phala Documentation](https://docs.phala.network)
-
 ## 📝 License
 
 Apache 2.0
@@ -750,13 +753,3 @@ To contribute or run in development mode:
 ```bash
 bun run src/index.ts
 ```
-
-The project uses:
-
-- [Dstack-TEE: Dstack](https://github.com/Dstack-TEE/dstack)
-- Bun for runtime and package management
-- TypeScript for type safety
-- Commander.js for CLI interface
-- Zod for runtime validation
-
-We welcome contributions! Please see our [contributing guide](CONTRIBUTING.md) for details.
