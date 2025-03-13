@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
 import { getTeepodImages, getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
-import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
+import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_TEEPOD_ID, DEFAULT_IMAGE } from '@/src/utils/constants';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
 import fs from 'fs';
@@ -19,8 +19,8 @@ export const createCommand = new Command()
   .option('--vcpu <vcpu>', 'Number of vCPUs', String(DEFAULT_VCPU))
   .option('--memory <memory>', 'Memory in MB', String(DEFAULT_MEMORY))
   .option('--disk-size <diskSize>', 'Disk size in GB', String(DEFAULT_DISK_SIZE))
-  .option('--teepod-id <teepodId>', 'TEEPod ID to use')
-  .option('--image <image>', 'Version of dstack image to use')
+  .option('--teepod-id <teepodId>', 'TEEPod ID to use', DEFAULT_TEEPOD_ID)
+  .option('--image <image>', 'Version of dstack image to use', DEFAULT_IMAGE)
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
   .option('--debug', 'Enable debug mode', false)
@@ -44,111 +44,24 @@ export const createCommand = new Command()
         options.name = name;
       }
 
-      // Get examples directories
-      const examplesDir = path.join(process.cwd(), 'examples');
-      const examples = [];
+      // If compose path not provided, prompt with examples
+      if (!options.compose) {
+        const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
+        const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
 
-      if (fs.existsSync(examplesDir)) {
-        const exampleDirs = fs.readdirSync(examplesDir, { withFileTypes: true })
-          .filter(dirent => dirent.isDirectory() && !dirent.name.startsWith('.'))
-          .map(dirent => dirent.name);
-
-        examples.push(...exampleDirs);
+        options.compose = await promptForFile(
+          'Enter the path to your Docker Compose file:',
+          composeFileName,
+          'file'
+        );
       }
 
-      // Validate and read the Docker Compose file
-      let composeString = '';
-      try {
-        // If compose path not provided, prompt with examples
-        if (!options.compose) {
-          if (examples.length > 0) {
-            // Prepare choices for the inquirer prompt
-            const choices = [
-              ...examples.map((example, index) => ({
-                name: example,
-                value: { type: 'example', name: example }
-              })),
-              new inquirer.Separator(),
-              { name: 'Enter a file path', value: { type: 'custom' } }
-            ];
-
-            const { selection } = await inquirer.prompt([
-              {
-                type: 'list',
-                name: 'selection',
-                message: 'Choose a Docker Compose example or enter a custom path:',
-                choices
-              }
-            ]);
-
-            if (selection.type === 'example') {
-              // User selected an example
-              const exampleDir = path.join(examplesDir, selection.name);
-              const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
-
-              let foundCompose = false;
-              for (const file of possibleFiles) {
-                const composePath = path.join(exampleDir, file);
-                if (fs.existsSync(composePath)) {
-                  options.compose = composePath;
-                  foundCompose = true;
-                  logger.info(`Using example: ${selection.name} (${options.compose})`);
-                  break;
-                }
-              }
-
-              if (!foundCompose) {
-                logger.error(`Could not find docker-compose.yml or docker-compose.yaml in ${exampleDir}`);
-                process.exit(1);
-              }
-            } else {
-              // User chose to enter a custom path
-              const { customPath } = await inquirer.prompt([
-                {
-                  type: 'input',
-                  name: 'customPath',
-                  message: 'Enter the path to your Docker Compose file:',
-                  validate: (input) => {
-                    if (!input.trim()) {
-                      return 'Docker Compose file path is required';
-                    }
-                    return true;
-                  }
-                }
-              ]);
-
-              options.compose = customPath;
-            }
-          } else {
-            // No examples available, just ask for the path
-            const { customPath } = await inquirer.prompt([
-              {
-                type: 'input',
-                name: 'customPath',
-                message: 'Enter the path to your Docker Compose file:',
-                validate: (input) => {
-                  if (!input.trim()) {
-                    return 'Docker Compose file path is required';
-                  }
-                  return true;
-                }
-              }
-            ]);
-
-            options.compose = customPath;
-          }
-        }
-
-        const composePath = path.resolve(options.compose);
-        if (!fs.existsSync(composePath)) {
-          logger.error(`Docker Compose file not found: ${composePath}`);
-          process.exit(1);
-        }
-        composeString = fs.readFileSync(composePath, 'utf8');
-      } catch (error) {
-        logger.error(`Failed to read Docker Compose file: ${error instanceof Error ? error.message : String(error)}`);
+      const composePath = path.resolve(options.compose);
+      if (!fs.existsSync(composePath)) {
+        logger.error(`Docker Compose file not found: ${composePath}`);
         process.exit(1);
       }
+      const composeString = fs.readFileSync(composePath, 'utf8');
 
       // Process environment variables
       let envs: EnvVar[] = [];
@@ -161,13 +74,27 @@ export const createCommand = new Command()
           logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
           process.exit(1);
         }
-      } else if (!options.skipEnv) {  
-        const envVars = await promptForFile(
-          'Enter the path to your environment file:',
-          '.env',
-          'file',
-        );
-        envs = parseEnv([], envVars);
+      } else if (!options.skipEnv) {
+        // Prompt to input env file or skip
+        const shouldSkip = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'shouldSkip',
+            message: 'Do you want to skip environment variable prompt?',
+            default: false
+          }
+        ]);
+      
+        if (shouldSkip) {
+          logger.info('Skipping environment variable prompt');
+        } else {
+          const envVars = await promptForFile(
+            'Enter the path to your environment file:',
+            '.env',
+            'file',
+          );
+          envs = parseEnv([], envVars);
+        }
       }
 
       // Prompt for resource configuration if needed
@@ -255,21 +182,21 @@ export const createCommand = new Command()
             name: 'selectedTeepodId',
             message: 'Select a TEEPod:',
             choices: teepods.map(pod => ({
-              name: `${pod.name} (${pod.status})`,
-              value: pod.id
+              name: `${pod.name}`,
+              value: pod.teepod_id
             }))
           }
         ]);
 
         // Find the selected TEEPod
-        const selectedTeepod = teepods.find(pod => pod.id === selectedTeepodId);
+        const selectedTeepod = teepods.find(pod => pod.teepod_id === selectedTeepodId);
         if (!selectedTeepod) {
           logger.error('Failed to find selected TEEPod');
           process.exit(1);
         }
 
         logger.info(`Selected TEEPod: ${selectedTeepod.name}`);
-        options.teepodId = selectedTeepod.id;
+        options.teepodId = selectedTeepod.teepod_id;
       }
 
       if (!options.image) {

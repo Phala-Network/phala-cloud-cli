@@ -12,9 +12,13 @@ export const DOCKER_HUB_API_URL = 'https://hub.docker.com/v2';
 export const TEE_SIMULATOR = 'phalanetwork/tappd-simulator:latest';
 
 // Default resource configurations
-export const DEFAULT_VCPU = 1;
-export const DEFAULT_MEMORY = 2048; // MB
-export const DEFAULT_DISK_SIZE = 20; // GB
+export const DEFAULT_VCPU = 2;
+export const DEFAULT_MEMORY = 4096; // MB
+export const DEFAULT_DISK_SIZE = 40; // GB
+
+// Default TEEPod ID
+export const DEFAULT_TEEPOD_ID = '3';
+export const DEFAULT_IMAGE = 'dstack-0.3.5';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -22,7 +26,7 @@ export const API_ENDPOINTS = {
   USER_INFO: '/api/v1/auth/me',
 
   // TEEPods
-  TEEPODS: '/api/v1/teepods?enabled=true',
+  TEEPODS: '/api/v1/teepods/available',
   TEEPOD_IMAGES: (teepodId: string) => `/api/v1/teepods/${teepodId}/images`,
   
   // CVMs

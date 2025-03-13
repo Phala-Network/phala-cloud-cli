@@ -1,16 +1,17 @@
 import { apiClient } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
-import { TEEPod, Image, teepodSchema, imageSchema } from './types';
+import { TEEPod, Image, teepodSchema, imageSchema, TeepodResponse, teepodResponseSchema } from './types';
 import { z } from 'zod';
 
 /**
- * Get all TEEPods
- * @returns List of TEEPods
+ * Get all TEEPods with their images
+ * @returns List of TEEPods with embedded images
  */
 export async function getTeepods(): Promise<TEEPod[]> {
   try {
-    const response = await apiClient.get<TEEPod[]>(API_ENDPOINTS.TEEPODS);
-    return z.array(teepodSchema).parse(response);
+    const response = await apiClient.get<TeepodResponse>(API_ENDPOINTS.TEEPODS);
+    const parsedResponse = teepodResponseSchema.parse(response);
+    return parsedResponse.nodes;
   } catch (error) {
     throw new Error(`Failed to get TEEPods: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -18,11 +19,24 @@ export async function getTeepods(): Promise<TEEPod[]> {
 
 /**
  * Get images for a TEEPod
+ * This function is maintained for backwards compatibility.
+ * Images are now included directly in the TEEPod response.
+ * 
  * @param teepodId TEEPod ID
- * @returns List of images
+ * @returns List of images for the TEEPod
  */
 export async function getTeepodImages(teepodId: string): Promise<Image[]> {
   try {
+    // First try to get TEEPod with embedded images
+    const teepods = await getTeepods();
+    const teepod = teepods.find(pod => pod.teepod_id === Number(teepodId));
+    
+    // If we found the TEEPod and it has images, return them
+    if (teepod && teepod.images && teepod.images.length > 0) {
+      return teepod.images;
+    }
+    
+    // Fallback to the original implementation
     const response = await apiClient.get<Image[]>(API_ENDPOINTS.TEEPOD_IMAGES(teepodId));
     return z.array(imageSchema).parse(response);
   } catch (error) {

@@ -393,7 +393,7 @@ export class DockerService {
    * @param image Simulator image
    * @returns Success status
    */
-  async runSimulator(image: string): Promise<boolean> {
+  async runSimulator(image: string, port: string): Promise<boolean> {
     try {
       logger.info(`Running TEE simulator with image ${image}`);
 
@@ -401,7 +401,7 @@ export class DockerService {
       await execAsync(`docker pull ${image}`);
 
       logger.info('Starting simulator in background...');
-      const { stdout } = await execAsync(`docker run -d --name tee-simulator --rm -p 8090:8090 ${image}`);
+      const { stdout } = await execAsync(`docker run -d --name tee-simulator --rm -p ${port}:${port} ${image}`);
       const containerId = stdout.trim();
 
       logger.success(`TEE simulator running successfully. Container ID: ${containerId}`);

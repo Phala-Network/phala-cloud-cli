@@ -162,17 +162,47 @@ export const encryptedEnvItemSchema = z.object({
   value: z.string()
 });
 
-// TEEPod Schema
-export const teepodSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  status: z.string()
-});
-
 // Image Schema
 export const imageSchema = z.object({
   name: z.string(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  version: z.array(z.number()).optional(),
+  is_dev: z.boolean().optional(),
+  rootfs_hash: z.string().optional(),
+  shared_ro: z.boolean().optional(),
+  cmdline: z.string().optional(),
+  kernel: z.string().optional(),
+  initrd: z.string().optional(),
+  hda: z.string().nullable().optional(),
+  rootfs: z.string().optional(),
+  bios: z.string().optional()
+});
+
+// TEEPod Schema with extended properties
+export const teepodSchema = z.object({
+  teepod_id: z.number(),
+  name: z.string(),
+  listed: z.boolean(),
+  resource_score: z.number(),
+  remaining_vcpu: z.number(),
+  remaining_memory: z.number(),
+  remaining_cvm_slots: z.number(),
+  images: z.array(imageSchema).optional()
+});
+
+// Capacity Schema
+export const capacitySchema = z.object({
+  max_instances: z.number().nullable(),
+  max_vcpu: z.number().nullable(),
+  max_memory: z.number().nullable(),
+  max_disk: z.number().nullable()
+});
+
+// TeepodResponse Schema
+export const teepodResponseSchema = z.object({
+  tier: z.string(),
+  capacity: capacitySchema,
+  nodes: z.array(teepodSchema)
 });
 
 // Type exports
@@ -192,3 +222,5 @@ export type UpgradeCvmResponse = z.infer<typeof upgradeCvmResponseSchema>;
 export type EncryptedEnvItem = z.infer<typeof encryptedEnvItemSchema>;
 export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
+export type Capacity = z.infer<typeof capacitySchema>;
+export type TeepodResponse = z.infer<typeof teepodResponseSchema>;

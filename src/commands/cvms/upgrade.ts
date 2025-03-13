@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { upgradeCvm, getCvmByAppId, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'fs';
-import { promptForFile } from '@/src/utils/prompts';
+import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
@@ -35,15 +35,15 @@ export const upgradeCommand = new Command()
         process.exit(1);
       }
       
-      // Prepare upgrade payload
-      const upgradePayload: any = {};
-
       // If compose path not provided, prompt with examples
       if (!options.compose) {
-          options.compose = await promptForFile(
-            'Enter the path to your Docker Compose file:',
-            'docker-compose.yml',
-            'file'
+        const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
+        const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
+        
+        options.compose = await promptForFile(
+          'Enter the path to your Docker Compose file:',
+          composeFileName,
+          'file'
         );
       }
       

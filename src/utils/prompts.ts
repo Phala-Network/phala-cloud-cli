@@ -1,6 +1,7 @@
 import inquirer from 'inquirer';
 import fs from 'fs';
 import path from 'path';
+import { logger } from './logger';
 
 /**
  * Validates that a file exists at the given path
@@ -51,4 +52,22 @@ export async function promptForFile(
   ]);
 
   return response[name];
-} 
+}
+
+export function detectFileInCurrentDir(
+  possibleFiles: string[],
+  logMessage?: string
+): string | undefined {
+  for (const file of possibleFiles) {
+    const filePath = path.join(process.cwd(), file);
+    if (fs.existsSync(filePath)) {
+      if (logMessage) {
+        logger.info(logMessage.replace('{path}', filePath));
+      } else {
+        logger.info(`File detected: ${filePath}`);
+      }
+      return file;
+    }
+  }
+  return undefined;
+}

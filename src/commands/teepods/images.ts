@@ -29,8 +29,8 @@ export const imagesCommand = new Command()
             name: 'selectedTeepodId',
             message: 'Select a TEEPod:',
             choices: teepods.map(pod => ({
-              name: `${pod.name} (${pod.status})`,
-              value: pod.id
+              name: `${pod.name}`,
+              value: pod.teepod_id
             }))
           }
         ]);

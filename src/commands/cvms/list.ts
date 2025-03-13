@@ -28,7 +28,7 @@ export const listCommand = new Command()
       
       cvms.forEach((cvm) => {
         logger.keyValueTable({
-          'App ID': cvm.hosted.app_id,
+          'App ID': `app_${cvm.hosted.app_id}`,
           'Name': cvm.name,
           'Status': cvm.status,
           'Node Info URL': cvm.hosted.app_url,

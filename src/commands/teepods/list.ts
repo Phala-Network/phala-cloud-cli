@@ -4,6 +4,7 @@ import { logger } from '@/src/utils/logger';
 
 export const listCommand = new Command()
   .name('list')
+  .alias('ls')
   .description('List available TEEPods')
   .action(async () => {
     try {
@@ -19,7 +20,7 @@ export const listCommand = new Command()
       }
       
       logger.info('Available TEEPods:');
-      logger.table(teepods, ['id', 'name', 'status']);
+      logger.table(teepods, ['teepod_id', 'name']);
     } catch (error) {
       logger.error(`Failed to list TEEPods: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

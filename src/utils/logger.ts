@@ -130,8 +130,6 @@ export const logger = {
   ) => {
     // Default options
     const defaultOptions = {
-      keyHeader: 'Property',
-      valueHeader: 'Value',
       borderStyle: 'rounded' as const,
       enableTextWrapping: true,
       maxDepth: 2,
@@ -189,7 +187,7 @@ export const logger = {
     };
 
     const mergedOptions = { ...defaultOptions, ...options };
-    const { include, exclude, keyFormatter, valueFormatter, formatKeys, keyHeader, valueHeader, keyWidth, valueWidth, borderStyle, enableTextWrapping, maxDepth } = mergedOptions;
+    const { include, exclude, keyFormatter, valueFormatter, formatKeys, keyWidth, valueWidth, borderStyle, enableTextWrapping, maxDepth } = mergedOptions;
 
     // Extract keys based on include/exclude
     let keys = Object.keys(data);
@@ -252,7 +250,6 @@ export const logger = {
     if (!finalKeyWidth) {
       // Calculate key column width based on content
       finalKeyWidth = Math.max(
-        keyHeader.length,
         ...tableData.map(item => item.key.length),
         10 // Minimum key width
       );
@@ -271,11 +268,9 @@ export const logger = {
 
     // Header row
     const topBorder = `${border.topLeft}${border.horizontal.repeat(finalKeyWidth + 2)}${border.topT}${border.horizontal.repeat(finalValueWidth + 2)}${border.topRight}`;
-    const headerRow = `${border.vertical} ${chalk.bold(keyHeader.padEnd(finalKeyWidth))} ${border.vertical} ${chalk.bold(valueHeader.padEnd(finalValueWidth))} ${border.vertical}`;
     const headerSeparator = `${border.leftT}${border.horizontal.repeat(finalKeyWidth + 2)}${border.cross}${border.horizontal.repeat(finalValueWidth + 2)}${border.rightT}`;
     
     console.log(topBorder);
-    console.log(headerRow);
     console.log(headerSeparator);
     
     // Data rows
@@ -485,25 +480,6 @@ export function calculateColumnWidths<T>(
   return initialWidths;
 }
 
-// Example usage:
-/**
- * Example of how to use the calculateColumnWidths function
- * @param data Array of objects with name, status, appId, and appUrl properties
- * @returns Object with calculated column widths
- */
-export function calculateTableWidths(data: { name: string; status: string; appId: string; appUrl: string }[]): { [key: string]: number } {
-  return calculateColumnWidths(
-    data,
-    [
-      { key: 'name', header: 'Name', minWidth: 10 },
-      { key: 'status', header: 'Status', minWidth: 6 },
-      { key: 'appId', header: 'App ID', minWidth: 8, weight: 1 },
-      { key: 'appUrl', header: 'App URL', minWidth: 7, weight: 2 }
-    ],
-    { borderChars: 3, additionalBorderWidth: 1 }
-  );
-}
-
 /**
  * Example of how to use calculateColumnWidths with nested objects
  * @param data Array of objects with nested properties
@@ -616,8 +592,8 @@ export function formatTable<T>(
     // Replace data and columns
     data = keyValueData as unknown as T[];
     options.columns = [
-      { key: 'key' as keyof T, header: 'Property', minWidth: 15 },
-      { key: 'value' as keyof T, header: 'Value', minWidth: 20 }
+      { key: 'key' as keyof T, minWidth: 15 },
+      { key: 'value' as keyof T, minWidth: 20 }
     ];
   }
 
