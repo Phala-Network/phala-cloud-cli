@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { upgradeCvm, getCvmByAppId, selectCvm } from '@/src/api/cvms';
+import { upgradeCvm, getCvmByAppId, selectCvm, checkCvmExists } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'fs';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
@@ -24,6 +24,8 @@ export const upgradeCommand = new Command()
           return;
         }
         appId = selectedCvm;
+      } else {
+        appId = await checkCvmExists(appId);
       }
 
       // Get current CVM configuration

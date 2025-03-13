@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { stopCvm, selectCvm } from '@/src/api/cvms';
+import { stopCvm, selectCvm, checkCvmExists } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 
 export const stopCommand = new Command()
@@ -14,6 +14,8 @@ export const stopCommand = new Command()
         if (!appId) {
           return; // No CVMs found or user canceled
         }
+      } else {
+        appId = await checkCvmExists(appId);
       }
       
       const spinner = logger.startSpinner(`Stopping CVM with App ID ${appId}`);

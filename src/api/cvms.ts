@@ -1,5 +1,6 @@
 import { apiClient } from './client';
-import { API_ENDPOINTS } from '../utils/constants';
+import { API_ENDPOINTS } from '@/src/utils/constants';
+import { logger } from '@/src/utils/logger';
 import {
   CvmInstance,
   GetCvmByAppIdResponse,
@@ -12,6 +13,7 @@ import {
   createCvmResponseSchema,
   upgradeCvmResponseSchema
 } from './types';
+import inquirer from 'inquirer';
 import { z } from 'zod';
 
 /**
@@ -24,6 +26,23 @@ export async function getCvms(): Promise<CvmInstance[]> {
     return z.array(cvmInstanceSchema).parse(response);
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Check CVM exists for the current user and appId
+ * @param appId App ID
+ * @returns CVM details or null if it doesn't exist
+ */
+export async function checkCvmExists(appId: string): Promise<any> {
+  const cvms = await getCvms();
+  const cvm = cvms.find(cvm => (cvm.hosted?.app_id === appId || `app_${cvm.hosted?.app_id}` === appId));
+  if (!cvm) {
+    logger.error(`CVM with App ID ${appId} not detected`);
+    process.exit(1);
+  } else {
+    logger.success(`CVM with App ID ${appId} detected`);
+    return cvm.hosted?.app_id;
   }
 }
 
@@ -66,8 +85,8 @@ export async function createCvm(vmConfig: any): Promise<CreateCvmResponse> {
     return createCvmResponseSchema.parse(response);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Schema validation error:', JSON.stringify(error.errors, null, 2));
-      console.error('API response:', JSON.stringify(error.format(), null, 2));
+      logger.error('Schema validation error:', JSON.stringify(error.errors, null, 2));
+      logger.error('API response:', JSON.stringify(error.format(), null, 2));
       throw new Error(`Response validation failed: ${JSON.stringify(error.errors)}`);
     }
     throw new Error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -164,9 +183,6 @@ export async function updateCvm(updatePayload: any): Promise<any> {
  * @returns The selected CVM app ID or undefined if no CVMs exist
  */
 export async function selectCvm(): Promise<string | undefined> {
-  const { logger } = await import('../utils/logger');
-  const inquirer = (await import('inquirer')).default;
-  
   const listSpinner = logger.startSpinner('Fetching available CVMs');
   const cvms = await getCvms();
   listSpinner.stop(true);

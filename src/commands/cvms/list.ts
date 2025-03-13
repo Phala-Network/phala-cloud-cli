@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { getCvms } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import { CLOUD_URL } from '@/src/utils/constants';
+import chalk from 'chalk';
 
 export const listCommand = new Command()
   .name('list')
@@ -30,7 +31,7 @@ export const listCommand = new Command()
         logger.keyValueTable({
           'App ID': `app_${cvm.hosted.app_id}`,
           'Name': cvm.name,
-          'Status': cvm.status,
+          'Status': (cvm.status === 'running') ? chalk.green(cvm.status) : (cvm.status === 'stopped') ? chalk.red(cvm.status) : chalk.yellow(cvm.status),
           'Node Info URL': cvm.hosted.app_url,
           'App URL': `${CLOUD_URL}/dashboard/cvms/app_${cvm.hosted.app_id}`
         });

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getCvmAttestation, selectCvm } from '@/src/api/cvms';
+import { checkCvmExists, getCvmAttestation, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import chalk from 'chalk';
 
@@ -17,6 +17,8 @@ export const attestationCommand = new Command()
           return;
         }
         appId = selectedCvm;
+      } else {
+        appId = await checkCvmExists(appId);
       }
 
       logger.info(`Fetching attestation information for CVM ${appId}...`);
@@ -33,7 +35,7 @@ export const attestationCommand = new Command()
 
         // If JSON output is requested, just print the raw response
         if (options?.json) {
-          console.log(JSON.stringify(attestationData, null, 2));
+          logger.info(JSON.stringify(attestationData, null, 2));
           return;
         }
 

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { restartCvm, selectCvm } from '@/src/api/cvms';
+import { checkCvmExists, restartCvm, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 
 export const restartCommand = new Command()
@@ -14,6 +14,8 @@ export const restartCommand = new Command()
         if (!appId) {
           return; // No CVMs found or user canceled
         }
+      } else {
+        appId = await checkCvmExists(appId);
       }
       
       const spinner = logger.startSpinner(`Restarting CVM with App ID ${appId}`);

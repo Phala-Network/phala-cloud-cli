@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { deleteCvm, selectCvm } from '@/src/api/cvms';
+import { checkCvmExists, deleteCvm, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import inquirer from 'inquirer';
 
@@ -16,6 +16,8 @@ export const deleteCommand = new Command()
         if (!appId) {
           return; // No CVMs found or user canceled
         }
+      } else {
+        appId = await checkCvmExists(appId);
       }
       
       // Confirm deletion unless force option is used

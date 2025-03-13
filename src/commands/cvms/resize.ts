@@ -1,7 +1,8 @@
 import { Command } from 'commander';
-import { getCvmByAppId, resizeCvm, selectCvm } from '@/src/api/cvms';
+import { checkCvmExists, getCvmByAppId, resizeCvm, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import inquirer from 'inquirer';
+import chalk from 'chalk';
 
 export const resizeCommand = new Command()
   .name('resize')
@@ -21,6 +22,8 @@ export const resizeCommand = new Command()
           logger.info('No CVMs found or selection cancelled');
           return;
         }
+      } else {
+        appId = await checkCvmExists(appId);
       }
 
       const cvm = await getCvmByAppId(appId);
@@ -109,10 +112,10 @@ export const resizeCommand = new Command()
       // Prepare confirmation message
       let confirmMessage = `Are you sure you want to resize CVM ${appId} with the following changes:\n`;
       logger.keyValueTable(
-        { 'vCPUs': cvm.vcpu !== vcpu ? `${cvm.vcpu} -> ${vcpu}` : cvm.vcpu,
-         'Memory': cvm.memory !== memory ? `${cvm.memory} MB -> ${memory} MB` : cvm.memory,
-         'Disk Size': cvm.disk_size !== diskSize ? `${cvm.disk_size} GB -> ${diskSize} GB` : cvm.disk_size,
-         'Allow Restart': allowRestart ? 'Yes' : 'No' }
+        { 'vCPUs': cvm.vcpu !== vcpu ? `${chalk.red(cvm.vcpu)} -> ${chalk.green(vcpu)}` : cvm.vcpu,
+         'Memory': cvm.memory !== memory ? `${chalk.red(cvm.memory)} MB -> ${chalk.green(memory)} MB` : cvm.memory,
+         'Disk Size': cvm.disk_size !== diskSize ? `${chalk.red(cvm.disk_size)} GB -> ${chalk.green(diskSize)} GB` : cvm.disk_size,
+         'Allow Restart': allowRestart ? chalk.green('Yes') : chalk.red('No') }
       );
       
       // Confirm the resize operation

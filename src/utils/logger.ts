@@ -1,6 +1,29 @@
 import chalk from "chalk"
 
 /**
+ * Strips ANSI color escape sequences from a string to get its visible length
+ * @param str String that may contain ANSI color codes
+ * @returns String with all ANSI color codes removed
+ */
+function stripAnsi(str: string): string {
+  // ANSI escape sequence regex pattern
+  const pattern = [
+    '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
+    '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))'
+  ].join('|');
+  return str.replace(new RegExp(pattern, 'g'), '');
+}
+
+/**
+ * Gets the visible length of a string, ignoring ANSI color codes
+ * @param str String that may contain ANSI color codes
+ * @returns Visible length of the string
+ */
+function getVisibleLength(str: string): number {
+  return stripAnsi(str).length;
+}
+
+/**
  * Wraps text to fit within a specified width
  * @param text Text to wrap
  * @param maxWidth Maximum width for the text
@@ -10,34 +33,46 @@ function wrapText(text: string, maxWidth: number): string[] {
   if (!text) return [''];
   
   // Handle case where a single word is longer than maxWidth
-  if (text.length <= maxWidth) return [text];
+  if (getVisibleLength(text) <= maxWidth) return [text];
   
   const lines: string[] = [];
   let currentLine = '';
+  let currentLineVisibleLength = 0;
   
   // Split by any whitespace and preserve URLs
   const words = text.split(/(\s+)/).filter(word => word.trim().length > 0);
   
   for (const word of words) {
+    const wordVisibleLength = getVisibleLength(word);
+    
     // If the word itself is longer than maxWidth, split it
-    if (word.length > maxWidth) {
+    if (wordVisibleLength > maxWidth) {
       if (currentLine) {
         lines.push(currentLine);
         currentLine = '';
+        currentLineVisibleLength = 0;
       }
-      for (let i = 0; i < word.length; i += maxWidth) {
-        lines.push(word.slice(i, i + maxWidth));
-      }
+      
+      // This is a simplification as it's complex to split words with color codes
+      // For long colored words, we'll just add them as-is
+      lines.push(word);
       continue;
     }
     
     // If adding the word would exceed maxWidth
-    if (currentLine.length + word.length + 1 > maxWidth) {
+    if (currentLineVisibleLength + wordVisibleLength + (currentLineVisibleLength > 0 ? 1 : 0) > maxWidth) {
       lines.push(currentLine);
       currentLine = word;
+      currentLineVisibleLength = wordVisibleLength;
     } else {
       // Add word to current line
-      currentLine = currentLine ? `${currentLine} ${word}` : word;
+      if (currentLine) {
+        currentLine = `${currentLine} ${word}`;
+        currentLineVisibleLength += wordVisibleLength + 1; // +1 for space
+      } else {
+        currentLine = word;
+        currentLineVisibleLength = wordVisibleLength;
+      }
     }
   }
   
@@ -242,25 +277,36 @@ export const logger = {
       };
     });
 
-    // Calculate column widths
+    // Calculate column widths based on content
     const terminalWidth = getTerminalWidth();
     let finalKeyWidth = keyWidth;
     let finalValueWidth = valueWidth;
     
+    // Calculate key column width based on content if not specified
     if (!finalKeyWidth) {
-      // Calculate key column width based on content
       finalKeyWidth = Math.max(
-        ...tableData.map(item => item.key.length),
+        ...tableData.map(item => getVisibleLength(item.key)),
         10 // Minimum key width
       );
       // Limit to 1/3 of terminal width
       finalKeyWidth = Math.min(finalKeyWidth, Math.floor(terminalWidth / 3));
     }
     
+    // Calculate value column width based on content if not specified
     if (!finalValueWidth) {
-      // Calculate value column width
+      // Calculate based on actual content lengths
+      finalValueWidth = Math.max(
+        ...tableData.map(item => getVisibleLength(item.value)),
+        10 // Minimum value width
+      );
+      
+      // Add some padding for readability (3 chars)
+      finalValueWidth += 3;
+      
+      // Ensure we don't exceed terminal width
       const borderChars = 7; // Typical border chars count
-      finalValueWidth = terminalWidth - finalKeyWidth - borderChars;
+      const maxValueWidth = terminalWidth - finalKeyWidth - borderChars;
+      finalValueWidth = Math.min(finalValueWidth, maxValueWidth);
     }
 
     // Configure border characters based on style
@@ -281,8 +327,13 @@ export const logger = {
       const maxLines = Math.max(keyLines.length, valueLines.length);
       
       for (let i = 0; i < maxLines; i++) {
-        const keyContent = (keyLines[i] || '').padEnd(finalKeyWidth);
-        const valueContent = (valueLines[i] || '').padEnd(finalValueWidth);
+        const keyLine = keyLines[i] || '';
+        const valueLine = valueLines[i] || '';
+        
+        // Pad with spaces to align columns, accounting for invisible ANSI characters
+        const keyContent = keyLine + ' '.repeat(Math.max(0, finalKeyWidth - getVisibleLength(keyLine)));
+        const valueContent = valueLine + ' '.repeat(Math.max(0, finalValueWidth - getVisibleLength(valueLine)));
+        
         console.log(`${border.vertical} ${keyContent} ${border.vertical} ${valueContent} ${border.vertical}`);
       }
       
