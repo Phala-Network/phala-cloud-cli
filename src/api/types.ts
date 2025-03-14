@@ -82,11 +82,11 @@ export const createCvmResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   status: z.string(),
-  teepod_id: z.number(),
+  teepod_id: z.number().nullable(),
   teepod: z.object({
     id: z.number(),
     name: z.string()
-  }),
+  }).nullable(),
   user_id: z.number(),
   app_id: z.string(),
   vm_uuid: z.string().nullable(),
@@ -114,11 +114,11 @@ export const getPubkeyFromCvmResponseSchema = z.object({
 // Get CVM By App ID Response Schema
 export const getCvmByAppIdResponseSchema = z.object({
   id: z.number(),
-  teepod_id: z.number(),
+  teepod_id: z.number().nullable(),
   teepod: z.object({
     id: z.number(),
     name: z.string()
-  }),
+  }).nullable(),
   name: z.string(),
   status: z.string(),
   in_progress: z.boolean(),
@@ -180,7 +180,7 @@ export const imageSchema = z.object({
 
 // TEEPod Schema with extended properties
 export const teepodSchema = z.object({
-  teepod_id: z.number(),
+  teepod_id: z.number().nullable(),
   name: z.string(),
   listed: z.boolean(),
   resource_score: z.number(),

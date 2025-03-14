@@ -53,20 +53,10 @@ ___
    > npx phala help
    > bunx phala help
    > ```
-
-   or clone source
    
    ```bash
-   # Clone the repository
-   git clone --recurse-submodules https://github.com/Phala-Network/phala-cloud-cli.git
-   cd phala-cloud-cli
-
-   # Install and build
-   bun install
-   bun run build
-
    # Phala CLI help menu
-   phala help
+   npx phala help
    ```
 
 3. **Sign Up and Get API Key**:
@@ -106,12 +96,6 @@ ___
    #   ✔ Enter memory in MB (default: 2048): 2048
    #   ✔ Enter disk size in GB (default: 20): 20
    #   ⟳ Fetching available TEEPods... ✓
-   #   ? Select a TEEPod: (Use arrow keys)
-   #   ❯ prod5 (online)
-   #   prod2 (online)
-   #   ℹ Selected TEEPod: prod5
-
-   #   ✔ Select an image: dstack-dev-0.3.5
    #   ⟳ Getting public key from CVM... ✓
    #   ⟳ Encrypting environment variables... ✓
    #   ⟳ Creating CVM... ✓
@@ -160,11 +144,6 @@ phala docker build --image my-tee-app --tag v1.0.0
 # Create an environment file
 echo "API_KEY=test-key" > .env
 echo "DEBUG=true" >> .env
-
-# Generate and run Docker Compose
-phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
-phala docker run -c ./phala-compose.yaml -e ./.env
-
 ```
 
 ### 2️⃣ Cloud Deployment
@@ -298,21 +277,6 @@ List all available TEEPods on Phala Cloud.
 phala teepods list
 ```
 
-#### List TEEPod Images
-
-```bash
-phala teepods images [options]
-```
-
-List available images for a specific TEEPod.
-
-**Options:**
-- `-t, --teepod-id <teepodId>`: TEEPod ID (required)
-
-**Example:**
-```bash
-phala teepods images --teepod-id 2
-```
 
 ### Docker Management Commands
 
@@ -372,58 +336,26 @@ Push a Docker image to Docker Hub.
 phala docker push --image my-tee-app --tag v1.0.0
 ```
 
-#### List Docker Image Tags
-
-```bash
-phala docker tags [options]
-```
-
-List all tags for a Docker image on Docker Hub.
-
-**Options:**
-- `-i, --image <image>`: Image name (required)
-- `-j, --json`: Output in JSON format
-
-**Example:**
-```bash
-phala docker tags --image my-tee-app
-```
-
 #### Build Docker Compose File
 
 ```bash
-phala docker build-compose [options]
+phala docker generate [options]
 ```
 
 Build a Docker Compose file for your TEE application.
 
 **Options:**
-- `-i, --image <image>`: Image name (required)
-- `-t, --tag <tag>`: Image tag (required)
-- `-u, --username <username>`: Docker Hub username
-- `-e, --env-file <envFile>`: Path to environment file
-- `-v, --version <version>`: Template version to use (basic, eliza-v1, eliza-v2)
+- -i, --image <image>       Docker image name to use in the compose file
+- -t, --tag <tag>           Docker image tag to use in the compose file
+- -e, --env-file <envFile>  Path to environment variables file
+- -o, --output <output>     Output path for generated docker-compose.yml
+- --template <template>     Template to use for the generated docker-compose.yml
+- --manual                  Skip automatic image detection and enter image/tag manually
+- -h, --help                display help for command
 
 **Example:**
 ```bash
-phala docker build-compose --image my-tee-app --tag v1.0.0 --env-file ./.env
-```
-
-#### Run Local Docker Compose
-
-```bash
-phala docker run [options]
-```
-
-Run a Docker Compose file locally for testing.
-
-**Options:**
-- `-c, --compose <compose>`: Path to Docker Compose file
-- `-e, --env-file <envFile>`: Path to environment file
-
-**Example:**
-```bash
-phala docker run --compose ./tee-compose.yaml --env-file ./.env
+phala docker generate --image my-tee-app --tag v1.0.0 --env-file ./.env
 ```
 
 ### TEE Simulator Commands
@@ -460,63 +392,6 @@ Stop the running TEE simulator.
 phala simulator stop
 ```
 
-### Configuration Commands
-
-Commands for managing CLI configuration settings.
-
-#### Get Configuration Value
-
-```bash
-phala config get <key>
-```
-
-Get a specific configuration value.
-
-**Arguments:**
-- `key`: Configuration key to retrieve
-
-**Example:**
-```bash
-phala config get apiUrl
-```
-
-#### Set Configuration Value
-
-```bash
-phala config set <key> <value>
-```
-
-Set a configuration value.
-
-**Arguments:**
-- `key`: Configuration key to set
-- `value`: Value to set (can be a string, number, boolean, or JSON)
-
-**Example:**
-```bash
-phala config set defaultVcpu 2
-phala config set apiUrl "https://custom-api.phala.cloud"
-phala config set debug true
-phala config set customConfig '{"key": "value", "nested": {"array": [1, 2, 3]}}'
-```
-
-#### List Configuration Values
-
-```bash
-phala config list [options]
-```
-
-List all configuration values.
-
-**Options:**
-- `-j, --json`: Output in JSON format
-
-**Example:**
-```bash
-phala config list
-phala config list --json
-```
-
 ### Cloud Virtual Machine (CVM) Commands
 
 Commands for managing Cloud Virtual Machines (CVMs) on Phala Cloud.
@@ -524,7 +399,7 @@ Commands for managing Cloud Virtual Machines (CVMs) on Phala Cloud.
 #### List CVMs
 
 ```bash
-phala cvms list [options]
+phala cvms list|ls [options]
 ```
 
 List all CVMs associated with your account.
@@ -605,7 +480,7 @@ phala cvms upgrade app_123456 --compose ./new-docker-compose.yml --env-file ./.e
 #### Start CVM
 
 ```bash
-phala cvms start <app-id>
+phala cvms start [app-id]
 ```
 
 Start a stopped CVM.
@@ -621,7 +496,7 @@ phala cvms start e15c1a29a9dfb522da528464a8d5ce40ac28039f
 #### Stop CVM
 
 ```bash
-phala cvms stop <app-id>
+phala cvms stop [app-id]
 ```
 
 Stop a running CVM.
@@ -637,7 +512,7 @@ phala cvms stop e15c1a29a9dfb522da528464a8d5ce40ac28039f
 #### Restart CVM
 
 ```bash
-phala cvms restart <app-id>
+phala cvms restart [app-id]
 ```
 
 Restart a CVM.

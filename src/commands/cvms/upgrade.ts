@@ -29,12 +29,12 @@ export const upgradeCommand = new Command()
       }
 
       // Get current CVM configuration
-      const spinner = logger.startSpinner(`Fetching current configuration for CVM ${appId}`);
+      const spinner = logger.startSpinner(`Fetching current configuration for CVM app_${appId}`);
       const currentCvm = await getCvmByAppId(appId);
       spinner.stop(true);
       
       if (!currentCvm) {
-        logger.error(`CVM with App ID ${appId} not found`);
+        logger.error(`CVM with App ID app_${appId} not found`);
         process.exit(1);
       }
       
@@ -96,7 +96,7 @@ export const upgradeCommand = new Command()
       };
       
       // Upgrade the CVM
-      const upgradeSpinner = logger.startSpinner(`Upgrading CVM ${appId}`);
+      const upgradeSpinner = logger.startSpinner(`Upgrading CVM app_${appId}`);
       const response = await upgradeCvm(appId, vm_config);
       upgradeSpinner.stop(true);
       
@@ -105,7 +105,7 @@ export const upgradeCommand = new Command()
         process.exit(1);
       }
       
-      logger.success(`CVM ${appId} upgraded successfully`);
+      logger.success(`CVM app_${appId} upgraded successfully`);
       if (response.detail) {
         logger.info(`Details: ${response.detail}`);
       }

@@ -38,10 +38,10 @@ export async function checkCvmExists(appId: string): Promise<any> {
   const cvms = await getCvms();
   const cvm = cvms.find(cvm => (cvm.hosted?.app_id === appId || `app_${cvm.hosted?.app_id}` === appId));
   if (!cvm) {
-    logger.error(`CVM with App ID ${appId} not detected`);
+    logger.error(`CVM with App ID app_${appId} not detected`);
     process.exit(1);
   } else {
-    logger.success(`CVM with App ID ${appId} detected`);
+    logger.success(`CVM with App ID app_${appId} detected`);
     return cvm.hosted?.app_id;
   }
 }

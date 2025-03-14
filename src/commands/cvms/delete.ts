@@ -26,7 +26,7 @@ export const deleteCommand = new Command()
           {
             type: 'confirm',
             name: 'confirm',
-            message: `Are you sure you want to delete CVM with App ID ${appId}? This action cannot be undone.`,
+            message: `Are you sure you want to delete CVM with App ID app_${appId}? This action cannot be undone.`,
             default: false,
           },
         ]);
@@ -38,16 +38,16 @@ export const deleteCommand = new Command()
       }
       
       // Delete the CVM
-      const spinner = logger.startSpinner(`Deleting CVM ${appId}`);
+      const spinner = logger.startSpinner(`Deleting CVM app_${appId}`);
       const success = await deleteCvm(appId);
       spinner.stop(true);
       
       if (!success) {
-        logger.error(`Failed to delete CVM ${appId}`);
+        logger.error(`Failed to delete CVM app_${appId}`);
         process.exit(1);
       }
       
-      logger.success(`CVM ${appId} deleted successfully`);
+      logger.success(`CVM app_${appId} deleted successfully`);
     } catch (error) {
       logger.error(`Failed to delete CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

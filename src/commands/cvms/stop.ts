@@ -18,12 +18,12 @@ export const stopCommand = new Command()
         appId = await checkCvmExists(appId);
       }
       
-      const spinner = logger.startSpinner(`Stopping CVM with App ID ${appId}`);
+      const spinner = logger.startSpinner(`Stopping CVM with App ID app_${appId}`);
       
       await stopCvm(appId);
       
       spinner.stop(true);
-      logger.success(`CVM with App ID ${appId} stopped successfully`);
+      logger.success(`CVM with App ID app_${appId} stopped successfully`);
     } catch (error) {
       logger.error(`Failed to stop CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

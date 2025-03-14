@@ -18,12 +18,12 @@ export const restartCommand = new Command()
         appId = await checkCvmExists(appId);
       }
       
-      const spinner = logger.startSpinner(`Restarting CVM with App ID ${appId}`);
+      const spinner = logger.startSpinner(`Restarting CVM with App ID app_${appId}`);
       
       await restartCvm(appId);
       
       spinner.stop(true);
-      logger.success(`CVM with App ID ${appId} restarted successfully`);
+      logger.success(`CVM with App ID app_${appId} restarted successfully`);
     } catch (error) {
       logger.error(`Failed to restart CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

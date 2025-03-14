@@ -22,14 +22,14 @@ export const getCommand = new Command()
         appId = await checkCvmExists(appId);
       }
       
-      const spinner = logger.startSpinner(`Fetching CVM with App ID ${appId}`);
+      const spinner = logger.startSpinner(`Fetching CVM with App ID app_${appId}`);
       
       const cvm = await getCvmByAppId(appId);
       
       spinner.stop(true);
       
       if (!cvm) {
-        logger.error(`CVM with App ID ${appId} not found`);
+        logger.error(`CVM with App ID app_${appId} not found`);
         process.exit(1);
       }
       
@@ -47,7 +47,6 @@ export const getCommand = new Command()
         'Memory': `${cvm.memory} MB`,
         'Disk Size': `${cvm.disk_size} GB`,
         'Dstack Image': cvm.base_image,
-        'TEEPod ID': cvm.teepod_id,
         'App URL': `${CLOUD_URL}/dashboard/cvms/app_${cvm.app_id}`
       });
     } catch (error) {

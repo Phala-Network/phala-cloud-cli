@@ -21,7 +21,7 @@ export const attestationCommand = new Command()
         appId = await checkCvmExists(appId);
       }
 
-      logger.info(`Fetching attestation information for CVM ${appId}...`);
+      logger.info(`Fetching attestation information for CVM app_${appId}...`);
       const spinner = logger.startSpinner('Fetching attestation information');
 
       try {

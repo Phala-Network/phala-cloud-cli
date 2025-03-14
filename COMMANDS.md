@@ -23,19 +23,6 @@ Authenticate with Phala Cloud.
 
 - **`status`**: Check the current authentication status
 
-## TEEPod Management
-
-### `phala teepods`
-
-TEEPod management commands.
-
-#### Subcommands:
-
-- **`list`**: List available TEEPods
-  - Displays TEEPod ID, name, and status
-
-- **`images`**: List available TEEPod images
-
 ## Docker Management
 
 ### `phala docker`
@@ -55,17 +42,6 @@ Login to Docker Hub and manage Docker images.
 - **`push`**: Push a Docker image to Docker Hub
   - Options:
     - `-t, --tag <tag>`: Tag for the Docker image to push
-
-- **`tags`**: List available tags for a Docker image
-  - Options:
-    - `-n, --name <name>`: Docker image name
-
-- **`run`**: Run a Docker container locally
-  - Options:
-    - `-t, --tag <tag>`: Tag for the Docker image to run
-    - `-p, --port <port>`: Port mapping (host:container)
-    - `-v, --volume <volume>`: Volume mapping (host:container)
-    - `-e, --env <env>`: Environment variables
 
 - **`generate`**: Generate Docker configuration files
   - Options:
@@ -152,25 +128,6 @@ TEE simulator commands.
 
 - **`stop`**: Stop the TEE simulator
 
-## Configuration Commands
-
-### `phala config`
-
-Manage your local configuration.
-
-#### Subcommands:
-
-- **`get <key>`**: Get a configuration value
-  - Arguments:
-    - `key`: Configuration key to retrieve
-
-- **`set <key> <value>`**: Set a configuration value
-  - Arguments:
-    - `key`: Configuration key to set
-    - `value`: Value to set for the configuration key
-
-- **`list`**: List all configuration values
-
 ## Examples
 
 Here are some examples of how to use the Phala Cloud CLI:
@@ -191,6 +148,4 @@ phala cvms list
 # Start the TEE simulator
 phala simulator start
 
-# Set a configuration value
-phala config set api.url https://api.phala.network
 ```

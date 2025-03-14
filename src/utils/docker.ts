@@ -164,12 +164,12 @@ export class DockerService {
 
   /**
    * Push a Docker image to Docker Hub
-   * @param tag Tag for the image
+   * @param imageName Full image name (e.g. username/image:tag)
    * @returns Success status
    */
-  async pushImage(tag: string): Promise<boolean> {
+  async pushImage(imageName: string): Promise<boolean> {
     try {
-      const spinner = logger.startSpinner(`Pushing Docker image ${this.username}/${this.image}:${tag} to Docker Hub`);
+      const spinner = logger.startSpinner(`Pushing Docker image to Docker Hub`);
 
       // Check if user is logged in
       const credentials = await getDockerCredentials();
@@ -178,7 +178,7 @@ export class DockerService {
         throw new Error('Docker credentials not found. Please log in first with "phala docker login"');
       }
 
-      const fullImageName = `${this.username}/${this.image}:${tag}`;
+      const fullImageName = imageName;
       console.log(`Pushing image ${fullImageName} to Docker Hub...`);
 
       await this.spawnProcess('docker', ['push', fullImageName], 'push');
@@ -188,32 +188,6 @@ export class DockerService {
     } catch (error) {
       logger.error(`Failed to push Docker image: ${error instanceof Error ? error.message : String(error)}`);
       return false;
-    }
-  }
-
-  /**
-   * List tags for a Docker image
-   * @returns List of tags
-   */
-  async listTags(): Promise<string[]> {
-    try {
-      const spinner = logger.startSpinner(`Listing tags for ${this.username}/${this.image}`);
-
-      // Get tags from Docker Hub API
-      const response = await axios.get(`${DOCKER_HUB_API_URL}/repositories/${this.username}/${this.image}/tags`);
-
-      if (!response.data || !response.data.results) {
-        spinner.stop(false);
-        throw new Error('Failed to get tags from Docker Hub');
-      }
-
-      const tags = response.data.results.map((result: any) => result.name);
-
-      spinner.stop(true, `Found ${tags.length} tags`);
-      return tags;
-    } catch (error) {
-      logger.error(`Failed to list tags: ${error instanceof Error ? error.message : String(error)}`);
-      return [];
     }
   }
 
@@ -442,7 +416,7 @@ export class DockerService {
    * List local Docker images and their tags
    * @returns Array of objects with image name and tag
    */
-  static async listLocalImages(): Promise<Array<{ name: string, tag: string }>> {
+  static async listLocalImages(): Promise<Array<{ imageName: string}>> {
     try {
       // Query Docker for local images in format that outputs repository and tag
       const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}}"');
@@ -453,11 +427,8 @@ export class DockerService {
         .filter(line => line && !line.includes('<none>'))
         .filter(line => line.includes(`${username}/`))
         .map(line => {
-          const [repo, tag] = line.split(':');
-          // Separate username/image format if available
-          const nameParts = repo.split('/');
-          const name = nameParts.length > 1 ? nameParts[1] : repo;
-          return { name, tag };
+          const imageName = line;
+          return { imageName };
         });
 
       return imageList;

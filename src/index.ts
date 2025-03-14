@@ -2,10 +2,8 @@
 import { Command } from "commander"
 import { logo } from "./utils/banner"
 import { authCommands } from "./commands/auth"
-import { teepodsCommands } from "./commands/teepods"
 import { dockerCommands } from "./commands/docker"
 import { simulatorCommands } from "./commands/simulator"
-import { configCommands } from "./commands/config"
 import { logger } from "./utils/logger"
 import { cvmsCommand } from './commands/cvms'
 
@@ -21,8 +19,6 @@ async function main() {
     .addCommand(cvmsCommand)
     .addCommand(dockerCommands)
     .addCommand(simulatorCommands)
-    .addCommand(teepodsCommands)
-    // .addCommand(configCommands)
 
   program.parse(process.argv)
 }

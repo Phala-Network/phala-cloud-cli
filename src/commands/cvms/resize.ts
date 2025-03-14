@@ -110,7 +110,7 @@ export const resizeCommand = new Command()
       }
       
       // Prepare confirmation message
-      let confirmMessage = `Are you sure you want to resize CVM ${appId} with the following changes:\n`;
+      let confirmMessage = `Are you sure you want to resize CVM app_${appId} with the following changes:\n`;
       logger.keyValueTable(
         { 'vCPUs': cvm.vcpu !== vcpu ? `${chalk.red(cvm.vcpu)} -> ${chalk.green(vcpu)}` : cvm.vcpu,
          'Memory': cvm.memory !== memory ? `${chalk.red(cvm.memory)} MB -> ${chalk.green(memory)} MB` : cvm.memory,
@@ -135,7 +135,7 @@ export const resizeCommand = new Command()
         }
       }
       
-      const spinner = logger.startSpinner(`Resizing CVM with App ID ${appId}`);
+      const spinner = logger.startSpinner(`Resizing CVM with App ID app_${appId}`);
       
       // Convert boolean to number (0 or 1) as expected by the API
       const allowRestartValue = allowRestart ? 1 : 0;
@@ -143,7 +143,7 @@ export const resizeCommand = new Command()
       await resizeCvm(appId, vcpu, memory, diskSize, allowRestartValue);
       
       spinner.stop(true);
-      logger.success(`CVM with App ID ${appId} resized successfully`);
+      logger.success(`CVM with App ID app_${appId} resized successfully`);
     } catch (error) {
       logger.error(`Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
