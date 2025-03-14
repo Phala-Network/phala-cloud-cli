@@ -1,6 +1,8 @@
 import { Command } from 'commander';
 import { stopCvm, selectCvm, checkCvmExists } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
+import { resolveCvmAppId } from '@/src/utils/cvms';
+import { CLOUD_URL } from '@/src/utils/constants';
 
 export const stopCommand = new Command()
   .name('stop')
@@ -8,22 +10,31 @@ export const stopCommand = new Command()
   .argument('[app-id]', 'App ID of the CVM (if not provided, a selection prompt will appear)')
   .action(async (appId) => {
     try {
-      // If no app ID is provided, prompt user to select one
-      if (!appId) {
-        appId = await selectCvm();
-        if (!appId) {
-          return; // No CVMs found or user canceled
-        }
-      } else {
-        appId = await checkCvmExists(appId);
-      }
-      
-      const spinner = logger.startSpinner(`Stopping CVM with App ID app_${appId}`);
-      
-      await stopCvm(appId);
-      
+      const resolvedAppId = await resolveCvmAppId(appId);
+
+      const spinner = logger.startSpinner(
+        `Stopping CVM with App ID app_${resolvedAppId}`,
+      );
+
+      const response = await stopCvm(resolvedAppId);
+
       spinner.stop(true);
-      logger.success(`CVM with App ID app_${appId} stopped successfully`);
+      logger.break();
+
+      const tableData = {
+        'CVM ID': response.id,
+        'Name': response.name,
+        'Status': response.status,
+        'App ID': `app_${response.app_id}`,
+      };
+      logger.keyValueTable(tableData, {
+        borderStyle: 'rounded'
+      });
+
+      logger.break();
+      logger.success(
+        `Your CVM is being stopped. You can check the dashboard for more details:\n${CLOUD_URL}/dashboard/cvms/app_${response.app_id}`);
+      
     } catch (error) {
       logger.error(`Failed to stop CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

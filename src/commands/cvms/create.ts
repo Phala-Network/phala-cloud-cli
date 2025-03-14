@@ -284,20 +284,20 @@ export const createCommand = new Command()
       }
 
       logger.success('CVM created successfully');
-      logger.info(`CVM ID: ${response.id}`);
-      logger.info(`Name: ${response.name}`);
-      logger.info(`Status: ${response.status}`);
-      logger.info(`App ID: ${response.app_id}`);
-
-      if (response.app_url) {
-        logger.info(`App URL: ${response.app_url}`);
-      } else {
-        logger.info(`App URL: ${CLOUD_URL}/dashboard/cvms/app_${response.app_id}`);
-      }
+      logger.break();
+      const tableData = {
+        'CVM ID': response.id,
+        'Name': response.name,
+        'Status': response.status,
+        'App ID': `app_${response.app_id}`,
+        'App URL': response.app_url ? response.app_url : `${CLOUD_URL}/dashboard/cvms/app_${response.app_id}`,
+      };
+      logger.keyValueTable(tableData, {
+        borderStyle: 'rounded'
+      });
 
       logger.info('');
-      logger.info('Your CVM is being created. You can check its status with:');
-      logger.info(`phala cvms get ${response.app_id}`);
+      logger.success(`Your CVM is being created. You can check its status with:\nphala cvms get app_${response.app_id}`);
     } catch (error) {
       logger.error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

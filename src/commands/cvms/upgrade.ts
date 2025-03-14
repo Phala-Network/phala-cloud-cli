@@ -1,11 +1,13 @@
 import { Command } from 'commander';
 import { upgradeCvm, getCvmByAppId, selectCvm, checkCvmExists } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
-import fs from 'fs';
+import fs from 'node:fs';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
+import { resolveCvmAppId } from '@/src/utils/cvms';
+import { CLOUD_URL } from '@/src/utils/constants';
 
 export const upgradeCommand = new Command()
   .name('upgrade')
@@ -16,25 +18,15 @@ export const upgradeCommand = new Command()
   .option('--debug', 'Enable debug mode', false)
   .action(async (appId, options) => {
     try {
-      // If no app ID is provided, prompt user to select one
-      if (!appId) {
-        logger.info('No CVM specified, fetching available CVMs...');
-        const selectedCvm = await selectCvm();
-        if (!selectedCvm) {
-          return;
-        }
-        appId = selectedCvm;
-      } else {
-        appId = await checkCvmExists(appId);
-      }
+      const resolvedAppId = await resolveCvmAppId(appId);
 
       // Get current CVM configuration
-      const spinner = logger.startSpinner(`Fetching current configuration for CVM app_${appId}`);
-      const currentCvm = await getCvmByAppId(appId);
+      const spinner = logger.startSpinner(`Fetching current configuration for CVM app_${resolvedAppId}`);
+      const currentCvm = await getCvmByAppId(resolvedAppId);
       spinner.stop(true);
       
       if (!currentCvm) {
-        logger.error(`CVM with App ID app_${appId} not found`);
+        logger.error(`CVM with App ID app_${resolvedAppId} not found`);
         process.exit(1);
       }
       
@@ -89,26 +81,31 @@ export const upgradeCommand = new Command()
           runner: "docker-compose",
           version: "1.0.0",
           features: ["kms", "tproxy-net"],
-          name: `app_${options.appId}`,
+          name: `app_${resolvedAppId}`,
         },
         encrypted_env,
         allow_restart: true,
       };
       
       // Upgrade the CVM
-      const upgradeSpinner = logger.startSpinner(`Upgrading CVM app_${appId}`);
-      const response = await upgradeCvm(appId, vm_config);
-      upgradeSpinner.stop(true);
+      const upgradeSpinner = logger.startSpinner(`Upgrading CVM app_${resolvedAppId}`);
+      const response = await upgradeCvm(resolvedAppId, vm_config);
       
       if (!response) {
+        upgradeSpinner.stop(false);
         logger.error('Failed to upgrade CVM');
         process.exit(1);
       }
-      
-      logger.success(`CVM app_${appId} upgraded successfully`);
+      upgradeSpinner.stop(true);
+
       if (response.detail) {
         logger.info(`Details: ${response.detail}`);
       }
+
+      logger.break();
+      logger.success(
+        `Your CVM is being upgraded. You can check the dashboard for more details:\n${CLOUD_URL}/dashboard/cvms/app_${resolvedAppId}`
+      );
     } catch (error) {
       logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

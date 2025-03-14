@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { DockerService } from '../../utils/docker';
-import { getDockerCredentials } from '../../utils/credentials';
-import { logger } from '../../utils/logger';
+import { DockerService } from '@/src/utils/docker';
+import { getDockerCredentials } from '@/src/utils/credentials';
+import { logger } from '@/src/utils/logger';
 import inquirer from 'inquirer';
 
 export const pushCommand = new Command()
@@ -20,7 +20,7 @@ export const pushCommand = new Command()
 
       let imageName = options.image;
 
-      // If image or tag is not provided, list local images and prompt user to select
+      // If image name is not provided, list local images and prompt user to select
       if (!imageName) {
         const localImages = await DockerService.listLocalImages();
         
@@ -45,15 +45,15 @@ export const pushCommand = new Command()
           
           imageName = selectedImage;
         }
+      }
       
-        // Push the image
-        const dockerService = new DockerService(imageName, credentials.username, credentials.registry);
-        const success = await dockerService.pushImage(imageName);
-      
-        if (!success) {
-          logger.error('Failed to push Docker image');
-          process.exit(1);
-        }
+      // Push the image
+      const dockerService = new DockerService('', credentials.username, credentials.registry);
+      const success = await dockerService.pushImage(imageName);
+    
+      if (!success) {
+        logger.error('Failed to push Docker image');
+        process.exit(1);
       }
       
       logger.success(`Docker image ${imageName} pushed successfully`);

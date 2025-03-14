@@ -34,10 +34,10 @@ export const statusCommand = new Command()
           return;
         }
         
-        logger.success(`Authenticated as ${userInfo.username}`);
         logger.break();
+        logger.success(`Authenticated as ${userInfo.username}`);
         
-        // Create a simple object for console.table
+        // Create a simple object
         const tableData = {
           'Username': userInfo.username,
           'Email': userInfo.email,
@@ -51,7 +51,9 @@ export const statusCommand = new Command()
         }
         
         // Display the table
-        console.table(tableData);
+        logger.keyValueTable(tableData, {
+          borderStyle: 'rounded'
+        });
       } catch (error) {
         spinner.stop(false);
         logger.error('Authentication failed. Your API key may be invalid or expired.');

@@ -27,16 +27,24 @@ export const listCommand = new Command()
         return;
       }
       
-      cvms.forEach((cvm) => {
+      for (const cvm of cvms) {
         logger.keyValueTable({
-          'App ID': `app_${cvm.hosted.app_id}`,
-          'Name': cvm.name,
-          'Status': (cvm.status === 'running') ? chalk.green(cvm.status) : (cvm.status === 'stopped') ? chalk.red(cvm.status) : chalk.yellow(cvm.status),
-          'Node Info URL': cvm.hosted.app_url,
-          'App URL': `${CLOUD_URL}/dashboard/cvms/app_${cvm.hosted.app_id}`
+            Name: cvm.name,
+            "App ID": `app_${cvm.hosted.app_id}`,
+            Status:
+              cvm.status === "running"
+                ? chalk.green(cvm.status)
+                : cvm.status === "stopped"
+                  ? chalk.red(cvm.status)
+                  : chalk.yellow(cvm.status),
+            "Node Info URL": cvm.hosted.app_url,
+            "App URL": `${CLOUD_URL}/dashboard/cvms/app_${cvm.hosted.app_id}`,
         });
-      });
-      logger.success(`Found ${cvms.length} CVMs:`);
+        logger.break();
+      }
+      logger.success(`Found ${cvms.length} CVMs`);
+      logger.break();
+      logger.info(`Go to ${CLOUD_URL}/dashboard/ to view your CVMs`);
     } catch (error) {
       logger.error(`Failed to list CVMs: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

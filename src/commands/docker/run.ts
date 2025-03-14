@@ -2,8 +2,8 @@ import { Command } from 'commander';
 import { DockerService } from '../../utils/docker';
 import { logger } from '../../utils/logger';
 import inquirer from 'inquirer';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { validateFileExists } from '../../utils/prompts';
 
 export const runCommand = new Command()

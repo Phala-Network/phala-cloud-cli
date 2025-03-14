@@ -277,8 +277,8 @@ export class ZodDecimal extends ZodType<number, ZodDecimalDef, any> {
   }
 
   get isFinite() {
-    let max: number | null = null,
-      min: number | null = null;
+    let max: number | null = null;
+    let min: number | null = null;
     for (const ch of this._def.checks) {
       if (ch.kind === 'finite') {
         return true;

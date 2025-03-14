@@ -272,7 +272,7 @@ export const logger = {
       }
       
       return {
-        key: formatKeys && keyFormatter ? keyFormatter(key) : key,
+        key: formatKeys && keyFormatter ? chalk.cyan.bold(keyFormatter(key)) : chalk.cyan.bold(key),
         value: formattedValue
       };
     });
@@ -771,15 +771,14 @@ export function formatTable<T>(
           lines: wrapText(displayValue, col.width),
           key: String(col.key)
         };
-      } else {
-        // Truncate if not wrapping
-        return {
-          lines: [displayValue.length > col.width ? 
-                 displayValue.substring(0, col.width - 1) + '…' : 
-                 displayValue],
-          key: String(col.key)
-        };
       }
+      // Truncate if not wrapping
+      return {
+        lines: [displayValue.length > col.width ? 
+                displayValue.substring(0, col.width - 1) + '…' : 
+                displayValue],
+        key: String(col.key)
+      };
     });
     
     // Calculate the maximum number of lines in any column for this row

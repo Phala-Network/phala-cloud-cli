@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { logger } from './logger';
 
 /**
@@ -32,7 +32,7 @@ export function validateFileExists(
 export async function promptForFile(
   message: string,
   defaultValue: string,
-  name: string = 'file',
+  name = 'file',
   basePath: string = process.cwd()
 ): Promise<string> {
   const response = await inquirer.prompt([

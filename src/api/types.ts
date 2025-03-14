@@ -77,8 +77,8 @@ export const cvmInstanceSchema = z.object({
   allow_upgrade: z.boolean()
 });
 
-// Create CVM Response Schema
-export const createCvmResponseSchema = z.object({
+// POST request CVM Response Schema
+export const postCvmResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   status: z.string(),
@@ -213,7 +213,7 @@ export type Hosted = z.infer<typeof hostedSchema>;
 export type ManagedUser = z.infer<typeof managedUserSchema>;
 export type Node = z.infer<typeof nodeSchema>;
 export type CvmInstance = z.infer<typeof cvmInstanceSchema>;
-export type CreateCvmResponse = z.infer<typeof createCvmResponseSchema>;
+export type PostCvmResponse = z.infer<typeof postCvmResponseSchema>;
 export type GetPubkeyFromCvmResponse = z.infer<typeof getPubkeyFromCvmResponseSchema>;
 export type GetCvmByAppIdResponse = z.infer<typeof getCvmByAppIdResponseSchema>;
 export type GetUserInfoResponse = z.infer<typeof getUserInfoResponseSchema>;
@@ -224,3 +224,103 @@ export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
 export type Capacity = z.infer<typeof capacitySchema>;
 export type TeepodResponse = z.infer<typeof teepodResponseSchema>;
+export type CvmAttestationResponse = z.infer<typeof cvmAttestationResponseSchema>;
+
+/**
+ * Certificate naming information
+ */
+export interface CertificateNameInfo {
+  common_name: string | null;
+  organization: string | null;
+  country: string | null;
+  state?: string | null;
+  locality?: string | null;
+}
+
+/**
+ * Certificate data structure
+ */
+export interface CertificateInfo {
+  subject: CertificateNameInfo;
+  issuer: CertificateNameInfo;
+  serial_number: string;
+  not_before: string;
+  not_after: string;
+  version: string;
+  fingerprint: string;
+  signature_algorithm: string;
+  sans: string | null;
+  is_ca: boolean;
+  position_in_chain: number;
+  quote: string | null;
+}
+
+/**
+ * Event log entry
+ */
+export interface TCBEventLogEntry {
+  imr: number;
+  event_type: number;
+  digest: string;
+  event: string;
+  event_payload: string;
+}
+
+/**
+ * Trusted Computing Base (TCB) information
+ */
+export interface TCBInfo {
+  mrtd: string;
+  rootfs_hash: string;
+  rtmr0: string;
+  rtmr1: string;
+  rtmr2: string;
+  rtmr3: string;
+  event_log: TCBEventLogEntry[];
+}
+
+export const cvmAttestationResponseSchema = z.object({
+  is_online: z.boolean(),
+  is_public: z.boolean(),
+  error: z.string().nullable(),
+  app_certificates: z.array(z.object({
+    subject: z.object({
+      common_name: z.string().nullable(),
+      organization: z.string().nullable(),
+      country: z.string().nullable(),
+      state: z.string().nullable().optional(),
+      locality: z.string().nullable().optional()
+    }),
+    issuer: z.object({
+      common_name: z.string().nullable(),
+      organization: z.string().nullable(),
+      country: z.string().nullable()
+    }),
+    serial_number: z.string(),
+    not_before: z.string(),
+    not_after: z.string(),
+    version: z.string(),
+    fingerprint: z.string(),
+    signature_algorithm: z.string(),
+    sans: z.string().nullable(),
+    is_ca: z.boolean(),
+    position_in_chain: z.number(),
+    quote: z.string().nullable()
+  })).nullable(),
+  tcb_info: z.object({
+    mrtd: z.string(),
+    rootfs_hash: z.string(),
+    rtmr0: z.string(),
+    rtmr1: z.string(),
+    rtmr2: z.string(),
+    rtmr3: z.string(),
+    event_log: z.array(z.object({
+      imr: z.number(),
+      event_type: z.number(),
+      digest: z.string(),
+      event: z.string(),
+      event_payload: z.string()
+    }))
+  }).nullable(),
+  compose_file: z.string().nullable()
+});

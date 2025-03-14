@@ -1,11 +1,11 @@
 import { Command } from 'commander';
-import { DockerService } from '../../utils/docker';
-import { getDockerCredentials } from '../../utils/credentials';
-import { logger } from '../../utils/logger';
+import { DockerService } from '@/src/utils/docker';
+import { getDockerCredentials } from '@/src/utils/credentials';
+import { logger } from '@/src/utils/logger';
 import inquirer from 'inquirer';
-import fs from 'fs';
-import path from 'path';
-import { validateFileExists } from '../../utils/prompts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { validateFileExists } from '@/src/utils/prompts';
 
 export const generateCommand = new Command()
   .name('generate')

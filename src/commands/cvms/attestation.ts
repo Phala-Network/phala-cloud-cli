@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { checkCvmExists, getCvmAttestation, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import chalk from 'chalk';
+import type { CvmAttestationResponse } from '@/src/api/types';
 
 export const attestationCommand = new Command()
   .name('attestation')
@@ -10,22 +11,23 @@ export const attestationCommand = new Command()
   .option('-j, --json', 'Output in JSON format')
   .action(async (appId?: string, options?: { json?: boolean }) => {
     try {
+      let resolvedAppId: string;
+      
       if (!appId) {
         logger.info('No CVM specified, fetching available CVMs...');
         const selectedCvm = await selectCvm();
         if (!selectedCvm) {
           return;
         }
-        appId = selectedCvm;
+        resolvedAppId = selectedCvm;
       } else {
-        appId = await checkCvmExists(appId);
+        resolvedAppId = await checkCvmExists(appId);
       }
 
-      logger.info(`Fetching attestation information for CVM app_${appId}...`);
-      const spinner = logger.startSpinner('Fetching attestation information');
+      const spinner = logger.startSpinner(`Fetching attestation information for CVM app_${resolvedAppId}...`);
 
       try {
-        const attestationData = await getCvmAttestation(appId);
+        const attestationData: CvmAttestationResponse = await getCvmAttestation(resolvedAppId);
         spinner.stop(true);
 
         if (!attestationData || Object.keys(attestationData).length === 0) {
@@ -56,6 +58,7 @@ export const attestationCommand = new Command()
         if (attestationData.app_certificates && attestationData.app_certificates.length > 0) {
           
           attestationData.app_certificates.forEach((cert, index) => {
+            logger.break();
             logger.success(`Certificate #${index + 1} (${cert.position_in_chain === 0 ? 'End Entity' : 'CA'}):`);
             
             const certData = {
@@ -70,7 +73,7 @@ export const attestationCommand = new Command()
             };
             
             logger.keyValueTable(certData, {
-              borderStyle: 'single'
+              borderStyle: 'rounded'
             });
             
             // Skip displaying the quote as it's very large and mostly binary data
@@ -79,14 +82,58 @@ export const attestationCommand = new Command()
 
         // Display TCB info if available
         if (attestationData.tcb_info) {
+          logger.break();
           logger.success('Trusted Computing Base (TCB) Information:');
           
-          logger.keyValueTable(attestationData.tcb_info, {
-            borderStyle: 'single'
+          // Create a formatted version of the TCB info without the event log
+          const tcbBasicInfo = {
+            'Mrtd': attestationData.tcb_info.mrtd,
+            'Rootfs Hash': attestationData.tcb_info.rootfs_hash,
+            'Rtmr0': attestationData.tcb_info.rtmr0,
+            'Rtmr1': attestationData.tcb_info.rtmr1,
+            'Rtmr2': attestationData.tcb_info.rtmr2,
+            'Rtmr3': attestationData.tcb_info.rtmr3,
+            'Event Log Entries': `${attestationData.tcb_info.event_log.length} entries`
+          };
+          
+          // Display basic TCB info
+          logger.keyValueTable(tcbBasicInfo, {
+            borderStyle: 'rounded'
           });
+          
+          // Display event log entries separately if they exist
+          if (attestationData.tcb_info.event_log && attestationData.tcb_info.event_log.length > 0) {
+            logger.break();
+            logger.success('Event Log (Showing entries to reproduce RTMR3):');
+            
+            // Show the first 5 entries
+            const maxEntriesToShow = 5;
+            const entries = attestationData.tcb_info.event_log
+              .filter(entry => entry.event !== null && entry.event !== "")
+              .map((entry) => ({
+                'Event': entry.event,
+                'IMR': entry.imr.toString(),
+                'Event Type': entry.event_type.toString(),
+                'Payload': entry.event_payload,
+              }));
+            
+            // Display entries in a table format
+            logger.table(entries, [
+              { key: "Event", header: "Event", minWidth: 8 },
+              { key: "IMR", header: "IMR", minWidth: 3 },
+              { key: "Event Type", header: "Type", minWidth: 8 },
+              { key: "Payload", header: "Payload", minWidth: 25 },
+            ]);
+            
+            if (attestationData.tcb_info.event_log.length > maxEntriesToShow) {
+              logger.info('To see all full attestation data, use --json');
+            }
+            logger.break();
+            logger.success('To reproduce RTMR3, use the tool at https://rtmr3-calculator.vercel.app/');
+          }
         }
       } catch (error) {
-        spinner.stop(true);
+        spinner.stop(false);
         throw error;
       }
     } catch (error) {

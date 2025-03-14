@@ -3,6 +3,7 @@ import { removeApiKey, saveApiKey } from '@/src/utils/credentials';
 import { logger } from '@/src/utils/logger';
 import prompts from 'prompts';
 import { getUserInfo } from '@/src/api/auth';
+import { CLOUD_URL } from '@/src/utils/constants';
 
 export const loginCommand = new Command()
   .name('login')
@@ -20,17 +21,16 @@ export const loginCommand = new Command()
           validate: async (value) => {
             if (value.length === 0) {
               return 'API key cannot be empty';
-            } else {
-              try {
-                await saveApiKey(value);
-                checkUserInfo = await getUserInfo();
-                if (!checkUserInfo.username) {
+            }
+            try {
+              await saveApiKey(value);
+              checkUserInfo = await getUserInfo();
+              if (!checkUserInfo.username) {
                   await removeApiKey();
-                  return 'Invalid API key';
-                }
-              } catch (error) {
                 return 'Invalid API key';
               }
+            } catch (error) {
+              return 'Invalid API key';
             }
             return true;
           }
@@ -38,6 +38,7 @@ export const loginCommand = new Command()
         
         apiKey = response.apiKey;
       } else {
+        await saveApiKey(apiKey);
         // Validate the API key
         checkUserInfo = await getUserInfo();
         if (!checkUserInfo.username) {
@@ -46,9 +47,9 @@ export const loginCommand = new Command()
         }
       }
       
-      logger.success(`Welcome ${checkUserInfo.username}! API key validated and saved successfully\n`);
-      
-      logger.info(`\nOpen in Web UI at https://phala.cloud/dashboard`);
+      logger.success(`Welcome ${checkUserInfo.username}! API key validated and saved successfully`);
+      logger.break();
+      logger.info(`Open in Web UI at ${CLOUD_URL}/dashboard/`);
     } catch (error) {
       logger.error(`Failed to set API key: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);

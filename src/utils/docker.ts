@@ -1,18 +1,18 @@
 import { execa } from 'execa';
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
+import fs from 'node:fs';
+import path from 'node:path';
 import { logger } from './logger';
-import { DOCKER_COMPOSE_BASIC_TEMPLATE, DOCKER_COMPOSE_ELIZA_V2_TEMPLATE, DOCKER_HUB_API_URL } from './constants';
+import { DOCKER_COMPOSE_BASIC_TEMPLATE, DOCKER_COMPOSE_ELIZA_V2_TEMPLATE } from './constants';
 import { getDockerCredentials } from './credentials';
 import Handlebars from 'handlebars';
-import { exec, spawn } from 'child_process';
-import { promisify } from 'util';
-import os from 'os';
+import { exec, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
+import os from 'node:os';
 import { validateFileExists } from './prompts';
 import { ComposeTemplateSchema } from './types';
 import { deleteSimulatorEndpointEnv, setSimulatorEndpointEnv } from './simulator';
 const execAsync = promisify(exec);
+
 const LOGS_DIR = '.phala-cloud/logs';
 const COMPOSE_FILES_DIR = '.phala-cloud/compose';
 const MAX_CONSOLE_LINES = 10;
@@ -35,9 +35,9 @@ export class DockerService {
     }
   }
 
-  private getLogFilePath(operation: string): string {
+  private getLogFilePath(operation: string, image?: string): string {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    return path.resolve(LOGS_DIR, `${this.image}-${operation}-${timestamp}.log`);
+    return path.resolve(LOGS_DIR, `${image || this.image}-${operation}-${timestamp}.log`);
   }
 
   private getSystemArchitecture(): string {
@@ -53,13 +53,13 @@ export class DockerService {
     }
   }
 
-  private spawnProcess(command: string, args: string[], operation: string): Promise<void> {
+  private spawnProcess(command: string, args: string[], operation: string, image?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const proc = spawn(command, args);
-      const logFile = this.getLogFilePath(operation);
-
       // Ensure logs directory exists before creating write stream
       this.ensureLogsDir();
+
+      const logFile = this.getLogFilePath(operation, image);
 
       const logStream = fs.createWriteStream(logFile, { flags: 'a' });
       const consoleBuffer: string[] = [];
@@ -152,7 +152,7 @@ export class DockerService {
       // Build the image
       buildArgs.push('.');
 
-      await this.spawnProcess('docker', buildArgs, 'build');
+      await this.spawnProcess('docker', buildArgs, 'build', this.image);
 
       spinner.stop(true, `Docker image ${fullImageName} built successfully`);
       return true;
@@ -169,7 +169,7 @@ export class DockerService {
    */
   async pushImage(imageName: string): Promise<boolean> {
     try {
-      const spinner = logger.startSpinner(`Pushing Docker image to Docker Hub`);
+      const spinner = logger.startSpinner(`Pushing Docker image ${imageName} to Docker Hub`);
 
       // Check if user is logged in
       const credentials = await getDockerCredentials();
@@ -181,7 +181,7 @@ export class DockerService {
       const fullImageName = imageName;
       console.log(`Pushing image ${fullImageName} to Docker Hub...`);
 
-      await this.spawnProcess('docker', ['push', fullImageName], 'push');
+      await this.spawnProcess('docker', ['push', fullImageName], 'push', imageName.replace(/.*\/+(\w+):.*$/g, '$1'));
 
       spinner.stop(true, `Docker image ${fullImageName} pushed successfully`);
       return true;
@@ -379,9 +379,11 @@ export class DockerService {
       const containerId = stdout.trim();
 
       logger.success(`TEE simulator running successfully. Container ID: ${containerId}`);
-      logger.info(`\n\nUseful commands:`);
+      logger.break();
+      logger.break();
+      logger.info('Useful commands:');
       logger.info(`- View logs: docker logs -f ${containerId}`);
-      logger.info(`- Stop simulator: docker stop ${containerId}\n`);
+      logger.info(`- Stop simulator: docker stop ${containerId}`);
 
       setSimulatorEndpointEnv(`http://localhost:${port}`);
       
@@ -401,7 +403,7 @@ export class DockerService {
       const spinner = logger.startSpinner('Stopping TEE simulator...');
 
       // Stop the simulator
-      await execAsync(`docker stop tee-simulator`);
+      await execAsync('docker stop tee-simulator');
       await deleteSimulatorEndpointEnv();
 
       spinner.stop(true, 'TEE simulator stopped successfully');

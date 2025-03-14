@@ -3,6 +3,8 @@ import { checkCvmExists, getCvmByAppId, resizeCvm, selectCvm } from '@/src/api/c
 import { logger } from '@/src/utils/logger';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
+import { resolveCvmAppId } from '@/src/utils/cvms';
+import { CLOUD_URL } from '@/src/utils/constants';
 
 export const resizeCommand = new Command()
   .name('resize')
@@ -15,18 +17,9 @@ export const resizeCommand = new Command()
   .option('-y, --yes', 'Automatically confirm the resize operation')
   .action(async (appId, options) => {
     try {
-      // If no app ID is provided, prompt user to select one
-      if (!appId) {
-        appId = await selectCvm();
-        if (!appId) {
-          logger.info('No CVMs found or selection cancelled');
-          return;
-        }
-      } else {
-        appId = await checkCvmExists(appId);
-      }
+      const resolvedAppId = await resolveCvmAppId(appId);
 
-      const cvm = await getCvmByAppId(appId);
+      const cvm = await getCvmByAppId(resolvedAppId);
       
       // Initialize parameters
       let vcpu: number | undefined = options.vcpu;
@@ -110,7 +103,7 @@ export const resizeCommand = new Command()
       }
       
       // Prepare confirmation message
-      let confirmMessage = `Are you sure you want to resize CVM app_${appId} with the following changes:\n`;
+      const confirmMessage = `Are you sure you want to resize CVM app_${resolvedAppId} with the following changes:\n`;
       logger.keyValueTable(
         { 'vCPUs': cvm.vcpu !== vcpu ? `${chalk.red(cvm.vcpu)} -> ${chalk.green(vcpu)}` : cvm.vcpu,
          'Memory': cvm.memory !== memory ? `${chalk.red(cvm.memory)} MB -> ${chalk.green(memory)} MB` : cvm.memory,
@@ -135,17 +128,22 @@ export const resizeCommand = new Command()
         }
       }
       
-      const spinner = logger.startSpinner(`Resizing CVM with App ID app_${appId}`);
+      const spinner = logger.startSpinner(`Resizing CVM with App ID app_${resolvedAppId}`);
       
       // Convert boolean to number (0 or 1) as expected by the API
       const allowRestartValue = allowRestart ? 1 : 0;
       
-      await resizeCvm(appId, vcpu, memory, diskSize, allowRestartValue);
-      
+      await resizeCvm(resolvedAppId, vcpu, memory, diskSize, allowRestartValue);
+
       spinner.stop(true);
-      logger.success(`CVM with App ID app_${appId} resized successfully`);
+      logger.break();
+      logger.success(
+        `Your CVM is being resized. You can check the dashboard for more details:\n${CLOUD_URL}/dashboard/cvms/app_${resolvedAppId}`
+      );
     } catch (error) {
-      logger.error(`Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`
+      );
       process.exit(1);
     }
   }); 

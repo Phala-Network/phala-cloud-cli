@@ -2,16 +2,21 @@ import { apiClient } from './client';
 import { API_ENDPOINTS } from '@/src/utils/constants';
 import { logger } from '@/src/utils/logger';
 import {
-  CvmInstance,
-  GetCvmByAppIdResponse,
-  GetPubkeyFromCvmResponse,
-  CreateCvmResponse,
-  UpgradeCvmResponse,
   cvmInstanceSchema,
   getCvmByAppIdResponseSchema,
   getPubkeyFromCvmResponseSchema,
-  createCvmResponseSchema,
-  upgradeCvmResponseSchema
+  postCvmResponseSchema,
+  upgradeCvmResponseSchema,
+  cvmAttestationResponseSchema,
+} from './types';
+import type {
+  CvmInstance,
+  GetCvmByAppIdResponse,
+  GetPubkeyFromCvmResponse,
+  PostCvmResponse,
+  UpgradeCvmResponse,
+  CvmAttestationResponse,
+  TCBInfo
 } from './types';
 import inquirer from 'inquirer';
 import { z } from 'zod';
@@ -30,11 +35,27 @@ export async function getCvms(): Promise<CvmInstance[]> {
 }
 
 /**
+ * VM configuration type
+ */
+export interface VMConfig {
+  // Add specific properties as needed
+  [key: string]: unknown;
+}
+
+/**
+ * Update payload type
+ */
+export interface UpdateCvmPayload {
+  app_id: string;
+  [key: string]: unknown;
+}
+
+/**
  * Check CVM exists for the current user and appId
  * @param appId App ID
- * @returns CVM details or null if it doesn't exist
+ * @returns CVM appId string or null if it doesn't exist
  */
-export async function checkCvmExists(appId: string): Promise<any> {
+export async function checkCvmExists(appId: string): Promise<string> {
   const cvms = await getCvms();
   const cvm = cvms.find(cvm => (cvm.hosted?.app_id === appId || `app_${cvm.hosted?.app_id}` === appId));
   if (!cvm) {
@@ -42,7 +63,7 @@ export async function checkCvmExists(appId: string): Promise<any> {
     process.exit(1);
   } else {
     logger.success(`CVM with App ID app_${appId} detected`);
-    return cvm.hosted?.app_id;
+    return cvm.hosted?.app_id || '';
   }
 }
 
@@ -65,7 +86,7 @@ export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdRespons
  * @param vmConfig VM configuration
  * @returns Public key
  */
-export async function getPubkeyFromCvm(vmConfig: any): Promise<GetPubkeyFromCvmResponse> {
+export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFromCvmResponse> {
   try {
     const response = await apiClient.post<GetPubkeyFromCvmResponse>(API_ENDPOINTS.CVM_PUBKEY, vmConfig);
     return getPubkeyFromCvmResponseSchema.parse(response);
@@ -79,10 +100,10 @@ export async function getPubkeyFromCvm(vmConfig: any): Promise<GetPubkeyFromCvmR
  * @param vmConfig VM configuration
  * @returns Created CVM details
  */
-export async function createCvm(vmConfig: any): Promise<CreateCvmResponse> {
+export async function createCvm(vmConfig: VMConfig): Promise<PostCvmResponse> {
   try {
-    const response = await apiClient.post<CreateCvmResponse>(API_ENDPOINTS.CVM_FROM_CONFIGURATION, vmConfig);
-    return createCvmResponseSchema.parse(response);
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_FROM_CONFIGURATION, vmConfig);
+    return postCvmResponseSchema.parse(response);
   } catch (error) {
     if (error instanceof z.ZodError) {
       logger.error('Schema validation error:', JSON.stringify(error.errors, null, 2));
@@ -98,10 +119,10 @@ export async function createCvm(vmConfig: any): Promise<CreateCvmResponse> {
  * @param appId App ID
  * @returns Success status
  */
-export async function startCvm(appId: string): Promise<boolean> {
+export async function startCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    await apiClient.post(API_ENDPOINTS.CVM_START(appId));
-    return true;
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_START(appId));
+    return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to start CVM: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -112,10 +133,10 @@ export async function startCvm(appId: string): Promise<boolean> {
  * @param appId App ID
  * @returns Success status
  */
-export async function stopCvm(appId: string): Promise<boolean> {
+export async function stopCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    await apiClient.post(API_ENDPOINTS.CVM_STOP(appId));
-    return true;
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_STOP(appId));
+    return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to stop CVM: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -126,10 +147,10 @@ export async function stopCvm(appId: string): Promise<boolean> {
  * @param appId App ID
  * @returns Success status
  */
-export async function restartCvm(appId: string): Promise<boolean> {
+export async function restartCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    await apiClient.post(API_ENDPOINTS.CVM_RESTART(appId));
-    return true;
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_RESTART(appId));
+    return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to restart CVM: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -141,7 +162,7 @@ export async function restartCvm(appId: string): Promise<boolean> {
  * @param vmConfig VM configuration
  * @returns Upgrade response
  */
-export async function upgradeCvm(appId: string, vmConfig: any): Promise<UpgradeCvmResponse> {
+export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<UpgradeCvmResponse> {
   try {
     const response = await apiClient.put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
     return upgradeCvmResponseSchema.parse(response);
@@ -169,7 +190,7 @@ export async function deleteCvm(appId: string): Promise<boolean> {
  * @param updatePayload Update payload
  * @returns Updated CVM details
  */
-export async function updateCvm(updatePayload: any): Promise<any> {
+export async function updateCvm(updatePayload: UpdateCvmPayload): Promise<unknown> {
   try {
     const response = await apiClient.put(API_ENDPOINTS.CVM_BY_APP_ID(updatePayload.app_id), updatePayload);
     return response;
@@ -196,8 +217,8 @@ export async function selectCvm(): Promise<string | undefined> {
   const choices = cvms.map(cvm => {
     // Handle different API response formats
     const id = cvm.hosted?.app_id || cvm.hosted?.id;
-    const name = cvm.name || (cvm.hosted && cvm.hosted.name);
-    const status = cvm.status || (cvm.hosted && cvm.hosted.status);
+    const name = cvm.name || cvm.hosted?.name;
+    const status = cvm.status || cvm.hosted?.status;
     
     return {
       name: `${name || 'Unnamed'} (${id}) - Status: ${status || 'Unknown'}`,
@@ -222,13 +243,41 @@ export async function selectCvm(): Promise<string | undefined> {
  * @param appId App ID
  * @returns Attestation information
  */
-export async function getCvmAttestation(appId: string): Promise<any> {
+export async function getCvmAttestation(appId: string): Promise<CvmAttestationResponse> {
   try {
-    const response = await apiClient.get(API_ENDPOINTS.CVM_ATTESTATION(appId));
-    return response;
+    const response = await apiClient.get<CvmAttestationResponse>(API_ENDPOINTS.CVM_ATTESTATION(appId));
+    
+    // Attempt to validate and return the response
+    try {
+      return cvmAttestationResponseSchema.parse(response);
+    } catch (validationError) {
+      logger.debug(`Validation error: ${validationError instanceof Error ? validationError.message : String(validationError)}`);
+      
+      // If validation fails, create a normalized response object
+      const normalizedResponse: CvmAttestationResponse = {
+        is_online: Boolean(response?.is_online),
+        is_public: Boolean(response?.is_public),
+        error: typeof response?.error === 'string' ? response.error : null,
+        app_certificates: Array.isArray(response?.app_certificates) ? response.app_certificates : null,
+        tcb_info: response?.tcb_info || null,
+        compose_file: typeof response?.compose_file === 'string' ? response.compose_file : null
+      };
+      
+      return normalizedResponse;
+    }
   } catch (error) {
     throw new Error(`Failed to get attestation information: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/**
+ * Resize payload type
+ */
+export interface ResizeCvmPayload {
+  vcpu?: number;
+  memory?: number;
+  disk_size?: number;
+  allow_restart?: number;
 }
 
 /**
@@ -249,7 +298,7 @@ export async function resizeCvm(
 ): Promise<boolean> {
   try {
     // Only include defined parameters in the payload
-    const resizePayload: Record<string, any> = {};
+    const resizePayload: ResizeCvmPayload = {};
     
     if (vcpu !== undefined) resizePayload.vcpu = vcpu;
     if (memory !== undefined) resizePayload.memory = memory;

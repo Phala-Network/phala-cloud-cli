@@ -1,8 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { execSync, spawn, exec } from 'child_process';
-import * as net from 'net';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import { execSync, spawn, type StdioOptions } from 'node:child_process';
+import * as net from 'node:net';
 import { logger } from './logger';
 
 // Configuration for simulator
@@ -166,7 +166,7 @@ export async function runSimulator(options: {
     logger.info(`Starting simulator with: ${executableName} -l ${platformConfig.socketArg}`);
     
     // Configure stdio based on logging preferences
-    let stdio: any = 'inherit';
+    let stdio: StdioOptions = 'inherit';
     let outputStream: fs.WriteStream = null;
     
     if (runOptions.logToFile) {
@@ -265,7 +265,8 @@ export async function isSimulatorRunning(): Promise<boolean> {
           resolve(false);
         }, 1000);
       });
-    } else if (platform === 'win32') {
+    } 
+    if (platform === 'win32') {
       // For Windows, try to connect to the TCP port
       const host = '127.0.0.1';
       const port = 8090;
@@ -381,9 +382,9 @@ export function getSimulatorEndpoint(): string {
   
   if (platform === 'win32') {
     return 'http://127.0.0.1:8090';
-  } else {
-    return 'unix:///tmp/tappd.sock';
   }
+
+  return 'unix:///tmp/tappd.sock';
 }
 
 /**
@@ -411,7 +412,7 @@ export async function setSimulatorEndpointEnv(endpoint?: string): Promise<string
  * @returns boolean indicating if deletion was successful
  */
 export async function deleteSimulatorEndpointEnv(): Promise<boolean> {
-    await execSync(`unset DSTACK_SIMULATOR_ENDPOINT`);
+    await execSync('unset DSTACK_SIMULATOR_ENDPOIN');
     logger.success('Deleted DSTACK_SIMULATOR_ENDPOINT from current process');
     return true;
 }

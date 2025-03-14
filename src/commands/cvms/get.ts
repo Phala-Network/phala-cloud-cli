@@ -3,6 +3,7 @@ import { checkCvmExists, getCvmByAppId, getCvms, selectCvm } from '@/src/api/cvm
 import { logger } from '@/src/utils/logger';
 import { CLOUD_URL } from '@/src/utils/constants';
 import chalk from 'chalk';
+import { resolveCvmAppId } from '@/src/utils/cvms';
 
 export const getCommand = new Command()
   .name('get')
@@ -11,25 +12,17 @@ export const getCommand = new Command()
   .option('-j, --json', 'Output in JSON format')
   .action(async (appId, options) => {
     try {
-      // If no app ID is provided, fetch all CVMs and let the user select one
-      if (!appId) {
-        appId = await selectCvm();
-        if (!appId) {
-          logger.info('No CVMs found or selection cancelled');
-          return;
-        }
-      } else {
-        appId = await checkCvmExists(appId);
-      }
+      const resolvedAppId = await resolveCvmAppId(appId);
       
-      const spinner = logger.startSpinner(`Fetching CVM with App ID app_${appId}`);
+      const spinner = logger.startSpinner(`Fetching CVM with App ID app_${resolvedAppId}`);
       
-      const cvm = await getCvmByAppId(appId);
+      const cvm = await getCvmByAppId(resolvedAppId);
       
       spinner.stop(true);
+      logger.break();
       
       if (!cvm) {
-        logger.error(`CVM with App ID app_${appId} not found`);
+        logger.error(`CVM with App ID app_${resolvedAppId} not found`);
         process.exit(1);
       }
       

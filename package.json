@@ -1,6 +1,6 @@
 {
   "name": "phala",
-  "version": "0.0.1-alpha-10",
+  "version": "0.0.1-alpha-12",
   "description": "CLI for Managing Phala Cloud Services",
   "author": {
     "name": "Phala Network",
@@ -59,6 +59,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/babel__core": "^7.20.1",
     "@types/bun": "latest",
     "@types/diff": "^5.0.3",

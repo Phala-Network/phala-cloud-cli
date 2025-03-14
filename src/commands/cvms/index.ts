@@ -13,13 +13,14 @@ import { resizeCommand } from './resize';
 export const cvmsCommand = new Command()
   .name('cvms')
   .description('Manage Phala Confidential Virtual Machines (CVMs)')
-  .addCommand(listCommand)
-  .addCommand(getCommand)
+  .addCommand(attestationCommand)
   .addCommand(createCommand)
-  .addCommand(upgradeCommand)
+  .addCommand(deleteCommand)
+  .addCommand(getCommand)
+  .addCommand(listCommand)
   .addCommand(startCommand)
   .addCommand(stopCommand)
+  .addCommand(resizeCommand)
   .addCommand(restartCommand)
-  .addCommand(attestationCommand)
-  .addCommand(deleteCommand)
-  .addCommand(resizeCommand); 
+  .addCommand(upgradeCommand);
+   

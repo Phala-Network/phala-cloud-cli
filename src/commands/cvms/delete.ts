@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { checkCvmExists, deleteCvm, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import inquirer from 'inquirer';
+import { resolveCvmAppId } from '@/src/utils/cvms';
 
 export const deleteCommand = new Command()
   .name('delete')
@@ -10,15 +11,7 @@ export const deleteCommand = new Command()
   .option('-f, --force', 'Skip confirmation prompt', false)
   .action(async (appId, options) => {
     try {
-      // If no app ID is provided, prompt user to select one
-      if (!appId) {
-        appId = await selectCvm();
-        if (!appId) {
-          return; // No CVMs found or user canceled
-        }
-      } else {
-        appId = await checkCvmExists(appId);
-      }
+      const resolvedAppId = await resolveCvmAppId(appId);
       
       // Confirm deletion unless force option is used
       if (!options.force) {
@@ -26,7 +19,7 @@ export const deleteCommand = new Command()
           {
             type: 'confirm',
             name: 'confirm',
-            message: `Are you sure you want to delete CVM with App ID app_${appId}? This action cannot be undone.`,
+            message: `Are you sure you want to delete CVM with App ID app_${resolvedAppId}? This action cannot be undone.`,
             default: false,
           },
         ]);
@@ -38,18 +31,20 @@ export const deleteCommand = new Command()
       }
       
       // Delete the CVM
-      const spinner = logger.startSpinner(`Deleting CVM app_${appId}`);
-      const success = await deleteCvm(appId);
+      const spinner = logger.startSpinner(`Deleting CVM app_${resolvedAppId}`);
+      const success = await deleteCvm(resolvedAppId);
       spinner.stop(true);
       
       if (!success) {
-        logger.error(`Failed to delete CVM app_${appId}`);
+        logger.error(`Failed to delete CVM app_${resolvedAppId}`);
         process.exit(1);
       }
-      
-      logger.success(`CVM app_${appId} deleted successfully`);
-    } catch (error) {
-      logger.error(`Failed to delete CVM: ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
-    }
+
+		logger.success(`CVM app_${resolvedAppId} deleted successfully`);
+	} catch (error) {
+		logger.error(
+			`Failed to delete CVM: ${error instanceof Error ? error.message : String(error)}`
+		);
+		process.exit(1);
+	}
   }); 
