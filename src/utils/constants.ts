@@ -62,7 +62,7 @@ services:
         retries: 5
     restart: always
   eliza:
-    image: {{imageName}}:{{tag}}
+    image: {{imageName}}
     container_name: elizav2
     command: bun run start
     stdin_open: true
@@ -93,7 +93,7 @@ volumes:
 export const DOCKER_COMPOSE_BASIC_TEMPLATE = `version: '3.8'
 services:
   app:
-    image: {{imageName}}:{{tag}}
+    image: {{imageName}}
     container_name: app
     volumes:
       - /var/run/tappd.sock:/var/run/tappd.sock

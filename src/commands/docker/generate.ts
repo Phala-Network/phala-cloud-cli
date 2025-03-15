@@ -10,12 +10,10 @@ import { validateFileExists } from '@/src/utils/prompts';
 export const generateCommand = new Command()
   .name('generate')
   .description('Generate a Docker Compose file')
-  .option('-i, --image <image>', 'Docker image name to use in the compose file')
-  .option('-t, --tag <tag>', 'Docker image tag to use in the compose file')
+  .option('-i, --image <imageName>', 'Docker image name to use in the compose file (e.g. phala/phala-cloud)')
   .option('-e, --env-file <envFile>', 'Path to environment variables file')
   .option('-o, --output <output>', 'Output path for generated docker-compose.yml')
   .option('--template <template>', 'Template to use for the generated docker-compose.yml', )
-  .option('--manual', 'Skip automatic image detection and enter image/tag manually')
   .action(async (options) => {
     try {
       // Get Docker credentials to create the Docker service
@@ -25,129 +23,39 @@ export const generateCommand = new Command()
         process.exit(1);
       }
 
-      // Variables to hold selected image and tag
-      let selectedImage = options.image || '';
-      let selectedTag = options.tag || '';
-      
-      // If image or tag not provided and manual mode not specified, detect and offer local images
-      if ((!selectedImage || !selectedTag) && !options.manual) {
-        try {
-          logger.info('Detecting local Docker images...');
-          const localImages = await DockerService.listLocalImages();
-          
-          if (localImages.length === 0) {
-            logger.warn('No local Docker images found. You will need to enter image details manually.');
-          } else {
-            // Group images by name
-            const imageMap = new Map<string, string[]>();
-            
-            localImages.forEach(image => {
-              if (!imageMap.has(image.name)) {
-                imageMap.set(image.name, []);
-              }
-              imageMap.get(image.name)?.push(image.tag);
-            });
-            
-            // If image is already specified, but tag isn't, just select tag for the image
-            if (selectedImage && !selectedTag) {
-              const availableTags = imageMap.get(selectedImage) || [];
-              if (availableTags.length > 0) {
-                // Ask user to select a tag
-                const { imageTag } = await inquirer.prompt([
-                  {
-                    type: 'list',
-                    name: 'imageTag',
-                    message: `Select a tag for ${selectedImage}:`,
-                    choices: [...availableTags, new inquirer.Separator(), '[ Enter manually ]']
-                  }
-                ]);
-                
-                if (imageTag !== '[ Enter manually ]') {
-                  selectedTag = imageTag;
-                }
-              } else {
-                logger.warn(`No tags found for image ${selectedImage}. You will need to enter the tag manually.`);
-              }
-            } 
-            // If image is not specified, ask for both image and tag
-            else if (!selectedImage) {
-              // Ask user to select an image name
-              const imageNames = Array.from(imageMap.keys());
-              const { imageName } = await inquirer.prompt([
-                {
-                  type: 'list',
-                  name: 'imageName',
-                  message: 'Select a Docker image:',
-                  choices: [...imageNames, new inquirer.Separator(), '[ Enter manually ]']
-                }
-              ]);
-              
-              if (imageName === '[ Enter manually ]') {
-                // User chose to enter manually, go to manual input flow
-              } else {
-                selectedImage = imageName;
-                
-                // Get available tags for selected image
-                const availableTags = imageMap.get(imageName) || [];
-                
-                // Ask user to select a tag
-                const { imageTag } = await inquirer.prompt([
-                  {
-                    type: 'list',
-                    name: 'imageTag',
-                    message: 'Select a tag:',
-                    choices: [...availableTags, new inquirer.Separator(), '[ Enter manually ]']
-                  }
-                ]);
-                
-                if (imageTag !== '[ Enter manually ]') {
-                  selectedTag = imageTag;
-                }
-              }
-            }
-          }
-        } catch (error) {
-          logger.warn(`Failed to detect local images: ${error instanceof Error ? error.message : String(error)}`);
-          logger.info('Continuing with manual input...');
+      let imageName = options.image;
+
+      if (!imageName) {
+        // If image name is not provided, list local images and prompt user to select
+        const localImages = await DockerService.listLocalImages();
+
+        if (localImages.length === 0) {
+          logger.error(
+            'No local Docker images found. Please build an image first with "phala docker build"',
+          );
+          process.exit(1);
+        }
+
+        // If no image specified, prompt to select from available images
+        if (!imageName) {
+          // Get unique image names
+          const uniqueImageNames = Array.from(
+            new Set(localImages.map((img) => img.imageName)),
+          );
+
+          const { selectedImage } = await inquirer.prompt([
+            {
+              type: "list",
+              name: "selectedImage",
+              message: "Select an image to use in the compose file:",
+              choices: uniqueImageNames,
+            },
+          ]);
+
+          imageName = selectedImage;
         }
       }
-      
-      // If image still not set, prompt for it
-      if (!selectedImage) {
-        const { inputImage } = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'inputImage',
-            message: 'Enter Docker image name:',
-            validate: (input) => {
-              if (!input.trim()) {
-                return 'Image name cannot be empty';
-              }
-              return true;
-            }
-          }
-        ]);
-        selectedImage = inputImage;
-      }
-      
-      // If tag still not set, prompt for it
-      if (!selectedTag) {
-        const { inputTag } = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'inputTag',
-            message: `Enter tag for image ${selectedImage}:`,
-            validate: (input) => {
-              if (!input.trim()) {
-                return 'Tag cannot be empty';
-              }
-              return true;
-            }
-          }
-        ]);
-        selectedTag = inputTag;
-      }
-
+       
       // Get environment file path from options or prompt
       let envFilePath = options.envFile;
       if (!envFilePath) {
@@ -229,15 +137,15 @@ export const generateCommand = new Command()
       }
       
       // Create a DockerService instance
-      const dockerService = new DockerService(selectedImage, credentials.username, credentials.registry);
+      const dockerService = new DockerService('', credentials.username, credentials.registry);
 
       // Generate the Docker Compose file
       if (envFilePath) {
-        logger.info(`Generating Docker Compose file for ${selectedImage}:${selectedTag} using env file: ${envFilePath}`);
+        logger.info(`Generating Docker Compose file for ${imageName} using env file: ${envFilePath}`);
       } else {
-        logger.info(`Generating Docker Compose file for ${selectedImage}:${selectedTag} without env file`);
+        logger.info(`Generating Docker Compose file for ${imageName} without env file`);
       }
-      const composePath = await dockerService.buildComposeFile(selectedTag, envFilePath, options.template);
+      const composePath = await dockerService.buildComposeFile(imageName, envFilePath, options.template);
       
       // Copy the generated file to the output path if needed
       if (composePath !== outputPath) {

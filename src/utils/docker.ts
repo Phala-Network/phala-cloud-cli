@@ -245,17 +245,17 @@ export class DockerService {
 
   /**
    * Build a Docker Compose file
-   * @param tag Tag for the image
+   * @param imageName Name of the image
    * @param envFile Optional path to environment file
    * @param version Version of the template to use
    * @returns Path to the generated Docker Compose file
    */
-  async buildComposeFile(tag: string, envFile?: string, templateType?: string): Promise<string> {
+  async buildComposeFile(imageName: string, envFile?: string, templateType?: string): Promise<string> {
     if (!this.username) {
       throw new Error('Docker Hub username is required for building compose file');
     }
 
-    const template = (templateType == 'eliza') ? DOCKER_COMPOSE_ELIZA_V2_TEMPLATE : DOCKER_COMPOSE_BASIC_TEMPLATE;
+    const template = (templateType === 'eliza') ? DOCKER_COMPOSE_ELIZA_V2_TEMPLATE : DOCKER_COMPOSE_BASIC_TEMPLATE;
 
     // Validate template structure
     const validatedTemplate = ComposeTemplateSchema.parse({ template });
@@ -304,18 +304,20 @@ export class DockerService {
     }
 
     // Create full image name with username
-    const fullImageName = `${this.username}/${this.image}`;
+    const fullImageName = imageName;
 
     // Compile template with data
     const compiledTemplate = Handlebars.compile(validatedTemplate.template, { noEscape: true });
     const composeContent = compiledTemplate({
       imageName: fullImageName,
-      tag,
       envVars: envVars.map(env => env.replace(/=.*/, '=\${' + env.split('=')[0] + '}'))
     });
 
     // Write the docker-compose file with standardized name in the compose directory
-    const composeFile = path.join(composePath, `${this.image}-${tag}-tee-compose.yaml`);
+    const composeFile = path.join(
+      composePath,
+      `${imageName.replace(/.*\/+(\w+):.*$/g, "$1")}-tee-compose.yaml`,
+    );
     fs.writeFileSync(composeFile, composeContent);
 
     logger.success(`Backup of docker compose file created at: ${composeFile}`);
