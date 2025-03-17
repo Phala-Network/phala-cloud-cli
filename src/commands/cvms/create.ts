@@ -5,8 +5,8 @@ import { logger } from '@/src/utils/logger';
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_TEEPOD_ID, DEFAULT_IMAGE } from '@/src/utils/constants';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import inquirer from 'inquirer';
 import { parseEnv } from '@/src/utils/secrets';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
@@ -80,12 +80,12 @@ export const createCommand = new Command()
         }
       } else if (!options.skipEnv) {
         // Prompt to input env file or skip
-        const shouldSkip = await inquirer.prompt([
+        const { shouldSkip } = await inquirer.prompt([
           {
             type: 'confirm',
             name: 'shouldSkip',
             message: 'Do you want to skip environment variable prompt?',
-            default: false
+            default: true
           }
         ]);
       
