@@ -1,27 +1,32 @@
 {
-  "name": "tee-cloud-cli",
-  "version": "0.0.1",
-  "description": "CLI for Interacting with Phala's TEE Cloud",
+  "name": "phala",
+  "version": "1.0.0",
+  "description": "CLI for Managing Phala Cloud Services",
   "author": {
     "name": "Phala Network",
-    "url": "https://twitter.com/Phala-Network"
+    "url": "https://github.com/Phala-Network"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Phala-Network/tee-cloud-cli.git"
+    "url": "https://github.com/Phala-Network/phala-cloud-cli.git"
   },
   "files": [
     "dist"
   ],
-  "keywords": ["tee"],
+  "keywords": [
+    "tee",
+    "phala",
+    "cloud"
+  ],
   "type": "module",
   "exports": "./dist/index.js",
   "bin": {
-    "teecloud": "./dist/index.js"
+    "phala": "./dist/index.js",
+    "pha": "./dist/index.js"
   },
   "scripts": {
     "build": "tsup && bun link",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "bun test"
   },
   "dependencies": {
     "@antfu/ni": "^0.21.12",
@@ -29,6 +34,7 @@
     "@babel/parser": "^7.26.7",
     "@babel/plugin-transform-typescript": "^7.26.7",
     "@noble/curves": "^1.8.1",
+    "@phala/dstack-sdk": "^0.1.10",
     "axios": "^1.7.9",
     "chalk": "5.2.0",
     "commander": "^10.0.1",
@@ -40,6 +46,7 @@
     "fs-extra": "^11.3.0",
     "handlebars": "^4.7.8",
     "https-proxy-agent": "^6.2.1",
+    "inquirer": "^12.4.2",
     "lodash": "^4.17.21",
     "node-fetch": "^3.3.2",
     "ora": "^6.3.1",
@@ -52,10 +59,12 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@biomejs/biome": "1.9.4",
     "@types/babel__core": "^7.20.1",
+    "@types/bun": "latest",
     "@types/diff": "^5.0.3",
     "@types/fs-extra": "^11.0.1",
+    "@types/inquirer": "^9.0.7",
     "@types/lodash": "^4.17.7",
     "@types/prompts": "^2.4.2",
     "rimraf": "^4.1.3",
