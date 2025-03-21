@@ -257,27 +257,6 @@ phala auth status
 phala auth status --json
 ```
 
-### TEEPod Management Commands
-
-> WTF is TEEPod?
-> You can think of a TEEPod as the TEE server that the docker app with be hosted on. These TEEPods support published base images of the [Dstack Releases](https://github.com/Dstack-TEE/dstack/releases) which is the base image used to launch your Docker app. The Dstack base image is important as you can provide evidence to reproduce the RA Quote of your docker app deployment. More details on this later.
-
-Commands for managing TEEPods on Phala Cloud.
-
-#### List TEEPods
-
-```bash
-phala teepods list
-```
-
-List all available TEEPods on Phala Cloud.
-
-**Example:**
-```bash
-phala teepods list
-```
-
-
 ### Docker Management Commands
 
 Commands for managing Docker images for TEE deployments.

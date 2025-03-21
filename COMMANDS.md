@@ -136,9 +136,6 @@ Here are some examples of how to use the Phala Cloud CLI:
 # Login to Phala Cloud
 phala auth login
 
-# List available TEEPods
-phala teepods list
-
 # Create a new CVM
 phala cvms create -n "my-cvm" -c ./docker-compose.yml
 
