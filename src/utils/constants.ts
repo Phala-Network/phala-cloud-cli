@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
   // CVMs
   CVMS: (userId: number) => `/api/v1/cvms?user_id=${userId}`,
   CVM_BY_APP_ID: (appId: string) => `/api/v1/cvms/app_${appId}`,
+  CVM_NETWORK: (appId: string) => `/api/v1/cvms/app_${appId}/network`,
   CVM_START: (appId: string) => `/api/v1/cvms/app_${appId}/start`,
   CVM_STOP: (appId: string) => `/api/v1/cvms/app_${appId}/stop`,
   CVM_RESTART: (appId: string) => `/api/v1/cvms/app_${appId}/restart`,
