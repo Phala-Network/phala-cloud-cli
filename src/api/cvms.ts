@@ -8,6 +8,7 @@ import {
   postCvmResponseSchema,
   upgradeCvmResponseSchema,
   cvmAttestationResponseSchema,
+  getCvmNetworkResponseSchema,
 } from './types';
 import type {
   CvmInstance,
@@ -16,7 +17,7 @@ import type {
   PostCvmResponse,
   UpgradeCvmResponse,
   CvmAttestationResponse,
-  TCBInfo
+  GetCvmNetworkResponse,
 } from './types';
 import inquirer from 'inquirer';
 import { z } from 'zod';
@@ -92,6 +93,20 @@ export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFro
     return getPubkeyFromCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to get pubkey from CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Get network information for a CVM
+ * @param appId App ID
+ * @returns Network information
+ */
+export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkResponse> {
+  try {
+    const response = await apiClient.get<GetCvmNetworkResponse>(API_ENDPOINTS.CVM_NETWORK(appId));
+    return getCvmNetworkResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to get network information for CVM: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

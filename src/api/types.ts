@@ -205,6 +205,19 @@ export const teepodResponseSchema = z.object({
   nodes: z.array(teepodSchema)
 });
 
+// Get CVM Network Response Schema
+export const getCvmNetworkResponseSchema = z.object({
+  is_online: z.boolean(),
+  is_public: z.boolean(),
+  error: z.string().nullable(),
+  internal_ip: z.string(),
+  latest_handshake: z.string(),
+  public_urls: z.array(z.object({
+    app: z.string(),
+    instance: z.string()
+  })),
+});
+
 // Type exports
 export type DockerConfig = z.infer<typeof dockerConfigSchema>;
 export type ComposeFile = z.infer<typeof composeFileSchema>;
@@ -225,7 +238,7 @@ export type Image = z.infer<typeof imageSchema>;
 export type Capacity = z.infer<typeof capacitySchema>;
 export type TeepodResponse = z.infer<typeof teepodResponseSchema>;
 export type CvmAttestationResponse = z.infer<typeof cvmAttestationResponseSchema>;
-
+export type GetCvmNetworkResponse = z.infer<typeof getCvmNetworkResponseSchema>;
 /**
  * Certificate naming information
  */
