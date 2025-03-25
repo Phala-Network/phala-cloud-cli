@@ -63,7 +63,7 @@ ___
    
    To deploy applications to Phala Cloud, you'll need an API key:
 
-   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, register with this link with [PROMO_CODE](https://cloud.phala.network/register?invite=PHALACLI).
+   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, register with this link with [PROMO_CODE](https://cloud.phala.network/register?invite=PHALACLI) or run `npx phala free` in the terminal.
    - After logging in, navigate to the "API Keys" section in your profile
    - Create a new API key with an appropriate name (e.g., "CLI Access")
    - Copy the generated API key - you'll need it for authentication
