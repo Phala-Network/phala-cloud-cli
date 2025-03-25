@@ -59,4 +59,25 @@ describe('CVM Commands E2E Tests', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Get details of a CVM');
   });
+
+  test('CVM attestation command shows help', async () => {
+    const { stdout, exitCode } = await runCommand(['cvms', 'attestation', '--help']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Get attestation information for a CVM');
+  });
+
+  test('CVM resize command shows help', async () => {
+    const { stdout, exitCode } = await runCommand(['cvms', 'resize', '--help']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Resize resources for a CVM");
+  });
+
+  test('CVM upgrade command shows help', async () => {
+    const { stdout, exitCode } = await runCommand(['cvms', 'upgrade', '--help']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Upgrade a CVM');
+  });
+
+  
+  
 }); 

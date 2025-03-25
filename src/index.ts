@@ -14,16 +14,18 @@ process.on("SIGTERM", () => process.exit(0))
 
 async function main() {
   const program = new Command()
-    .name("phala")
-    .alias("pha")
-    .description(`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`)
-    .version("v1.0.1")
-    .addCommand(authCommands)
-    .addCommand(cvmsCommand)
-    .addCommand(dockerCommands)
-    .addCommand(simulatorCommands)
-    .addCommand(joinCommand)
-    .addCommand(demoCommands)
+			.name("phala")
+			.alias("pha")
+			.description(
+				`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`,
+			)
+			.version("v1.0.2")
+			.addCommand(authCommands)
+			.addCommand(cvmsCommand)
+			.addCommand(dockerCommands)
+			.addCommand(simulatorCommands)
+			.addCommand(demoCommands)
+			.addCommand(joinCommand);
 
   program.parse(process.argv)
 }

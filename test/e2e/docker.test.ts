@@ -46,14 +46,15 @@ describe('Docker Commands E2E Tests', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Push a Docker image to Docker Hub');
     expect(stdout).toContain('--image');
-    expect(stdout).toContain('--tag');
   });
 
-  test('Docker tags command shows help', async () => {
-    const { stdout, exitCode } = await runCommand(['docker', 'tags', '--help']);
+  test('Docker generate command shows help', async () => {
+    const { stdout, exitCode } = await runCommand(['docker', 'generate', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('List tags for a Docker image');
+    expect(stdout).toContain('Generate a Docker Compose file');
     expect(stdout).toContain('--image');
-    expect(stdout).toContain('--json');
+    expect(stdout).toContain('--env-file');
+    expect(stdout).toContain('--output');
+    expect(stdout).toContain('--template');
   });
 }); 
