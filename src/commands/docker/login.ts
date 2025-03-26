@@ -40,6 +40,11 @@ export const loginCommand = new Command()
       const loggedIn = await dockerService.login(username);
       if (loggedIn) {
         logger.success(`${username} is logged in to Docker Hub`);
+        // Save credentials
+        await saveDockerCredentials({
+          username,
+          registry: registry || null,
+        });
         return;
       }
       

@@ -223,6 +223,7 @@ export class DockerService {
       });
 
       spinner.stop(true, 'Logged in to Docker Hub successfully');
+      this.setCredentials(username, registry);
       return true;
     } catch (error) {
       logger.error(`Failed to login to Docker Hub: ${error instanceof Error ? error.message : String(error)}`);
