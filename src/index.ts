@@ -19,7 +19,7 @@ async function main() {
 			.description(
 				`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`,
 			)
-			.version("v1.0.2")
+			.version("v1.0.3")
 			.addCommand(authCommands)
 			.addCommand(cvmsCommand)
 			.addCommand(dockerCommands)
