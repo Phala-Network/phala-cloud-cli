@@ -237,9 +237,20 @@ export class DockerService {
    */
   async checkLogin(): Promise<boolean> {
     try {
-      const { stdout } = await execa('docker', ['login']);
-      return stdout.includes('Login Succeeded');
+      // Create a promise that rejects after a timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Docker login check timed out')), 5000);
+      });
+      
+      // Create the actual check promise
+      const checkPromise = execa('docker', ['login']).then(result => {
+        return result.stdout.includes('Login Succeeded');
+      });
+      
+      // Race the promises - whichever finishes first wins
+      return await Promise.race([checkPromise, timeoutPromise]) as boolean;
     } catch (error) {
+      logger.debug(`Docker login check failed: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
