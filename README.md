@@ -37,27 +37,31 @@ ___
 
 2. **Install TEE Cloud CLI**:
 
-   Install via npm or use npx/bunx
-   ```bash
-   # Install the CLI globally
-   npm install -g phala
-   ```
+   - **Install via npm or use npx/bunx**
+      ```bash
+      # Install the CLI globally
+      npm install -g phala
+      ```
+      
+      ```bash
+      # Phala CLI help menu
+      npx phala help
+      bunx phala help
+      ```
 
-   > **NOTE**
-   >
-   > You can use `npx` or `bunx` to call the `phala` command
-   >
-   > ```bash
-   > # Use npx/bunx
-   >
-   > npx phala help
-   > bunx phala help
-   > ```
-   
-   ```bash
-   # Phala CLI help menu
-   npx phala help
-   ```
+   - **Run in Docker**
+      Create a .env file with the following variables
+      ```bash
+      PHALA_CLOUD_API_KEY=
+      DOCKER_USERNAME=
+      DOCKERHUB_TOKEN=
+      ```
+
+      After you fill in your env variables you can start the CLI in a container running in a webshell at http://localhost:7681. You can build locally or you could use the latest published docker image and update the docker-compose.yml file with the image name and tag (i.e. `phalanetwork/phala-cloud-cli:v0.0.5`). 
+
+      ```bash
+      docker compose --env-file .env up -d
+      ```
 
 3. **Sign Up and Get API Key**:
    
