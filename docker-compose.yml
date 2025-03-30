@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  cli-webshell:
+    # Use the image built from your Dockerfile
+    # Ensure this tag matches the one you used during the build
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: phala_cli_webshell
+    environment:
+      - PHALA_CLOUD_API_KEY=${PHALA_CLOUD_API_KEY}
+      - DOCKER_USERNAME=${DOCKER_USERNAME}
+      - DOCKERHUB_TOKEN=${DOCKERHUB_TOKEN}
+    ports:
+      # Map host port 7681 to container port 7681 (ttyd default)
+      - "7681:7681"
+    volumes:
+      # Mount Docker socket to allow CLI inside the container
+      # to interact with the Docker daemon on your host machine.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/tappd.sock:/var/run/tappd.sock
+    # Optional: Keep the container running unless manually stopped
+    restart: unless-stopped 
