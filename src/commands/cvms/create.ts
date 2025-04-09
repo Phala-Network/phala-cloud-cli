@@ -1,8 +1,9 @@
 import { Command } from 'commander';
 import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
-import { getTeepodImages, getTeepods } from '@/src/api/teepods';
+import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
-import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_TEEPOD_ID, DEFAULT_IMAGE } from '@/src/utils/constants';
+import type { TEEPod, Image } from '@/src/api/types';
+import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
 import fs from 'node:fs';
@@ -17,11 +18,11 @@ export const createCommand = new Command()
   .description('Create a new CVM')
   .option('-n, --name <name>', 'Name of the CVM')
   .option('-c, --compose <compose>', 'Path to Docker Compose file')
-  .option('--vcpu <vcpu>', 'Number of vCPUs', String(DEFAULT_VCPU))
-  .option('--memory <memory>', 'Memory in MB', String(DEFAULT_MEMORY))
-  .option('--disk-size <diskSize>', 'Disk size in GB', String(DEFAULT_DISK_SIZE))
-  .option('--teepod-id <teepodId>', 'TEEPod ID to use', DEFAULT_TEEPOD_ID)
-  .option('--image <image>', 'Version of dstack image to use', DEFAULT_IMAGE)
+  .option('--vcpu <vcpu>', `Number of vCPUs, default is ${DEFAULT_VCPU}`)
+  .option('--memory <memory>', `Memory in MB, default is ${DEFAULT_MEMORY}`)
+  .option('--disk-size <diskSize>', `Disk size in GB, default is ${DEFAULT_DISK_SIZE}`)
+  .option('--teepod-id <teepodId>', 'TEEPod ID to use. If not provided, it will be selected from the list of available TEEPods.')
+  .option('--image <image>', 'Version of dstack image to use. If not provided, it will be selected from the list of available images for the selected TEEPod.')
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
   .option('--debug', 'Enable debug mode', false)
@@ -37,6 +38,13 @@ export const createCommand = new Command()
             validate: (input) => {
               if (!input.trim()) {
                 return 'CVM name is required';
+              }
+              if (input.trim().length > 20) {
+                return 'CVM name must be less than 20 characters';
+              } else if (input.trim().length < 3) {
+                return 'CVM name must be at least 3 characters';
+              } else if (!/^[a-zA-Z0-9_-]+$/.test(input)) {
+                return 'CVM name must contain only letters, numbers, underscores, and hyphens';
               }
               return true;
             }
@@ -101,134 +109,64 @@ export const createCommand = new Command()
         }
       }
 
-      // Prompt for resource configuration if needed
-      const resourceQuestions = [];
+      const vcpu = Number(options.vcpu) || DEFAULT_VCPU;
+      const memory = Number(options.memory) || DEFAULT_MEMORY;
+      const diskSize = Number(options.diskSize) || DEFAULT_DISK_SIZE;
 
-      if (options.vcpu === String(DEFAULT_VCPU)) {
-        resourceQuestions.push({
-          type: 'input',
-          name: 'vcpu',
-          message: `Enter number of vCPUs (default: ${DEFAULT_VCPU}):`,
-          default: String(DEFAULT_VCPU),
-          validate: (input) => {
-            const num = parseInt(input);
-            if (isNaN(num) || num <= 0) {
-              return 'Please enter a valid positive number';
-            }
-            return true;
-          }
-        });
+      if (isNaN(vcpu) || vcpu <= 0) {
+        logger.error(`Invalid number of vCPUs: ${vcpu}`);
+        process.exit(1);
       }
 
-      if (options.memory === String(DEFAULT_MEMORY)) {
-        resourceQuestions.push({
-          type: 'input',
-          name: 'memory',
-          message: `Enter memory in MB (default: ${DEFAULT_MEMORY}):`,
-          default: String(DEFAULT_MEMORY),
-          validate: (input) => {
-            const num = parseInt(input);
-            if (isNaN(num) || num <= 0) {
-              return 'Please enter a valid positive number';
-            }
-            return true;
-          }
-        });
+      if (isNaN(memory) || memory <= 0) {
+        logger.error(`Invalid memory: ${memory}`);
+        process.exit(1);
       }
 
-      if (options.diskSize === String(DEFAULT_DISK_SIZE)) {
-        resourceQuestions.push({
-          type: 'input',
-          name: 'diskSize',
-          message: `Enter disk size in GB (default: ${DEFAULT_DISK_SIZE}):`,
-          default: String(DEFAULT_DISK_SIZE),
-          validate: (input) => {
-            const num = parseInt(input);
-            if (isNaN(num) || num <= 0) {
-              return 'Please enter a valid positive number';
-            }
-            return true;
-          }
-        });
+      if (isNaN(diskSize) || diskSize <= 0) {
+        logger.error(`Invalid disk size: ${diskSize}`);
+        process.exit(1);
       }
 
-      if (resourceQuestions.length > 0) {
-        const resources = await inquirer.prompt(resourceQuestions);
-
-        if (resources.vcpu) {
-          options.vcpu = resources.vcpu;
-        }
-
-        if (resources.memory) {
-          options.memory = resources.memory;
-        }
-
-        if (resources.diskSize) {
-          options.diskSize = resources.diskSize;
-        }
+      const teepodsSpinner = logger.startSpinner('Fetching available TEEPods');
+      const teepods = await getTeepods();
+      teepodsSpinner.stop(true);
+      if (teepods.length === 0) {
+        logger.error('No TEEPods available. Please try again later.');
+        process.exit(1);
       }
 
+      let selectedTeepod: TEEPod;
       // Fetch available TEEPods
       if (!options.teepodId) {
-        const teepodsSpinner = logger.startSpinner('Fetching available TEEPods');
-        const teepods = await getTeepods();
-        teepodsSpinner.stop(true);
-
-        if (teepods.length === 0) {
-          logger.error('No TEEPods available. Please try again later.');
-          process.exit(1);
-        }
-
-        // Use inquirer to select a TEEPod
-        const { selectedTeepodId } = await inquirer.prompt([
-          {
-            type: 'list',
-            name: 'selectedTeepodId',
-            message: 'Select a TEEPod:',
-            choices: teepods.map(pod => ({
-              name: `${pod.name}`,
-              value: pod.teepod_id
-            }))
-          }
-        ]);
-
-        // Find the selected TEEPod
-        const selectedTeepod = teepods.find(pod => pod.teepod_id === selectedTeepodId);
+        selectedTeepod = teepods[0];
+      } else {
+        selectedTeepod = teepods.find(pod => pod.teepod_id === options.teepodId);
         if (!selectedTeepod) {
           logger.error('Failed to find selected TEEPod');
           process.exit(1);
         }
-
-        logger.info(`Selected TEEPod: ${selectedTeepod.name}`);
-        options.teepodId = selectedTeepod.teepod_id;
       }
 
+      let selectedImage: Image;
       if (!options.image) {
-        const images = await getTeepodImages(options.teepodId);
-        const imageChoices = images.map(image => ({
-          name: `${image.name}`,
-          value: image.name
-        }));
-
-        const { selectedImage } = await inquirer.prompt([
-          {
-            type: 'list',
-            name: 'selectedImage',
-            message: 'Select an image:',
-            choices: imageChoices
-          }
-        ]);
-        options.image = selectedImage.value;
+        selectedImage = selectedTeepod.images![0];
+      } else {
+        const selectedImage = selectedTeepod.images?.find(image => image.name === options.image);
+        if (!selectedImage) {
+          logger.error(`Failed to find selected image: ${options.image}`);
+          process.exit(1);
+        }
       }
 
       // Prepare VM configuration
       const vmConfig = {
-        teepod_id: options.teepodId || 3,
+        teepod_id: selectedTeepod.teepod_id,
         name: options.name,
-        image: options.image || 'dstack-dev-0.3.5',
-        vcpu: parseInt(options.vcpu),
-        memory: parseInt(options.memory),
-        disk_size: parseInt(options.diskSize),
+        image: selectedImage.name,
+        vcpu: vcpu,
+        memory: memory,
+        disk_size: diskSize,
         compose_manifest: {
           docker_compose_file: composeString,
           docker_config: {
