@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  app:
+    image: hashwarlock/elizav2:v0.0.1xxx
+    container_name: app
+    volumes:
+      - /var/run/tappd.sock:/var/run/tappd.sock
+    environment:
+    restart: always

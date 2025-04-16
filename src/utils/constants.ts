@@ -62,12 +62,11 @@ services:
         timeout: 5s
         retries: 5
     restart: always
+    networks:
+      - eliza-network
   eliza:
     image: {{imageName}}
-    container_name: elizav2
     command: bun run start
-    stdin_open: true
-    tty: true
     volumes:
       - /var/run/tappd.sock:/var/run/tappd.sock
     environment:
@@ -75,7 +74,6 @@ services:
 {{/each}}
     ports:
       - "3000:3000"
-      - "5173:5173"
     depends_on:
       postgres:
         condition: service_healthy
