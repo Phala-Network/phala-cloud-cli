@@ -140,6 +140,7 @@ export const getUserInfoResponseSchema = z.object({
   username: z.string(),
   email: z.string(),
   credits: zodDecimal.create({ coerce: true }),
+  granted_credits: zodDecimal.create({ coerce: true }),
   role: z.string(),
   avatar: z.string(),
   flag_reset_password: z.boolean(),
