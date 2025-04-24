@@ -64,14 +64,14 @@ export class DockerService {
       const logStream = fs.createWriteStream(logFile, { flags: 'a' });
       const consoleBuffer: string[] = [];
 
-      const processOutput = (data: Buffer, isError: boolean = false) => {
+      const processOutput = (data: Buffer, isError = false) => {
         const lines = data.toString().split('\n');
 
         // Write to log file
         logStream.write(data);
 
         // Update console buffer
-        lines.forEach(line => {
+        for (const line of lines) {
           if (line.trim()) {
             consoleBuffer.push(line);
             // Keep only the last MAX_CONSOLE_LINES lines
@@ -83,15 +83,15 @@ export class DockerService {
             console.clear();
             console.log(`Latest ${MAX_CONSOLE_LINES} lines (full log at ${logFile}):`);
             console.log('-'.repeat(50));
-            consoleBuffer.forEach(bufferedLine => {
+            for (const bufferedLine of consoleBuffer) {
               if (isError) {
                 console.error(bufferedLine);
               } else {
                 console.log(bufferedLine);
               }
-            });
+            }
           }
-        });
+        }
       };
 
       proc.stdout.on('data', (data) => processOutput(data));
@@ -206,21 +206,38 @@ export class DockerService {
       // Check if already logged in
       const loggedIn = await this.checkLogin();
       if (loggedIn) {
-        spinner.stop(true, `Logged in as ${username}`);
+        spinner.stop(true, 'Already logged in to Docker Hub');
         this.setCredentials(username, registry);
         return true;
       }
 
-      // Login to Docker
-      await execa('docker', [
-        'login',
-        ...(registry ? [registry] : []),
-        '-u',
-        username,
-        '--password-stdin'
-      ], {
-        input: password
-      });
+      // Verify password was provided
+      if (!password) {
+        spinner.stop(false);
+        throw new Error('Password is required for Docker login');
+      }
+
+      // Login to Docker with timeout protection
+      try {
+        const loginProcess = execa('docker', [
+          'login',
+          ...(registry ? [registry] : []),
+          '-u',
+          username,
+          '--password-stdin'
+        ], {
+          input: password,
+          timeout: 10000 // 10 second timeout
+        });
+
+        await loginProcess;
+      } catch (loginError) {
+        if (loginError.timedOut) {
+          spinner.stop(false);
+          throw new Error('Docker login timed out. Please check your credentials and try again.');
+        }
+        throw loginError;
+      }
 
       spinner.stop(true, 'Logged in to Docker Hub successfully');
       this.setCredentials(username, registry);
@@ -237,18 +254,20 @@ export class DockerService {
    */
   async checkLogin(): Promise<boolean> {
     try {
-      // Create a promise that rejects after a timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Docker login check timed out')), 5000);
-      });
+      // Instead of checking via "docker login" which is interactive,
+      // check if the Docker config.json file exists and contains auth data
+      const homeDir = os.homedir();
+      const dockerConfigPath = path.join(homeDir, '.docker', 'config.json');
       
-      // Create the actual check promise
-      const checkPromise = execa('docker', ['login']).then(result => {
-        return result.stdout.includes('Login Succeeded');
-      });
+      if (!fs.existsSync(dockerConfigPath)) {
+        return false;
+      }
       
-      // Race the promises - whichever finishes first wins
-      return await Promise.race([checkPromise, timeoutPromise]) as boolean;
+      // Read the docker config file
+      const dockerConfig = JSON.parse(fs.readFileSync(dockerConfigPath, 'utf-8'));
+      
+      // Check if the config has auths data
+      return !!(dockerConfig?.auths && Object.keys(dockerConfig.auths).length > 0);
     } catch (error) {
       logger.debug(`Docker login check failed: ${error instanceof Error ? error.message : String(error)}`);
       return false;
@@ -273,7 +292,7 @@ export class DockerService {
     const validatedTemplate = ComposeTemplateSchema.parse({ template });
 
     // Ensure compose files directory exists
-    const composePath = COMPOSE_FILES_DIR;
+    const composePath = path.resolve(COMPOSE_FILES_DIR);
     
     // Create directory if it doesn't exist
     if (!fs.existsSync(composePath)) {
@@ -312,7 +331,7 @@ export class DockerService {
           // Keep the original key without any transformation
           return `${trimmedKey}=${trimmedKey}`;  // Create KEY=KEY format
         })
-        .filter(Boolean as any); // Remove null entries
+        .filter(Boolean as unknown as ((value: string | null) => value is string)); // Remove null entries
     }
 
     // Create full image name with username
@@ -322,7 +341,7 @@ export class DockerService {
     const compiledTemplate = Handlebars.compile(validatedTemplate.template, { noEscape: true });
     const composeContent = compiledTemplate({
       imageName: fullImageName,
-      envVars: envVars.map(env => env.replace(/=.*/, '=\${' + env.split('=')[0] + '}'))
+      envVars: envVars.map(env => env.replace(/=.*/, `=\${${env.split('=')[0]}}`))
     });
 
     // Write the docker-compose file with standardized name in the compose directory

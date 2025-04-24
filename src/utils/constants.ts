@@ -47,27 +47,27 @@ export const API_ENDPOINTS = {
 export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3.8'
 services:
   postgres:
-    image: postgres:15
+    image: ankane/pgvector:latest
     environment:
         - POSTGRES_PASSWORD=postgres
         - POSTGRES_USER=postgres
         - POSTGRES_DB=eliza
+        - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-        - postgres-data:/var/lib/postgresql/data
+        - postgres-data:/var/lib/postgresql/data:rw
     ports:
         - "127.0.0.1:5432:5432"
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        test: ["CMD-SHELL", "pg_isready -U \${POSTGRES_USER} -d \${POSTGRES_DB}"]
         interval: 5s
         timeout: 5s
         retries: 5
     restart: always
+    networks:
+      - eliza-network
   eliza:
     image: {{imageName}}
-    container_name: elizav2
     command: bun run start
-    stdin_open: true
-    tty: true
     volumes:
       - /var/run/tappd.sock:/var/run/tappd.sock
     environment:
@@ -75,7 +75,6 @@ services:
 {{/each}}
     ports:
       - "3000:3000"
-      - "5173:5173"
     depends_on:
       postgres:
         condition: service_healthy
