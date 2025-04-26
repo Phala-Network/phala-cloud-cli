@@ -22,6 +22,7 @@ export const createCommand = new Command()
   .option('--memory <memory>', `Memory in MB, default is ${DEFAULT_MEMORY}`)
   .option('--disk-size <diskSize>', `Disk size in GB, default is ${DEFAULT_DISK_SIZE}`)
   .option('--teepod-id <teepodId>', 'TEEPod ID to use. If not provided, it will be selected from the list of available TEEPods.')
+  .option('--node-name <nodeName>', 'TEEPod name to use. If provided, will take precedence over teepod-id.')
   .option('--image <image>', 'Version of dstack image to use. If not provided, it will be selected from the list of available images for the selected TEEPod.')
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
@@ -138,7 +139,14 @@ export const createCommand = new Command()
 
       let selectedTeepod: TEEPod;
       // Fetch available TEEPods
-      if (!options.teepodId) {
+      if (options.nodeName) {
+        // 如果提供了节点名称，优先通过名称查找
+        selectedTeepod = teepods.find(pod => pod.name === options.nodeName);
+        if (!selectedTeepod) {
+          logger.error(`Failed to find TEEPod with name: ${options.nodeName}`);
+          process.exit(1);
+        }
+      } else if (!options.teepodId) {
         selectedTeepod = teepods[0];
       } else {
         selectedTeepod = teepods.find(pod => pod.teepod_id == options.teepodId);
