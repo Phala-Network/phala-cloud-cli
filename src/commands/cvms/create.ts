@@ -141,7 +141,7 @@ export const createCommand = new Command()
       if (!options.teepodId) {
         selectedTeepod = teepods[0];
       } else {
-        selectedTeepod = teepods.find(pod => pod.teepod_id === options.teepodId);
+        selectedTeepod = teepods.find(pod => pod.teepod_id == options.teepodId);
         if (!selectedTeepod) {
           logger.error('Failed to find selected TEEPod');
           process.exit(1);
