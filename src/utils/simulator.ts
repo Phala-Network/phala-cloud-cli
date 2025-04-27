@@ -412,7 +412,21 @@ export async function setSimulatorEndpointEnv(endpoint?: string): Promise<string
  * @returns boolean indicating if deletion was successful
  */
 export async function deleteSimulatorEndpointEnv(): Promise<boolean> {
-    await execSync('unset DSTACK_SIMULATOR_ENDPOIN');
-    logger.success('Deleted DSTACK_SIMULATOR_ENDPOINT from current process');
-    return true;
+    try {
+        const platform = getPlatform();
+        
+        if (platform === 'win32') {
+            // Windows - use set with empty value
+            await execSync('set DSTACK_SIMULATOR_ENDPOINT=', { stdio: 'inherit' });
+        } else {
+            // Unix/Linux/macOS
+            await execSync('unset DSTACK_SIMULATOR_ENDPOINT', { stdio: 'inherit' });
+        }
+        
+        logger.success('Deleted DSTACK_SIMULATOR_ENDPOINT from current process');
+        return true;
+    } catch (error) {
+        logger.error('Error deleting simulator endpoint environment variable:', error);
+        return false;
+    }
 }

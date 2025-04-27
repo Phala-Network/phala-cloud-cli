@@ -137,13 +137,24 @@ export const createCommand = new Command()
         process.exit(1);
       }
 
+      // 打印所有可用的TEEPods
+      logger.info('可用的TEEPods:');
+      teepods.forEach((pod, index) => {
+        logger.info(`[${index + 1}] ID: ${pod.teepod_id}, 名称: ${pod.name}`);
+      });
+
       let selectedTeepod: TEEPod;
       // Fetch available TEEPods
       if (options.nodeName) {
         // 如果提供了节点名称，优先通过名称查找
-        selectedTeepod = teepods.find(pod => pod.name === options.nodeName);
+        const normalizedNodeName = options.nodeName.trim().replace(/^["'](.*)["']$/, '$1');
+        if (options.debug) {
+          logger.debug(`Looking for TEEPod with name: "${normalizedNodeName}"`);
+          logger.debug(`Available TEEPods: ${JSON.stringify(teepods.map(pod => ({ id: pod.teepod_id, name: pod.name })))}`);
+        }
+        selectedTeepod = teepods.find(pod => pod.name === normalizedNodeName);
         if (!selectedTeepod) {
-          logger.error(`Failed to find TEEPod with name: ${options.nodeName}`);
+          logger.error(`Failed to find TEEPod with name: ${normalizedNodeName}`);
           process.exit(1);
         }
       } else if (!options.teepodId) {

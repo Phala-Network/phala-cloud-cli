@@ -1,6 +1,6 @@
 {
   "name": "phala-m",
-  "version": "1.0.8",
+  "version": "1.0.14",
   "description": "CLI for Managing Phala Cloud Services",
   "author": {
     "name": "Phala Network",
@@ -22,6 +22,7 @@
   "exports": "./dist/index.js",
   "bin": {
     "phala": "./dist/index.js",
+    "phala-m": "./dist/index.js",
     "pha": "./dist/index.js"
   },
   "scripts": {
