@@ -57,7 +57,7 @@ export const joinCommand = new Command()
   .description('Join Phala Cloud! Get an account and deploy a CVM for FREE')
   .action(async () => {
     try {
-      const inviteUrl = 'https://cloud.phala.network/register?invite=PHALACLI';
+      const inviteUrl = 'https://cloud.phala.network/register?invite=beta';
       const spinner =logger.startSpinner('Brewing a fresh cup of TEE 🍵');
       await sleep(2000);
       spinner.stop(true);

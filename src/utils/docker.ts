@@ -181,7 +181,7 @@ export class DockerService {
       const fullImageName = imageName;
       console.log(`Pushing image ${fullImageName} to Docker Hub...`);
 
-      await this.spawnProcess('docker', ['push', fullImageName], 'push', imageName.replace(/.*\/+(\w+):.*$/g, '$1'));
+      await this.spawnProcess('docker', ['push', fullImageName], 'push', imageName.replace(/.*\/+([\w-]+):.*$/g, '$1'));
 
       spinner.stop(true, `Docker image ${fullImageName} pushed successfully`);
       return true;
@@ -347,7 +347,7 @@ export class DockerService {
     // Write the docker-compose file with standardized name in the compose directory
     const composeFile = path.join(
       composePath,
-      `${imageName.replace(/.*\/+(\w+):.*$/g, "$1")}-tee-compose.yaml`,
+      `${imageName.replace(/.*\/+([\w-]+):.*$/g, "$1")}-tee-compose.yaml`,
     );
     fs.writeFileSync(composeFile, composeContent);
 

@@ -43,7 +43,7 @@ export const statusCommand = new Command()
           'Email': userInfo.email,
           'Role': userInfo.role,
           'Team': `${userInfo.team_name} (${userInfo.team_tier})`,
-          'Credits': `${userInfo.credits + userInfo.granted_credits}`
+          'Credits': `$${(userInfo.credits + userInfo.granted_credits).toFixed(2)}`
         };
         
         if (userInfo.trial_ended_at) {
