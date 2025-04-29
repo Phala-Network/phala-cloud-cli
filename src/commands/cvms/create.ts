@@ -3,8 +3,9 @@ import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import type { TEEPod, Image } from '@/src/api/types';
-import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
-import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_TEEPOD_ID, DEFAULT_IMAGE } from '@/src/utils/constants';
+import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
+import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,9 +42,11 @@ export const createCommand = new Command()
               }
               if (input.trim().length > 20) {
                 return 'CVM name must be less than 20 characters';
-              } else if (input.trim().length < 3) {
+              } 
+              if (input.trim().length < 3) {
                 return 'CVM name must be at least 3 characters';
-              } else if (!/^[a-zA-Z0-9_-]+$/.test(input)) {
+              } 
+              if (!/^[a-zA-Z0-9_-]+$/.test(input)) {
                 return 'CVM name must contain only letters, numbers, underscores, and hyphens';
               }
               return true;
@@ -113,17 +116,17 @@ export const createCommand = new Command()
       const memory = Number(options.memory) || DEFAULT_MEMORY;
       const diskSize = Number(options.diskSize) || DEFAULT_DISK_SIZE;
 
-      if (isNaN(vcpu) || vcpu <= 0) {
+      if (Number.isNaN(vcpu) || vcpu <= 0) {
         logger.error(`Invalid number of vCPUs: ${vcpu}`);
         process.exit(1);
       }
 
-      if (isNaN(memory) || memory <= 0) {
+      if (Number.isNaN(memory) || memory <= 0) {
         logger.error(`Invalid memory: ${memory}`);
         process.exit(1);
       }
 
-      if (isNaN(diskSize) || diskSize <= 0) {
+      if (Number.isNaN(diskSize) || diskSize <= 0) {
         logger.error(`Invalid disk size: ${diskSize}`);
         process.exit(1);
       }
@@ -139,9 +142,13 @@ export const createCommand = new Command()
       let selectedTeepod: TEEPod;
       // Fetch available TEEPods
       if (!options.teepodId) {
-        selectedTeepod = teepods[0];
+        selectedTeepod = teepods.find(pod => pod.teepod_id === Number(DEFAULT_TEEPOD_ID));
+        if (!selectedTeepod) {
+          logger.error('Failed to find default TEEPod');
+          process.exit(1);
+        }
       } else {
-        selectedTeepod = teepods.find(pod => pod.teepod_id === options.teepodId);
+        selectedTeepod = teepods.find(pod => pod.teepod_id === Number(options.teepodId));
         if (!selectedTeepod) {
           logger.error('Failed to find selected TEEPod');
           process.exit(1);
@@ -150,9 +157,13 @@ export const createCommand = new Command()
 
       let selectedImage: Image;
       if (!options.image) {
-        selectedImage = selectedTeepod.images![0];
+        selectedImage = selectedTeepod.images?.find(image => image.name === DEFAULT_IMAGE);
+        if (!selectedImage) {
+          logger.error(`Failed to find default image ${DEFAULT_IMAGE}`);
+          process.exit(1);
+        }
       } else {
-        const selectedImage = selectedTeepod.images?.find(image => image.name === options.image);
+        selectedImage = selectedTeepod.images?.find(image => image.name === options.image);
         if (!selectedImage) {
           logger.error(`Failed to find selected image: ${options.image}`);
           process.exit(1);
