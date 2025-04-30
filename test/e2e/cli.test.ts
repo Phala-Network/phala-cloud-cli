@@ -71,6 +71,6 @@ describe('TEE Cloud CLI End-to-End Tests', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Brewing a fresh cup of TEE 🍵');
     expect(stdout).toContain('TEE is served! Opening Phala Cloud registration page.');
-    expect(stdout).toContain('https://cloud.phala.network/register?invite=PHALACLI');
+    expect(stdout).toContain('https://cloud.phala.network/register?invite=beta');
   });
 }); 
