@@ -412,7 +412,7 @@ export async function setSimulatorEndpointEnv(endpoint?: string): Promise<string
  * @returns boolean indicating if deletion was successful
  */
 export async function deleteSimulatorEndpointEnv(): Promise<boolean> {
-    await execSync('unset DSTACK_SIMULATOR_ENDPOIN');
+    await execSync('unset DSTACK_SIMULATOR_ENDPOINT');
     logger.success('Deleted DSTACK_SIMULATOR_ENDPOINT from current process');
     return true;
 }
