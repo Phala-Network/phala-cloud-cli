@@ -435,6 +435,25 @@ Create a new CVM on Phala Cloud.
 phala cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --memory 4096 --diskSize 60 --teepod-id 3 --image dstack-dev-0.3.5 --env-file ./.env
 ```
 
+##### Using a Private Docker Registry
+
+You can deploy images from a private Docker registry by setting the appropriate environment variables.
+
+##### 🔐 DockerHub:
+Set these variables:
+- `DSTACK_DOCKER_USERNAME` – Your DockerHub username *(required)*
+- `DSTACK_DOCKER_PASSWORD` – Your DockerHub password or personal access token *(required)*
+- `DSTACK_DOCKER_REGISTRY` – Registry URL (optional, defaults to DockerHub)
+
+##### 🔐 AWS ECR:
+Set these variables:
+- `DSTACK_AWS_ACCESS_KEY_ID` – AWS access key *(required)*
+- `DSTACK_AWS_SECRET_ACCESS_KEY` – AWS secret key *(required)*
+- `DSTACK_AWS_REGION` – AWS region of the ECR *(required)*
+- `DSTACK_AWS_ECR_REGISTRY` – Full ECR registry URL *(required)*
+
+Once set, the CLI will automatically authenticate and pull your private image securely.
+
 #### Upgrade CVM
 
 ```bash
