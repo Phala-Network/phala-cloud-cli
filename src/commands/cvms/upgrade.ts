@@ -55,6 +55,14 @@ export const upgradeCommand = new Command()
       
       // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
       await deleteSimulatorEndpointEnv();
+      // Print if they are using a private registry
+      if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
+        logger.info("🔐 Using private DockerHub registry credentials...");
+      } else if (process.env.DSTACK_AWS_ACCESS_KEY_ID && process.env.DSTACK_AWS_SECRET_ACCESS_KEY && process.env.DSTACK_AWS_REGION && process.env.DSTACK_AWS_ECR_REGISTRY) {
+        logger.info(`🔐 Using private AWS ECR registry: ${process.env.DSTACK_AWS_ECR_REGISTRY}`);
+      } else {
+        logger.info("🔐 Using public DockerHub registry...");
+      }
 
       // Process environment variables if provided
       let encrypted_env = "";
