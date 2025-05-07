@@ -63,7 +63,7 @@ ___
    
    To deploy applications to Phala Cloud, you'll need an API key:
 
-   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, register with this link with [PROMO_CODE](https://cloud.phala.network/register?invite=PHALACLI) or run `npx phala free` in the terminal.
+   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, registe [here](https://cloud.phala.network/register?invite=beta) or run `npx phala free` in the terminal.
    - After logging in, navigate to the "API Keys" section in your profile
    - Create a new API key with an appropriate name (e.g., "CLI Access")
    - Copy the generated API key - you'll need it for authentication
@@ -437,7 +437,7 @@ phala cvms create --name my-tee-app --compose ./docker-compose.yml --vcpu 2 --me
 
 ##### Using a Private Docker Registry
 
-You can deploy images from a private Docker registry by setting the appropriate environment variables.
+You can deploy images from a private Docker registry by setting the appropriate environment variables. Check the [docs](https://docs.phala.network/phala-cloud/create-cvm/create-with-private-docker-image#deploy-private-docker-image-with-cli) for more information.
 
 ##### 🔐 DockerHub:
 Set these variables:
