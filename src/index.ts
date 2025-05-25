@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { Command } from "commander"
 import { logo } from "./utils/banner"
 import { authCommands } from "./commands/auth"
@@ -19,7 +18,7 @@ async function main() {
 			.description(
 				`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`,
 			)
-			.version("v1.0.9")
+			.version("v1.0.10")
 			.addCommand(authCommands)
 			.addCommand(cvmsCommand)
 			.addCommand(dockerCommands)
