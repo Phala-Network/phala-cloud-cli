@@ -32,6 +32,13 @@ export const parseEnv = (envs: string[], envFile: string): EnvVar[] => {
                     value = value.substring(0, commentIndex).trim();
                 }
                 
+                // Strip quotation marks from value if present (both single and double quotes)
+                if (value.length > 1 && 
+                    ((value.startsWith('"') && value.endsWith('"')) || 
+                     (value.startsWith("'") && value.endsWith("'")))) {
+                    value = value.slice(1, -1);
+                }
+                
                 if (key && value) {
                     envVars[key.trim()] = value.trim();
                 }
