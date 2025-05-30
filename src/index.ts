@@ -1,16 +1,16 @@
-#!/usr/bin/env bun
-import { Command } from "commander"
-import { logo } from "./utils/banner"
-import { authCommands } from "./commands/auth"
-import { dockerCommands } from "./commands/docker"
-import { simulatorCommands } from "./commands/simulator"
-import { logger } from "./utils/logger"
-import { cvmsCommand } from './commands/cvms'
-import { joinCommand } from "./commands/join"
-import { demoCommands } from "./commands/demo"
+#!/usr/bin/env node
+import { Command } from "commander";
+import { logo } from "./utils/banner";
+import { authCommands } from "./commands/auth";
+import { dockerCommands } from "./commands/docker";
+import { simulatorCommands } from "./commands/simulator";
+import { logger } from "./utils/logger";
+import { cvmsCommand } from "./commands/cvms";
+import { joinCommand } from "./commands/join";
+import { demoCommands } from "./commands/demo";
 
-process.on("SIGINT", () => process.exit(0))
-process.on("SIGTERM", () => process.exit(0))
+process.on("SIGINT", () => process.exit(0));
+process.on("SIGTERM", () => process.exit(0));
 
 async function main() {
   const program = new Command()
@@ -27,10 +27,10 @@ async function main() {
 			.addCommand(demoCommands)
 			.addCommand(joinCommand);
 
-  program.parse(process.argv)
+	program.parse(process.argv);
 }
 
 main().catch((error) => {
-  logger.error("An error occurred:", error)
-  process.exit(1)
-})
+	logger.error("An error occurred:", error);
+	process.exit(1);
+});
