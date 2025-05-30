@@ -3,7 +3,7 @@ import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import type { TEEPod, Image } from '@/src/api/types';
-import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_TEEPOD_ID, DEFAULT_IMAGE } from '@/src/utils/constants';
+import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_IMAGE } from '@/src/utils/constants';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 
@@ -151,7 +151,7 @@ export const createCommand = new Command()
       let selectedTeepod: TEEPod;
       // Fetch available TEEPods
       if (!options.teepodId) {
-        selectedTeepod = teepods.find(pod => pod.teepod_id === Number(DEFAULT_TEEPOD_ID));
+        selectedTeepod = teepods[0];
         if (!selectedTeepod) {
           logger.error('Failed to find default TEEPod');
           process.exit(1);
