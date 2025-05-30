@@ -16,9 +16,8 @@ export const DEFAULT_VCPU = 2;
 export const DEFAULT_MEMORY = 4096; // MB
 export const DEFAULT_DISK_SIZE = 40; // GB
 
-// Default TEEPod ID
-export const DEFAULT_TEEPOD_ID = '3';
-export const DEFAULT_IMAGE = 'dstack-0.3.5';
+// Default TEEPod Image
+export const DEFAULT_IMAGE = 'dstack-0.3.6';
 
 // API Endpoints
 export const API_ENDPOINTS = {
