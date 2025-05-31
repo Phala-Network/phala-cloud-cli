@@ -124,7 +124,7 @@ export const getCvmByAppIdResponseSchema = z.object({
   in_progress: z.boolean(),
   app_id: z.string(),
   vm_uuid: z.string(),
-  instance_id: z.string(),
+  instance_id: z.string().nullable(),
   vcpu: z.number(),
   memory: z.number(),
   disk_size: z.number(),
