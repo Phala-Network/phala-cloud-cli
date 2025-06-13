@@ -9,6 +9,7 @@ import { cvmsCommand } from "./commands/cvms";
 import { joinCommand } from "./commands/join";
 import { demoCommands } from "./commands/demo";
 import { nodesCommand } from "./commands/nodes";
+import { kmsCommand } from "./commands/kms";
 
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
@@ -27,6 +28,7 @@ async function main() {
 			.addCommand(simulatorCommands)
 			.addCommand(demoCommands)
 			.addCommand(joinCommand)
+			.addCommand(kmsCommand)
 			.addCommand(nodesCommand);
 
 	program.parse(process.argv);

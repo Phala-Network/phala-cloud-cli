@@ -18,6 +18,7 @@ export const DEFAULT_DISK_SIZE = 40; // GB
 
 // Default TEEPod Image
 export const DEFAULT_IMAGE = 'dstack-0.3.6';
+export const DEFAULT_ONCHAIN_IMAGE = 'dstack-0.5.1';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -36,6 +37,8 @@ export const API_ENDPOINTS = {
   CVM_STOP: (appId: string) => `/api/v1/cvms/app_${appId}/stop`,
   CVM_RESTART: (appId: string) => `/api/v1/cvms/app_${appId}/restart`,
   CVM_LOGS: (appId: string) => `/api/v1/cvms/app_${appId}/logs`,
+  CVM_PROVISION: '/api/v1/cvms/provision',
+  CVM_CREATE: '/api/v1/cvms',
   CVM_FROM_CONFIGURATION: '/api/v1/cvms/from_cvm_configuration',
   CVM_PUBKEY: '/api/v1/cvms/pubkey/from_cvm_configuration',
   CVM_UPGRADE: (appId: string) => `/api/v1/cvms/app_${appId}/compose`,
@@ -43,6 +46,10 @@ export const API_ENDPOINTS = {
   CVM_RESIZE: (appId: string) => `/api/v1/cvms/app_${appId}/resources`,
   CVM_COMPOSE: (cvmId: string) => `/api/v1/cvms/${cvmId}/compose`,
   REPLICATE_CVM: (appId: string) => `/api/v1/cvms/${appId}/replicas`,
+
+  // KMS
+  KMS_DEPLOY: '/api/v1/kms/deploy',
+  KMS_PUBKEY: (kmsId: string, appId: string) => `/api/v1/kms/${kmsId}/pubkey/${appId}`,
 };
 
 export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3.8'

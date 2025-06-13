@@ -11,6 +11,8 @@ import { upgradeCommand } from './upgrade';
 import { resizeCommand } from './resize';
 import { listNodesCommand } from './list-node';
 import { replicateCommand } from './replicate';
+import { provisionCommand } from './provision';
+import { getTeepodsCommand } from './get-teepods';
 
 export const cvmsCommand = new Command()
   .name('cvms')
@@ -26,5 +28,7 @@ export const cvmsCommand = new Command()
   .addCommand(restartCommand)
   .addCommand(upgradeCommand)
   .addCommand(listNodesCommand)
-  .addCommand(replicateCommand);
+  .addCommand(replicateCommand)
+  .addCommand(provisionCommand)
+  .addCommand(getTeepodsCommand);
    
