@@ -98,12 +98,15 @@ export const postCvmResponseSchema = z.object({
   memory: z.number(),
   disk_size: z.number(),
   manifest_version: z.number(),
-  version: z.string(),
+  version: z.string().nullable(),
   runner: z.string(),
   docker_compose_file: z.string(),
   features: z.array(z.string()).nullable(),
   created_at: z.string(),
-  encrypted_env_pubkey: z.string()
+  encrypted_env_pubkey: z.string(),
+  device_id: z.string().optional(),
+  kms_contract_address: z.string().optional(),
+  kms_owner_address: z.string().optional(),
 });
 
 // Get Pubkey From CVM Response Schema
@@ -239,7 +242,18 @@ export const getCvmNetworkResponseSchema = z.object({
   })),
 });
 
+
+
+// KMS Pubkey Response Schema
+export const kmsPubkeyResponseSchema = z.object({
+  public_key: z.string(),
+  signature: z.string(),
+});
+
 // Type exports
+
+
+export type KmsPubkeyResponse = z.infer<typeof kmsPubkeyResponseSchema>;
 export type KmsListItem = z.infer<typeof kmsListItemSchema>;
 export type DockerConfig = z.infer<typeof dockerConfigSchema>;
 export type ComposeFile = z.infer<typeof composeFileSchema>;
@@ -261,6 +275,18 @@ export type Capacity = z.infer<typeof capacitySchema>;
 export type TeepodResponse = z.infer<typeof teepodResponseSchema>;
 export type CvmAttestationResponse = z.infer<typeof cvmAttestationResponseSchema>;
 export type GetCvmNetworkResponse = z.infer<typeof getCvmNetworkResponseSchema>;
+
+// Provision CVM Response Schema
+export const provisionCvmResponseSchema = z.object({
+  app_id: z.string().nullable(),
+  app_env_encrypt_pubkey: z.string(),
+  compose_hash: z.string(),
+  fmspc: z.string(),
+  device_id: z.string(),
+  os_image_hash: z.string(),
+});
+
+export type ProvisionCvmResponse = z.infer<typeof provisionCvmResponseSchema>;
 /**
  * Certificate naming information
  */

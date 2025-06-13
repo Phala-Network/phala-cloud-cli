@@ -88,7 +88,9 @@ Manage Phala Confidential Virtual Machines (CVMs).
   - Arguments:
     - `id`: ID of the CVM to get details for
 
-- **`create`**: Create a new CVM
+- **`get-teepods`**: Get all available TEEPods
+
+- **`create`**: Create a new CVM, the CVM will be created on-chain KMS.
   - Options:
     - `-n, --name <n>`: Name of the CVM
     - `-c, --compose <compose>`: Path to Docker Compose file
@@ -100,6 +102,20 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `-e, --env-file <envFile>`: Path to environment file
     - `--skip-env`: Skip environment variable prompt
     - `--debug`: Enable debug mode
+    - `--use-onchain-kms`: Flag to enable on-chain KMS integration.
+    - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
+    - `--kms-id <kmsId>`: KMS ID to use. If not provided, it will be selected from the list of available KMS instances.
+
+- **`provision`**: Provision a new CVM with on-chain KMS integration. On-chain KMS information is provided by `kms deploy` response or an existing AppAuth contract.
+  - Options:
+    - `--app-id <appId>`: App ID for the CVM (with 0x prefix for on-chain KMS)
+    - `--compose-hash <composeHash>`: Compose hash for the CVM (SHA-256 hex string)
+    - `--app-auth-contract-address <string>`: AppAuth contract address for on-chain KMS
+    - `--kms-id <string>`: KMS ID for API-based public key retrieval
+    - `--kms-node-url <string>`: KMS node URL for direct public key retrieval
+    - `--deployer-address <deployerAddress>`: Deployer address for the CVM
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `--skip-env`: Skip environment variable prompt
 
 - **`upgrade <id>`**: Upgrade a CVM
   - Arguments:
@@ -156,6 +172,58 @@ Manage Phala Confidential Virtual Machines (CVMs).
     phala cvms replicate <cvm-id> --teepod-id <teepod-id>
     ```
 
+## On-Chain KMS Management
+
+### `phala kms`
+
+Manage On-Chain Key Management Service (KMS) components.
+
+#### Subcommands:
+
+- **`deploy`**: Deploy or register an AppAuth contract for on-chain KMS. This command supports interactive prompts for all parameters if not provided as options.
+
+  - **Options:**
+    - `--kms-contract-address <kmsContractAddress>`: Address of the main KMS contract.
+    - `--private-key <privateKey>`: Private key for signing transactions.
+    - `--network <network>`: The network to deploy to (e.g., `hardhat`, `phala`, `sepolia`, `test`).
+    - `--rpc-url <rpcUrl>`: The RPC URL for the blockchain (overrides network default).
+    - `--app-auth-address <appAuthAddress>`: Register a pre-deployed AppAuth contract at this address.
+    - `--app-auth-contract-path <appAuthContractPath>`: Path to a custom AppAuth contract file for deployment.
+    - `--deployer-address <deployerAddress>`: Address of the owner for the new AppAuth instance (defaults to the wallet address).
+    - `--initial-device-id <initialDeviceId>`: Initial device ID for the AppAuth contract (32-byte hex string with 0x prefix, e.g., 0x000...000).
+    - `--compose-hash <composeHash>`: Initial compose hash for the AppAuth contract (32-byte hex string with 0x prefix, e.g., 0x000...000).
+
+  When run without required options, the command will prompt for missing values interactively.
+
+  **Example Workflows:**
+  
+  1. **Register an existing AppAuth contract:**
+     ```bash
+      phala kms deploy \
+        --kms-contract-address 0x1234... \
+        --app-auth-address 0xabcd... \
+        --private-key your_private_key \
+        --network phala
+     ```
+
+  2. **Deploy a default AppAuth contract (interactive):**
+     ```bash
+     phala kms deploy \
+       --compose-hash sha256:...
+     ```
+
+  3. **Deploy with a custom AppAuth contract:**
+     ```bash
+      phala kms deploy \
+        --kms-contract-address 0x1234... \
+        --app-auth-contract-path ./path/to/custom/AppAuth.sol \
+        --private-key your_private_key \
+        --network phala \
+        --deployer-address your_deployer_address \
+        --initial-device-id 0x000...000 \
+        --compose-hash sha256:...
+     ```
+
 ## Simulator Commands
 
 ### `phala simulator`
@@ -187,4 +255,6 @@ phala cvms list
 # Start the TEE simulator
 phala simulator start
 
+# Create a CVM with on-chain KMS
+phala cvms provision --app-id "0x..." --compose-hash "sha256:..." --app-auth-contract-address "0x..."
 ```
