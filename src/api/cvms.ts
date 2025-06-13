@@ -9,6 +9,7 @@ import {
   upgradeCvmResponseSchema,
   cvmAttestationResponseSchema,
   getCvmNetworkResponseSchema,
+  provisionCvmResponseSchema,
 } from './types';
 import type {
   CvmInstance,
@@ -18,6 +19,7 @@ import type {
   UpgradeCvmResponse,
   CvmAttestationResponse,
   GetCvmNetworkResponse,
+  ProvisionCvmResponse,
 } from './types';
 import inquirer from 'inquirer';
 import { z } from 'zod';
@@ -107,6 +109,36 @@ export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkRespons
     return getCvmNetworkResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to get network information for CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Provision a new CVM for on-chain KMS.
+ * @param vmConfig VM configuration
+ * @returns Provisioning details (kms_id, compose_hash)
+ */
+export async function provisionCvm(vmConfig: VMConfig): Promise<ProvisionCvmResponse> {
+  try {
+    const response = await apiClient.post<ProvisionCvmResponse>(API_ENDPOINTS.CVM_PROVISION, vmConfig);
+    logger.info(JSON.stringify(response));
+    return provisionCvmResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to provision CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Create a new CVM for on-chain KMS.
+ * @param vmConfig VM configuration
+ * @returns Created CVM details
+ */
+export async function createCvmOnChainKms(vmConfig: VMConfig): Promise<PostCvmResponse> {
+  try {
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_CREATE, vmConfig);
+    logger.info(JSON.stringify(response));
+    return postCvmResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to create CVM on-chain KMS: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

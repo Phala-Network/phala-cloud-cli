@@ -8,6 +8,7 @@ import { logger } from "./utils/logger";
 import { cvmsCommand } from "./commands/cvms";
 import { joinCommand } from "./commands/join";
 import { demoCommands } from "./commands/demo";
+import { kmsCommand } from "./commands/kms";
 
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
@@ -25,7 +26,8 @@ async function main() {
 			.addCommand(dockerCommands)
 			.addCommand(simulatorCommands)
 			.addCommand(demoCommands)
-			.addCommand(joinCommand);
+			.addCommand(joinCommand)
+			.addCommand(kmsCommand);
 
 	program.parse(process.argv);
 }
