@@ -7,11 +7,11 @@ import { z } from 'zod';
  * Get all TEEPods with their images
  * @returns List of TEEPods with embedded images
  */
-export async function getTeepods(): Promise<TEEPod[]> {
+export async function getTeepods(): Promise<TeepodResponse> {
   try {
     const response = await apiClient.get<TeepodResponse>(API_ENDPOINTS.TEEPODS);
     const parsedResponse = teepodResponseSchema.parse(response);
-    return parsedResponse.nodes;
+    return parsedResponse;
   } catch (error) {
     throw new Error(`Failed to get TEEPods: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -28,8 +28,8 @@ export async function getTeepods(): Promise<TEEPod[]> {
 export async function getTeepodImages(teepodId: string): Promise<Image[]> {
   try {
     // First try to get TEEPod with embedded images
-    const teepods = await getTeepods();
-    const teepod = teepods.find(pod => pod.teepod_id === Number(teepodId));
+    const teepodsResponse = await getTeepods();
+    const teepod = teepodsResponse.nodes.find(pod => pod.teepod_id === Number(teepodId));
     
     // If we found the TEEPod and it has images, return them
     if (teepod && teepod.images && teepod.images.length > 0) {

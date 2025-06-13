@@ -9,6 +9,8 @@ import { createCommand } from './create';
 import { deleteCommand } from './delete';
 import { upgradeCommand } from './upgrade';
 import { resizeCommand } from './resize';
+import { provisionCommand } from './provision';
+import { getTeepodsCommand } from './get-teepods';
 
 export const cvmsCommand = new Command()
   .name('cvms')
@@ -22,5 +24,7 @@ export const cvmsCommand = new Command()
   .addCommand(stopCommand)
   .addCommand(resizeCommand)
   .addCommand(restartCommand)
-  .addCommand(upgradeCommand);
+  .addCommand(upgradeCommand)
+  .addCommand(provisionCommand)
+  .addCommand(getTeepodsCommand);
    
