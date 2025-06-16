@@ -10,6 +10,7 @@ import { joinCommand } from "./commands/join";
 import { demoCommands } from "./commands/demo";
 import { nodesCommand } from "./commands/nodes";
 import { kmsCommand } from "./commands/kms";
+import { setApiKey } from './utils/context';
 
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
@@ -22,6 +23,7 @@ async function main() {
 				`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`,
 			)
 			.version("v1.0.15")
+			.option('--api-key <key>', 'API key to use for the command')
 			.addCommand(authCommands)
 			.addCommand(cvmsCommand)
 			.addCommand(dockerCommands)
@@ -30,6 +32,13 @@ async function main() {
 			.addCommand(joinCommand)
 			.addCommand(kmsCommand)
 			.addCommand(nodesCommand);
+
+	program.hook('preAction', (thisCommand) => {
+		const opts = thisCommand.opts();
+		if (opts.apiKey) {
+			setApiKey(opts.apiKey);
+		}
+	});
 
 	program.parse(process.argv);
 }

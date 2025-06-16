@@ -175,7 +175,7 @@ Before provisioning, check the available TEEPods and KMS instances. This will he
 
 ```bash
 # List all available TEEPods and KMS instances
-phala cvms get-teepods
+phala cvms list-nodes
 ```
 
 Take note of the `ID` of the TEEPod and the `ID` of the KMS instance you wish to use.

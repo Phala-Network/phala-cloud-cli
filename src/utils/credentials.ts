@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { logger } from './logger';
+import { getApiKeyFromContext } from './context';
 
 // Define the directory and file for storing credentials
 const PHALA_CLOUD_DIR = path.join(os.homedir(), '.phala-cloud');
@@ -95,6 +96,10 @@ export async function saveApiKey(apiKey: string): Promise<void> {
 }
 
 export async function getApiKey(): Promise<string | null> {
+  const apiKeyFromContext = getApiKeyFromContext();
+  if (apiKeyFromContext) {
+    return apiKeyFromContext;
+  }
   try {
     if (fs.existsSync(API_KEY_FILE)) {
       const encryptedApiKey = fs.readFileSync(API_KEY_FILE, 'utf8').trim();

@@ -3,19 +3,19 @@ import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import { KmsListItem, TEEPod } from '@/src/api/types';
 
-export const getTeepodsCommand = new Command()
-  .name('get-teepods')
-  .description('Get all available TEEPods.')
+export const listNodesCommand = new Command()
+  .name('list-nodes')
+  .description('List all available worker nodes.')
   .action(async () => {
     try {
       const { nodes: teepods, kms_list: kmsList } = await getTeepods();
 
       if (teepods.length === 0) {
-        logger.info('No available TEEPods found.');
+        logger.info('No available nodes found.');
         return;
       }
 
-      logger.info('Available TEEPods:');
+      logger.info('Available Nodes:');
       teepods.forEach((teepod: TEEPod) => {
         logger.info('----------------------------------------');
         logger.info(`  ID:          ${teepod.teepod_id}`);
@@ -46,6 +46,6 @@ export const getTeepodsCommand = new Command()
         });
       }
     } catch (error) {
-      logger.error(`Failed to get available TEEPods: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(`Failed to list available nodes: ${error instanceof Error ? error.message : String(error)}`);
     }
   });

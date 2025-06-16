@@ -88,9 +88,9 @@ Manage Phala Confidential Virtual Machines (CVMs).
   - Arguments:
     - `id`: ID of the CVM to get details for
 
-- **`get-teepods`**: Get all available TEEPods
+- **`list-nodes`**: List all available worker nodes
 
-- **`create`**: Create a new CVM, the CVM will be created on-chain KMS.
+- **`create`**: Create a new CVM. This is the first step for both standard and on-chain KMS CVMs.
   - Options:
     - `-n, --name <n>`: Name of the CVM
     - `-c, --compose <compose>`: Path to Docker Compose file
@@ -106,7 +106,7 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
     - `--kms-id <kmsId>`: KMS ID to use. If not provided, it will be selected from the list of available KMS instances.
 
-- **`provision`**: Provision a new CVM with on-chain KMS integration. On-chain KMS information is provided by `kms deploy` response or an existing AppAuth contract.
+- **`provision`**: Provision an on-chain KMS CVM. This is the final step after deploying the AppAuth contract.
   - Options:
     - `--app-id <appId>`: App ID for the CVM (with 0x prefix for on-chain KMS)
     - `--compose-hash <composeHash>`: Compose hash for the CVM (SHA-256 hex string)
@@ -117,11 +117,21 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `-e, --env-file <envFile>`: Path to environment file
     - `--skip-env`: Skip environment variable prompt
 
-- **`upgrade <id>`**: Upgrade a CVM
+- **`upgrade [app-id]`**: Upgrade a CVM to a new version
   - Arguments:
-    - `id`: ID of the CVM to upgrade
+    - `[app-id]`: CVM app ID to upgrade (will prompt for selection if not provided)
   - Options:
-    - `--image <image>`: New image version to upgrade to
+    - `-c, --compose <compose>`: Path to new Docker Compose file
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `--debug`: Enable debug mode
+
+- **`update [app-id]`**: Update a CVM's Docker Compose configuration.
+  - Arguments:
+    - `[app-id]`: CVM app ID to update (will prompt for selection if not provided)
+  - Options:
+    - `-c, --compose <compose>`: Path to new Docker Compose file
+    - `-e, --env-file <envFile>`: Path to new environment file (optional)
+    - `--debug`: Enable debug mode
 
 - **`start <id>`**: Start a CVM
   - Arguments:

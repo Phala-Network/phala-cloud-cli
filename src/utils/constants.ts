@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
   // CVMs
   CVMS: (userId: number) => `/api/v1/cvms?user_id=${userId}`,
   CVM_BY_APP_ID: (appId: string) => `/api/v1/cvms/app_${appId}`,
+  CVM_BY_CVM_ID: (cvmId: string) => `/api/v1/cvms/${cvmId}`,
   CVM_NETWORK: (appId: string) => `/api/v1/cvms/app_${appId}/network`,
   CVM_START: (appId: string) => `/api/v1/cvms/app_${appId}/start`,
   CVM_STOP: (appId: string) => `/api/v1/cvms/app_${appId}/stop`,
@@ -46,6 +47,8 @@ export const API_ENDPOINTS = {
   CVM_RESIZE: (appId: string) => `/api/v1/cvms/app_${appId}/resources`,
   CVM_COMPOSE: (cvmId: string) => `/api/v1/cvms/${cvmId}/compose`,
   REPLICATE_CVM: (appId: string) => `/api/v1/cvms/${appId}/replicas`,
+  CVM_COMPOSE_UPDATE: (cvmId: string) => `/api/v1/cvms/${cvmId}/compose_file/provision`,
+  CVM_COMPOSE_UPDATE_PATCH: (cvmId: string) => `/api/v1/cvms/${cvmId}/compose_file`,
 
   // KMS
   KMS_DEPLOY: '/api/v1/kms/deploy',
