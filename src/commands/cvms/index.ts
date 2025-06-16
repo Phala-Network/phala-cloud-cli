@@ -14,12 +14,14 @@ import { replicateCommand } from './replicate';
 import { provisionCommand } from './provision';
 import { listNodesCommand } from './list-nodes';
 import { updateCommand } from './update';
+import { onchainCreateCommand } from './onchain-create';
 
 export const cvmsCommand = new Command()
   .name('cvms')
   .description('Manage Phala Confidential Virtual Machines (CVMs)')
   .addCommand(attestationCommand)
   .addCommand(createCommand)
+  .addCommand(onchainCreateCommand)
   .addCommand(deleteCommand)
   .addCommand(getCommand)
   .addCommand(listCommand)

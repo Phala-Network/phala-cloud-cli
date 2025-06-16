@@ -106,6 +106,27 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
     - `--kms-id <kmsId>`: KMS ID to use. If not provided, it will be selected from the list of available KMS instances.
 
+- **`onchain-create`**: Create a new CVM with on-chain KMS in a single step. This command combines the `create`, `kms deploy`, and `provision` steps.
+  - Options:
+    - `-n, --name <name>`: Name of the CVM
+    - `-c, --compose <compose>`: Path to Docker Compose file
+    - `--vcpu <vcpu>`: Number of vCPUs
+    - `--memory <memory>`: Memory in MB
+    - `--disk-size <diskSize>`: Disk size in GB
+    - `--teepod-id <teepodId>`: TEEPod ID to use
+    - `--image <image>`: Version of dstack image to use
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `--skip-env`: Skip environment variable prompt
+    - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
+    - `--kms-contract-address <kmsContractAddress>`: Address of the main KmsAuth contract.
+    - `--private-key <privateKey>`: Private key for signing transactions.
+    - `--network <network>`: The network to deploy to (e.g., hardhat, phala, sepolia, test)
+    - `--rpc-url <rpc-url>`: RPC URL for the blockchain.
+    - `--deployer-address <deployerAddress>`: Address of the owner for the new AppAuth instance.
+    - `--app-auth-address <appAuthAddress>`: Register a pre-deployed AppAuth contract at this address.
+    - `--app-auth-contract-path <appAuthContractPath>`: Path to a custom AppAuth contract file for deployment.
+    - `--use-default-app-auth <boolean>`: Use the default AppAuth contract for deployment.
+
 - **`provision`**: Provision an on-chain KMS CVM. This is the final step after deploying the AppAuth contract.
   - Options:
     - `--app-id <appId>`: App ID for the CVM (with 0x prefix for on-chain KMS)
@@ -265,6 +286,6 @@ phala cvms list
 # Start the TEE simulator
 phala simulator start
 
-# Create a CVM with on-chain KMS
-phala cvms provision --app-id "0x..." --compose-hash "sha256:..." --app-auth-contract-address "0x..."
+# Create a CVM with on-chain KMS in one step
+phala cvms onchain-create -n "my-onchain-cvm" -c ./docker-compose.yml --network phala --private-key <your-private-key> --kms-contract-address <kms-auth-contract> --deployer-address <your-deployer-address>
 ```
