@@ -239,19 +239,12 @@ export const deployCommand = new Command()
       // WORKFLOW 2: Deploy custom contract from path, then register
       if (appAuthContractPath) {
         let spinner;
-        let originalContractBackup: Buffer | null = null;
-        const defaultContractPath = path.resolve(process.cwd(), 'contracts/AppAuth.sol');
 
         try {
           logger.info(`Using custom contract from: ${appAuthContractPath}`);
           if (!fs.existsSync(appAuthContractPath)) {
             throw new Error(`Custom contract file not found at: ${appAuthContractPath}`);
           }
-          if (fs.existsSync(defaultContractPath)) {
-            originalContractBackup = await fs.readFile(defaultContractPath);
-          }
-          await fs.copyFile(appAuthContractPath, defaultContractPath);
-          logger.info('Temporarily replaced default contract with custom contract for compilation.');
 
           spinner = logger.startSpinner('Compiling custom contract with Hardhat...');
           execSync('npx hardhat compile', { stdio: 'pipe', cwd: process.cwd() });
@@ -259,7 +252,15 @@ export const deployCommand = new Command()
           logger.success('Contracts compiled successfully.');
 
           spinner = logger.startSpinner('Deploying custom AppAuth contract...');
-          const appAuthArtifactPath = path.resolve(process.cwd(), 'artifacts/contracts/AppAuth.sol/AppAuth.json');
+          // To robustly find the artifact, we need the contract's path relative to the project root.
+          const relativeContractPath = path.relative(process.cwd(), path.resolve(appAuthContractPath));
+          const contractName = path.basename(relativeContractPath, '.sol');
+          const appAuthArtifactPath = path.resolve(
+            process.cwd(),
+            'artifacts',
+            relativeContractPath,
+            `${contractName}.json`
+          );
           if (!fs.existsSync(appAuthArtifactPath)) {
             throw new Error(`Could not find contract artifact at ${appAuthArtifactPath}.`);
           }
@@ -301,10 +302,6 @@ export const deployCommand = new Command()
           }
 
         } finally {
-          if (originalContractBackup) {
-            await fs.writeFile(defaultContractPath, originalContractBackup);
-            logger.info('Restored default AppAuth.sol contract.');
-          }
         }
       } else {
         // WORKFLOW 3: Deploy default contract via factory

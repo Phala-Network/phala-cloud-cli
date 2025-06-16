@@ -325,7 +325,7 @@ export const createCommand = new Command()
         logger.success('CVM created successfully');
         logger.break();
         const tableData = {
-          'CVM ID': response.id,
+          'CVM ID': response.vm_uuid,
           'App ID': response.app_id,
           'Name': response.name,
           'Status': response.status,

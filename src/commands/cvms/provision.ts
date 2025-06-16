@@ -36,6 +36,11 @@ export const provisionCommand = new Command()
         options.composeHash = composeHash;
       }
 
+      if (!options.kmsId) {
+        const { kmsId } = await inquirer.prompt([{ type: 'input', name: 'kmsId', message: 'Enter the KMS ID for the CVM:' }]);
+        options.kmsId = kmsId;
+      }
+
       // Process environment variables
       let envs: EnvVar[] = [];
       if (options.envFile) {
@@ -64,20 +69,21 @@ export const provisionCommand = new Command()
         let kmsResponse;
         if (options.kmsId) {
           // Use API-based method
-          kmsResponse = await getKmsPubkey(options.kmsId, options.appAuthContractAddress);
-        } else {
-          // Use direct curl method
-          if (!options.kmsNodeUrl) {
-            const { kmsNodeUrl } = await inquirer.prompt([{
-              type: 'input',
-              name: 'kmsNodeUrl',
-              message: 'Enter the KMS node URL for direct key retrieval:',
-              default: 'https://kms-node-1.phala.network',
-            }]);
-            options.kmsNodeUrl = kmsNodeUrl;
-          }
-          kmsResponse = await getKmsPubkeyDirectly(options.kmsNodeUrl, options.appAuthContractAddress);
-        }
+          kmsResponse = await getKmsPubkey(options.kmsId, options.appId);
+        } 
+        // else {
+        //   // Use direct curl method
+        //   if (!options.kmsNodeUrl) {
+        //     const { kmsNodeUrl } = await inquirer.prompt([{
+        //       type: 'input',
+        //       name: 'kmsNodeUrl',
+        //       message: 'Enter the KMS node URL for direct key retrieval:',
+        //       default: 'https://kms-node-1.phala.network',
+        //     }]);
+        //     options.kmsNodeUrl = kmsNodeUrl;
+        //   }
+        //   kmsResponse = await getKmsPubkeyDirectly(options.kmsNodeUrl, options.appId);
+        // }
         pubkey = kmsResponse.public_key;
         spinner.stop(true);
       } else if (envs.length > 0) {
@@ -117,8 +123,8 @@ export const provisionCommand = new Command()
         'CVM ID': response.id,
         'Name': response.name,
         'Status': response.status,
-        'App ID': `app_${response.app_id}`,
-        'Endpoint': `${CLOUD_URL}/cvm/instance/${response.id}`,
+        'App ID': response.app_id,
+        'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid}`,
       };
       logger.keyValueTable(tableData);
 

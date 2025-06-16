@@ -2,21 +2,48 @@ import { apiClient } from './client';
 import { execSync } from 'child_process';
 import { logger } from '@/src/utils/logger';
 import { API_ENDPOINTS } from '@/src/utils/constants';
-import { kmsPubkeyResponseSchema } from './types';
-import type { KmsPubkeyResponse } from './types';
+import { kmsPubkeyResponseSchema, type KmsPubkeyResponse } from './types';
+import { recoverSignerPublicKey } from '@/src/utils/signature';
 
 /**
  * Get public key from the KMS API for a given app ID.
  * @param kmsId The KMS ID.
  * @param appId The application ID.
  * @returns The public key and signature.
+ * TODO: need to verify the response signature
  */
 export async function getKmsPubkey(kmsId: string, appId: string): Promise<KmsPubkeyResponse> {
   try {
-    const response = await apiClient.get<KmsPubkeyResponse>(API_ENDPOINTS.KMS_PUBKEY(kmsId, appId));
-    return kmsPubkeyResponseSchema.parse(response);
+    const response = await apiClient.get<KmsPubkeyResponse>(
+      API_ENDPOINTS.KMS_PUBKEY(kmsId, appId)
+    );
+    const parsedResponse = kmsPubkeyResponseSchema.parse(response);
+
+    // const recoveredSigner = recoverSignerPublicKey(
+    //   parsedResponse.public_key,
+    //   parsedResponse.signature,
+    //   appId
+    // );
+
+    // // Verify that the public key in the response is the same as the one recovered from the signature.
+    // // This proves that the sender owns the private key for the given public key.
+    // if (
+    //   !recoveredSigner ||
+    //   recoveredSigner.toLowerCase() !== parsedResponse.public_key.toLowerCase()
+    // ) {
+    //   throw new Error(
+    //     'Signature verification failed: The public key in the response does not match the signer.'
+    //   );
+    // }
+
+    // logger.info('KMS public key signature verified successfully.');
+    return parsedResponse;
   } catch (error) {
-    throw new Error(`Failed to get public key from KMS: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to get public key from KMS: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 }
 
@@ -26,6 +53,7 @@ export async function getKmsPubkey(kmsId: string, appId: string): Promise<KmsPub
  * @param kmsNodeUrl The URL of the KMS node.
  * @param appId The application ID.
  * @returns The public key and signature.
+ * TODO: This API is wrong, need to be fixed
  */
 export async function getKmsPubkeyDirectly(kmsNodeUrl: string, appId: string): Promise<KmsPubkeyResponse> {
   try {
