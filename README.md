@@ -165,7 +165,23 @@ phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./
 # Access your app via the provided URL
 ```
 
-### 3️⃣ Advanced Workflow: On-Chain Key Management
+### 3️⃣ Simplified Workflow: One-Step On-Chain KMS CVM Creation
+
+For a streamlined experience, the `phala cvms onchain-create` command automates the entire process of creating a CVM with on-chain KMS. It combines resource discovery, contract deployment, and CVM provisioning into a single, interactive command. This is the recommended method for most users.
+
+```bash
+# Create a CVM with on-chain KMS in a single step
+phala cvms onchain-create -n "my-onchain-cvm" --kms-contract-address xxx --private-key xxx --deployer-address xxx --allowed-envs "API_KEY" --use-default-app-auth true
+```
+
+The command will interactively prompt you for any missing information, such as your private key, network selection, and contract details, guiding you through the process. It supports all three contract deployment scenarios:
+- Deploying the default AppAuth contract.
+- Registering a pre-deployed AppAuth contract.
+- Deploying a custom AppAuth contract from a local file.
+
+For users who require more granular control over each step, the advanced multi-step workflow is still available below.
+
+### 4️⃣ Advanced Workflow: On-Chain Key Management
 
 For applications requiring the highest level of security for secrets management, you can provision a CVM with an On-Chain Key Management Service (KMS). The workflow separates resource discovery, provisioning, on-chain deployment, and final CVM creation into four distinct steps.
 
