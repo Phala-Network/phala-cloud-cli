@@ -90,23 +90,7 @@ Manage Phala Confidential Virtual Machines (CVMs).
 
 - **`list-nodes`**: List all available worker nodes
 
-- **`create`**: Create a new CVM. This is the first step for both standard and on-chain KMS CVMs.
-  - Options:
-    - `-n, --name <n>`: Name of the CVM
-    - `-c, --compose <compose>`: Path to Docker Compose file
-    - `--vcpu <vcpu>`: Number of vCPUs (default: depends on configuration)
-    - `--memory <memory>`: Memory in MB (default: depends on configuration)
-    - `--disk-size <diskSize>`: Disk size in GB (default: depends on configuration)
-    - `--teepod-id <teepodId>`: TEEPod ID to use
-    - `--image <image>`: Version of dstack image to use
-    - `-e, --env-file <envFile>`: Path to environment file
-    - `--skip-env`: Skip environment variable prompt
-    - `--debug`: Enable debug mode
-    - `--use-onchain-kms`: Flag to enable on-chain KMS integration.
-    - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
-    - `--kms-id <kmsId>`: KMS ID to use. If not provided, it will be selected from the list of available KMS instances.
-
-- **`onchain-create`**: Create a new CVM with on-chain KMS in a single step. This command combines the `create`, `kms deploy`, and `provision` steps.
+- **`onchain-create`**: (Recommended) Create a new CVM with on-chain KMS in a single step. This command combines the `create`, `kms deploy`, and `provision` steps.
   - Options:
     - `-n, --name <name>`: Name of the CVM
     - `-c, --compose <compose>`: Path to Docker Compose file
@@ -127,7 +111,23 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `--app-auth-contract-path <appAuthContractPath>`: Path to a custom AppAuth contract file for deployment.
     - `--use-default-app-auth <boolean>`: Use the default AppAuth contract for deployment.
 
-- **`provision`**: Provision an on-chain KMS CVM. This is the final step after deploying the AppAuth contract.
+- **`create`**: Create a new CVM. This is the first step for both standard and on-chain KMS CVMs.
+  - Options:
+    - `-n, --name <n>`: Name of the CVM
+    - `-c, --compose <compose>`: Path to Docker Compose file
+    - `--vcpu <vcpu>`: Number of vCPUs (default: depends on configuration)
+    - `--memory <memory>`: Memory in MB (default: depends on configuration)
+    - `--disk-size <diskSize>`: Disk size in GB (default: depends on configuration)
+    - `--teepod-id <teepodId>`: TEEPod ID to use
+    - `--image <image>`: Version of dstack image to use
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `--skip-env`: Skip environment variable prompt
+    - `--debug`: Enable debug mode
+    - `--use-onchain-kms`: Flag to enable on-chain KMS integration.
+    - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
+    - `--kms-id <kmsId>`: KMS ID to use. If not provided, it will be selected from the list of available KMS instances.
+
+- **`provision`**: (Advanced) Provision a CVM instance and link it to the on-chain KMS. This is the final step after deploying the AppAuth contract.
   - Options:
     - `--app-id <appId>`: App ID for the CVM (with 0x prefix for on-chain KMS)
     - `--compose-hash <composeHash>`: Compose hash for the CVM (SHA-256 hex string)
@@ -146,7 +146,7 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `-e, --env-file <envFile>`: Path to environment file
     - `--debug`: Enable debug mode
 
-- **`update [app-id]`**: Update a CVM's Docker Compose configuration.
+- **`update [app-id]`**: Update a CVM's Docker Compose configuration. For CVMs with on-chain KMS, it will prompt for the AppAuth contract address if not provided.
   - Arguments:
     - `[app-id]`: CVM app ID to update (will prompt for selection if not provided)
   - Options:
@@ -211,7 +211,7 @@ Manage On-Chain Key Management Service (KMS) components.
 
 #### Subcommands:
 
-- **`deploy`**: Deploy or register an AppAuth contract for on-chain KMS. This command supports interactive prompts for all parameters if not provided as options.
+- **`deploy`**: Deploy or register an AppAuth contract for on-chain KMS. This is part of the advanced, multi-step workflow. It will prompt for the main KmsAuth contract address if not provided. This command supports interactive prompts for all parameters if not provided as options.
 
   - **Options:**
     - `--kms-contract-address <kmsContractAddress>`: Address of the main KMS contract.
@@ -288,4 +288,3 @@ phala simulator start
 
 # Create a CVM with on-chain KMS in one step
 phala cvms onchain-create -n "my-onchain-cvm" -c ./docker-compose.yml --network phala --private-key <your-private-key> --kms-contract-address <kms-auth-contract> --deployer-address <your-deployer-address>
-```

@@ -100,14 +100,14 @@ ___
    #   ⟳ Encrypting environment variables... ✓
    #   ⟳ Creating CVM... ✓
    #   ✓ CVM created successfully
-   #   ℹ CVM ID: 2755
+   #   ℹ CVM ID: 87a117814c8348dba6a51196d256b1fc
    #   ℹ Name: webshell
    #   ℹ Status: creating
    #   ℹ App ID: e15c1a29a9dfb522da528464a8d5ce40ac28039f
-   #   ℹ App URL: <https://cloud.phala.network/dashboard/cvms/app_e15c1a29a9dfb522da528464a8d5ce40ac28039f>
+   #   ℹ Endpoint: https://cloud.phala.network/dashboard/cvms/87a117814c8348dba6a51196d256b1fc
    #    ℹ
    #    ℹ Your CVM is being created. You can check its status with:
-   #    ℹ phala cvms status e15c1a29a9dfb522da528464a8d5ce40ac28039f
+   #    ℹ phala cvms status 87a117814c8348dba6a51196d256b1fc
    ```
 
    Now interact with your application in Phala Cloud by going to the url on port 7681 (Example of what a url at port 7681 would look like https://e15c1a29a9dfb522da528464a8d5ce40ac28039f-7681.dstack-prod5.phala.network)
@@ -309,14 +309,14 @@ If you have environment variables to encrypt, you can add `--env-file ./.env`.
 #   ⟳ Encrypting environment variables... ✓
 #   ⟳ Creating CVM... ✓
 #   ✓ CVM created successfully.
-#   ℹ CVM ID: cvm-onchain-kms-123
+#   ℹ CVM ID: 4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
 #   ℹ Name: my-onchain-kms-app
 #   ℹ Status: creating
-#   ℹ On-Chain KMS AppAuth Contract: 0xNewAppAuthContractAddress...
-#   ℹ App URL: <https://cloud.phala.network/dashboard/cvms/app_0xAppIdForCreation...>
+#   ℹ App ID: 0xNewAppId...
+#   ℹ Endpoint: https://cloud.phala.network/dashboard/cvms/4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
 #    ℹ
 #    ℹ Your CVM is being created. You can check its status with:
-#    ℹ phala cvms status 0xAppIdForCreation...
+#    ℹ phala cvms status 4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
 #    ℹ Secrets will be securely managed by your on-chain AppAuth contract.
 ```
 Your CVM is now running with its secrets securely managed on-chain.
