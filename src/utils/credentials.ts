@@ -96,10 +96,19 @@ export async function saveApiKey(apiKey: string): Promise<void> {
 }
 
 export async function getApiKey(): Promise<string | null> {
+  // 1. Check context first (set by CLI flag)
   const apiKeyFromContext = getApiKeyFromContext();
   if (apiKeyFromContext) {
     return apiKeyFromContext;
   }
+
+  // 2. Check environment variable
+  const apiKeyFromEnv = process.env.PHALA_CLOUD_API_KEY;
+  if (apiKeyFromEnv) {
+    return apiKeyFromEnv;
+  }
+
+  // 3. Check stored API key file
   try {
     if (fs.existsSync(API_KEY_FILE)) {
       const encryptedApiKey = fs.readFileSync(API_KEY_FILE, 'utf8').trim();

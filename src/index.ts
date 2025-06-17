@@ -10,6 +10,7 @@ import { joinCommand } from "./commands/join";
 import { demoCommands } from "./commands/demo";
 import { nodesCommand } from "./commands/nodes";
 import { kmsCommand } from "./commands/kms";
+import { deployCommand } from "./commands/deploy";
 import { setApiKey } from './utils/context';
 
 process.on("SIGINT", () => process.exit(0));
@@ -31,7 +32,8 @@ async function main() {
 			.addCommand(demoCommands)
 			.addCommand(joinCommand)
 			.addCommand(kmsCommand)
-			.addCommand(nodesCommand);
+			.addCommand(nodesCommand)
+			.addCommand(deployCommand);
 
 	program.hook('preAction', (thisCommand) => {
 		const opts = thisCommand.opts();

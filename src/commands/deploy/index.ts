@@ -216,8 +216,8 @@ async function createFinalCvm(appAuthResult: any, provisionResponse: any, envs: 
   });
 }
 
-export const onchainCreateCommand = new Command()
-  .name('onchain-create')
+export const deployCommand = new Command()
+  .name('deploy')
   .description('Create a new CVM with on-chain KMS in one step.')
   // CVM options
   .option('-n, --name <name>', 'Name of the CVM')
