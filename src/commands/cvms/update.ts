@@ -31,24 +31,52 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
     options.compose = await promptForFile('Enter the path to your new Docker Compose file:', composeFileName, 'file');
   }
 
+  let envs: EnvVar[] = [];
   let allowedEnvs: string[] = [];
-  if (options.allowedEnvs) {
-    allowedEnvs = options.allowedEnvs.split(',').map((s: string) => s.trim()).filter((s: string) => s);
-  } else {
-    const { envsStr } = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'envsStr',
-        message: 'Enter allowed environment variables (comma-separated), or leave blank if none:',
-      },
-    ]);
-    if (envsStr) {
-      allowedEnvs = envsStr.split(',').map((s: string) => s.trim()).filter((s: string) => s);
+
+  if (!options.skipEnv) {
+    // If envFile is not provided, try to find one automatically
+    let envFilePath = options.envFile;
+
+    if (!envFilePath) {
+      // Check for environment files in order of priority
+      const envFiles = ['.env.production', '.env.prod', '.env'];
+      for (const file of envFiles) {
+        if (fs.existsSync(file)) {
+          envFilePath = file;
+          logger.info(`Using environment file: ${envFilePath}`);
+          break;
+        }
+      }
+
+      // If no env file found, ask user if they want to provide one
+      if (!envFilePath) {
+        envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+      }
+    }
+
+    if (envFilePath) {
+      try {
+        // Read and parse environment variables
+        envs = parseEnv([], envFilePath);
+
+        // Extract just the keys for allowed_envs
+        allowedEnvs = envs.map(env => env.key);
+
+        if (allowedEnvs.length > 0) {
+          logger.info(`Using environment variables from ${envFilePath}`);
+          logger.debug(`Allowed environment variables: ${allowedEnvs.join(', ')}`);
+        } else {
+          logger.warn(`No environment variables found in ${envFilePath}`);
+        }
+      } catch (error) {
+        logger.error(`Error reading environment file ${envFilePath}:`, error);
+      }
     }
   }
-  options.allowedEnvs = allowedEnvs;
 
-  return { ...options, cvmId, currentCvm };
+
+  return { ...options, cvmId, currentCvm, allowedEnvs };
 }
 
 async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ composeString: string; encryptedEnv: string }> {
@@ -144,7 +172,7 @@ export const updateCommand = new Command()
   .option('--app-auth-contract-address <appAuthContractAddress>', 'AppAuth contract address for on-chain KMS')
   .option('-c, --compose <compose>', 'Path to new Docker Compose file')
   .option('-e, --env-file <envFile>', 'Path to new environment file (optional)')
-  .option('--allowed-envs <allowedEnvs>', 'Allowed environment variables')
+  .option('--skip-env', 'Skip environment variables', false)
   .option('--private-key <privateKey>', 'Private key for signing transactions.')
   .option('--rpc-url <rpcUrl>', 'RPC URL (overrides network default) for the blockchain.')
   .action(async (cvmId, options) => {

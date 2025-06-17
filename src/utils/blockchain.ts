@@ -69,13 +69,19 @@ export async function getNetworkConfig(options: any): Promise<NetworkConfig> {
   }
 
   if (!privateKey) {
-    const { key } = await inquirer.prompt([{
-      type: 'password',
-      name: 'key',
-      message: 'Enter the private key for signing:',
-      validate: (input) => !!input || 'Private key is required.',
-    }]);
-    privateKey = key;
+    // Check for PRIVATE_KEY environment variable
+    if (process.env.PRIVATE_KEY) {
+      privateKey = process.env.PRIVATE_KEY;
+      logger.debug('Using private key from PRIVATE_KEY environment variable');
+    } else {
+      const { key } = await inquirer.prompt([{
+        type: 'password',
+        name: 'key',
+        message: 'Enter the private key for signing:',
+        validate: (input) => !!input || 'Private key is required. You can also set the PRIVATE_KEY environment variable.',
+      }]);
+      privateKey = key;
+    }
   }
 
 

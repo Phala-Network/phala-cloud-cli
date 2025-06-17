@@ -46,15 +46,48 @@ async function gatherAndValidateInputs(options: any) {
   const composeString = fs.readFileSync(composePath, 'utf8');
 
   let envs: EnvVar[] = [];
-  if (options.envFile) {
-    envs = parseEnv([], options.envFile);
-  } else if (!options.skipEnv) {
-    const { useEnvFile } = await inquirer.prompt([{ type: 'confirm', name: 'useEnvFile', message: 'Do you want to provide an environment file?', default: false }]);
-    if (useEnvFile) {
-      const envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
-      envs = parseEnv([], envFilePath);
+    let allowedEnvs: string[] = [];
+  
+    if (!options.skipEnv) {
+      // If envFile is not provided, try to find one automatically
+      let envFilePath = options.envFile;
+  
+      if (!envFilePath) {
+        // Check for environment files in order of priority
+        const envFiles = ['.env.production', '.env.prod', '.env'];
+        for (const file of envFiles) {
+          if (fs.existsSync(file)) {
+            envFilePath = file;
+            logger.info(`Using environment file: ${envFilePath}`);
+            break;
+          }
+        }
+  
+        // If no env file found, ask user if they want to provide one
+        if (!envFilePath) {
+          envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+        }
+      }
+  
+      if (envFilePath) {
+        try {
+          // Read and parse environment variables
+          envs = parseEnv([], envFilePath);
+  
+          // Extract just the keys for allowed_envs
+          allowedEnvs = envs.map(env => env.key);
+  
+          if (allowedEnvs.length > 0) {
+            logger.info(`Using environment variables from ${envFilePath}`);
+            logger.debug(`Allowed environment variables: ${allowedEnvs.join(', ')}`);
+          } else {
+            logger.warn(`No environment variables found in ${envFilePath}`);
+          }
+        } catch (error) {
+          logger.error(`Error reading environment file ${envFilePath}:`, error);
+        }
+      }
     }
-  }
 
   const vcpu = Number(options.vcpu) || DEFAULT_VCPU;
   const memory = Number(options.memory) || DEFAULT_MEMORY;
@@ -64,7 +97,7 @@ async function gatherAndValidateInputs(options: any) {
   if (Number.isNaN(memory) || memory <= 0) throw new Error(`Invalid memory: ${options.memory}`);
   if (Number.isNaN(diskSize) || diskSize <= 0) throw new Error(`Invalid disk size: ${options.diskSize}`);
 
-  return { composeString, envs };
+  return { composeString, envs, allowedEnvs };
 }
 
 async function selectHardwareAndImage(options: any, onchainKmsEnabled: boolean) {
@@ -106,18 +139,6 @@ async function selectHardwareAndImage(options: any, onchainKmsEnabled: boolean) 
     if (!selectedImage) throw new Error(`Failed to find default image ${defaultImageName} for the selected TEEPod.`);
   }
   return { selectedTeepod, selectedImage, teepods };
-}
-
-async function getAllowedEnvs(options: any) {
-  if (options.allowedEnvs) {
-    return options.allowedEnvs.split(',').map((s: string) => s.trim()).filter(Boolean);
-  }
-  const { envsStr } = await inquirer.prompt([{
-    type: 'input',
-    name: 'envsStr',
-    message: 'Enter allowed environment variables (comma-separated), or leave blank if none:',
-  }]);
-  return envsStr ? envsStr.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
 }
 
 function buildVmConfig(options: any, composeString: string, selectedTeepod: TEEPod, selectedImage: Image, allowedEnvs: string[]) {
@@ -220,10 +241,9 @@ export const createCommand = new Command()
   .option('--skip-env', 'Skip environment variable prompt', false)
   .option('--debug', 'Enable debug mode', false)
   .option('--use-onchain-kms', 'Flag to enable on-chain KMS integration.', false)
-  .option('--allowed-envs <allowedEnvs>', 'Allowed environment variables for the CVM.')
   .action(async (options) => {
     try {
-      const { composeString, envs } = await gatherAndValidateInputs(options);
+      const { composeString, envs, allowedEnvs } = await gatherAndValidateInputs(options);
       await deleteSimulatorEndpointEnv();
 
       if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
@@ -236,7 +256,6 @@ export const createCommand = new Command()
 
       const onchainKmsEnabled = !!options.useOnchainKms;
       const { selectedTeepod, selectedImage, teepods } = await selectHardwareAndImage(options, onchainKmsEnabled);
-      const allowedEnvs = await getAllowedEnvs(options);
       const vmConfig = buildVmConfig(options, composeString, selectedTeepod, selectedImage, allowedEnvs);
 
       if (onchainKmsEnabled) {
