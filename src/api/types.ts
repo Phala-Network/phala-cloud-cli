@@ -27,7 +27,7 @@ export const composeFileSchema = z.object({
 export const configurationSchema = z.object({
   name: z.string(),
   image: z.string(),
-  compose_file: composeFileSchema,
+  compose_file: composeFileSchema.nullable(),
   vcpu: z.number(),
   memory: z.number(),
   disk_size: z.number(),
