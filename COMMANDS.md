@@ -48,6 +48,32 @@ Login to Docker Hub and manage Docker images.
     - `-t, --template <template>`: Template name
     - `-o, --output <output>`: Output directory
 
+## Node Management
+
+### `phala nodes`
+
+List and manage TEE nodes. When run without subcommands, it will list all available worker nodes.
+
+#### Usage:
+```bash
+phala nodes [command]
+```
+
+#### Commands:
+- **`list`, `ls`**: List all available worker nodes and their details
+  - Shows TEEPod IDs that can be used with the `replicate` command
+  - Example: `phala nodes` or `phala nodes list` or `phala nodes ls`
+
+#### Examples:
+```bash
+# List all available nodes
+phala nodes
+
+# Alternative ways to list nodes
+phala nodes list
+phala nodes ls
+```
+
 ## CVM Management
 
 ### `phala cvms`
@@ -57,9 +83,6 @@ Manage Phala Confidential Virtual Machines (CVMs).
 #### Subcommands:
 
 - **`list`**: List all CVMs
-
-- **`list-nodes`**: List all available worker nodes and their details
-  - Shows TEEPod IDs that can be used with the `replicate` command
   
 - **`get <id>`**: Get details of a specific CVM
   - Arguments:
@@ -116,20 +139,18 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `--memory <memory>`: New memory allocation in MB
     - `--disk-size <diskSize>`: New disk size in GB
 
-- **`list-nodes`**: List all available worker nodes
-  - Shows available TEEPod nodes that can be used with the `replicate` command
-  - Example: `phala cvms list-nodes`
+
 
 - **`replicate <id>`**: Create a replica of an existing CVM
   - Arguments:
     - `id`: ID of the CVM to replicate (which can be found with `phala cvms ls`)
   - Options:
-    - `--teepod-id <teepodId>`: TEEPod ID to use for the replica (optional, use `list-nodes` to see available TEEPod IDs)
+    - `--teepod-id <teepodId>`: TEEPod ID to use for the replica (optional, use `phala nodes list` to see available TEEPod IDs)
     - `-e, --env-file <envFile>`: Path to environment file for the replica (optional)
   - Example:
     ```bash
     # First, list available nodes to find a teepod-id
-    phala cvms list-nodes
+    phala nodes list
     
     # Then use the teepod-id to create a replica
     phala cvms replicate <cvm-id> --teepod-id <teepod-id>

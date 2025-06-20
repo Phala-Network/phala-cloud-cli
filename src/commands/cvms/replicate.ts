@@ -8,7 +8,7 @@ import path from 'node:path';
 export const replicateCommand = new Command()
     .name('replicate')
     .description('Create a replica of an existing CVM')
-    .argument('<cvm-id>', 'ID of the CVM to replicate')
+    .argument('<cvm-id>', 'UUID of the CVM to replicate')
     .option('--teepod-id <teepodId>', 'TEEPod ID to use for the replica')
     .option('-e, --env-file <envFile>', 'Path to environment file')
     .action(async (cvmId, options) => {
@@ -64,10 +64,10 @@ export const replicateCommand = new Command()
             // Call the API to create the replica
             const replica = await replicateCvm(cvmId, requestBody);
 
-            logger.success(`Successfully created replica of CVM ${cvmId} with App ID: ${replica.app_id}`);
+            logger.success(`Successfully created replica of CVM UUID: ${cvmId} with App ID: ${replica.app_id}`);
 
             const tableData = {
-                'CVM ID': replica.vm_uuid.replace(/-/g, ''),
+                'CVM UUID': replica.vm_uuid.replace(/-/g, ''),
                 'App ID': replica.app_id,
                 'Name': replica.name,
                 'Status': replica.status,

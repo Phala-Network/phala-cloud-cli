@@ -193,7 +193,7 @@ export const teepodSchema = z.object({
   remaining_cvm_slots: z.number().optional(),
   images: z.array(imageSchema).optional(),
   region_identifier: z.string().optional(),
-  dedicated_for_team_id: z.string().nullable().optional(),
+  dedicated_for_team_id: z.number().nullable().optional(),
   support_onchain_kms: z.boolean().optional(),
   fmspc: z.string().nullable().optional(),
   device_id: z.string().nullable().optional(),

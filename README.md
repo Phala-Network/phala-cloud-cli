@@ -383,15 +383,20 @@ List all your CVMs:
 phala cvms list
 ```
 
-#### List Available Nodes
+#### Manage TEE Nodes
 
-List all available worker nodes to find TEEPod IDs for replication:
+List all available worker nodes to find TEEPod IDs for replication. You can use any of these commands to list nodes:
 
 ```bash
-phala cvms list-nodes
+# List all available nodes (recommended)
+phala nodes
+
+# Alternative ways to list nodes
+phala nodes list
+phala nodes ls
 ```
 
-This will show you all available TEEPod nodes along with their IDs, which you can use with the `replicate` command's `--teepod-id` option.
+This will show you all available TEEPod nodes along with their IDs, which you can use with the `replicate` command's `--teepod-id` option. The output includes node details such as ID, name, region, FMSPC, device ID, and available images.
 
 #### Get CVM Details
 
@@ -528,30 +533,30 @@ phala cvms restart e15c1a29a9dfb522da528464a8d5ce40ac28039f
 #### Replicate App
 
 ```bash
-phala cvms replicate [options] <cvm-id>
+phala cvms replicate [options] <cvm-uuid>
 ```
 
-Create a replica of an existing App. Before replicating, you can use `list-nodes` to find available TEEPod IDs.
+Create a replica of an existing App using cvm-uuid. Before replicating, you can use `phala nodes` to find available TEEPod IDs.
 
 **Basic Usage:**
 ```bash
-phala cvms replicate <cvm-id>
+phala cvms replicate <cvm-uuid>
 ```
 
 **Options:**
-- `--teepod-id <teepodId>`: TEEPod ID to use for the replica (use `list-nodes` to find available IDs)
+- `--teepod-id <teepodId>`: TEEPod ID to use for the replica (use `phala nodes` to find available TEEPod IDs)
 - `-e, --env-file <envFile>`: Path to environment file for the replica (will be encrypted with the original CVM's public key)
 
 **Example Workflow:**
 ```bash
-# First, list available nodes to find a teepod-id
-phala cvms list-nodes
+# List available nodes to find a teepod-id
+phala nodes
 
-# Then create a replica using a specific teepod-id
-phala cvms replicate <cvm-id> --teepod-id 123
+# Create a replica using a specific teepod-id
+phala cvms replicate <cvm-uuid> --teepod-id 123
 
 # With environment variables
-phala cvms replicate <cvm-id> -e .env
+phala cvms replicate <cvm-uuid> -e .env
 ```
 
 **Example:**
