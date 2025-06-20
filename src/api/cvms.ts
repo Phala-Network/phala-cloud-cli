@@ -9,6 +9,10 @@ import {
   upgradeCvmResponseSchema,
   cvmAttestationResponseSchema,
   getCvmNetworkResponseSchema,
+  replicateCvmResponseSchema,
+  ReplicateCvmResponse,
+  CvmComposeConfig,
+  cvmComposeConfigSchema,
 } from './types';
 import type {
   CvmInstance,
@@ -304,6 +308,51 @@ export interface ResizeCvmPayload {
  * @param allowRestart Whether to allow restart (1) or not (0) for the resize operation (optional)
  * @returns Success status
  */
+/**
+ * Create a replica of an existing CVM
+ * @param appId App ID of the CVM to replicate
+ * @param payload Replication payload
+ * @returns New CVM details
+ */
+/**
+ * Get CVM compose configuration
+ */
+export async function getCvmComposeConfig(cvmId: string): Promise<CvmComposeConfig> {
+  try {
+    const response = await apiClient.get<CvmComposeConfig>(
+      API_ENDPOINTS.CVM_COMPOSE(cvmId)
+    );
+    return cvmComposeConfigSchema.parse(response);
+  } catch (error) {
+    throw new Error(
+      `Failed to get CVM compose config: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
+ * Replicate a CVM
+ */
+export async function replicateCvm(
+  appId: string,
+  payload: {
+    teepod_id?: number;
+    encrypted_env?: string;
+  }
+): Promise<ReplicateCvmResponse> {
+  try {
+    const response = await apiClient.post<ReplicateCvmResponse>(
+      API_ENDPOINTS.REPLICATE_CVM(appId),
+      payload
+    );
+    return replicateCvmResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(
+      `Failed to replicate CVM: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 export async function resizeCvm(
   appId: string, 
   vcpu?: number, 

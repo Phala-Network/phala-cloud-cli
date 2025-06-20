@@ -31,6 +31,8 @@ export const listCommand = new Command()
         logger.keyValueTable({
             Name: cvm.name,
             "App ID": `app_${cvm.hosted.app_id}`,
+            "CVM ID": cvm.hosted.id.replace(/-/g, ''),
+            "Region": cvm.node.region_identifier,
             Status:
               cvm.status === "running"
                 ? chalk.green(cvm.status)
@@ -38,7 +40,7 @@ export const listCommand = new Command()
                   ? chalk.red(cvm.status)
                   : chalk.yellow(cvm.status),
             "Node Info URL": cvm.hosted.app_url,
-            "App URL": `${CLOUD_URL}/dashboard/cvms/app_${cvm.hosted.app_id}`,
+            "App URL": `${CLOUD_URL}/dashboard/cvms/${cvm.hosted.id.replace(/-/g, '')}`,
         });
         logger.break();
       }
