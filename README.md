@@ -167,159 +167,34 @@ phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./
 
 ### 3️⃣ Simplified Workflow: One-Step On-Chain KMS CVM Creation
 
-For a streamlined experience, the `phala cvms onchain-create` command automates the entire process of creating a CVM with on-chain KMS. It combines resource discovery, contract deployment, and CVM provisioning into a single, interactive command. This is the recommended method for most users.
+Deploy new applications with the `deploy` command:
 
 ```bash
-# Create a CVM with on-chain KMS in a single step
-phala cvms onchain-create -n "my-onchain-cvm" --kms-contract-address xxx --private-key xxx --deployer-address xxx --allowed-envs "API_KEY" --use-default-app-auth true
+# Basic deployment with interactive prompts
+phala deploy
+
+# Deployment with private key from environment, assume user want to deploy the default AppAuth contract we provide
+export PRIVATE_KEY=your_private_key_here
+phala deploy --kms-id 0x1234...
+
+# Deployment with custom-app-id, assume user already deployed the AppAuth contract onchain
+phala deploy \
+  --kms-id 0xabc123 \
+  --custom-app-id 0x5678... \
+  --pre-launch-script ./pre-launch.sh
 ```
 
-The command will interactively prompt you for any missing information, such as your private key, network selection, and contract details, guiding you through the process. It supports all three contract deployment scenarios:
-- Deploying the default AppAuth contract.
-- Registering a pre-deployed AppAuth contract.
-- Deploying a custom AppAuth contract from a local file.
+### 4️⃣ Upgrade Existing Applications
 
-For users who require more granular control over each step, the advanced multi-step workflow is still available below.
-
-### 4️⃣ Advanced Workflow: On-Chain Key Management
-
-For applications requiring the highest level of security for secrets management, you can provision a CVM with an On-Chain Key Management Service (KMS). The workflow separates resource discovery, provisioning, on-chain deployment, and final CVM creation into four distinct steps.
-
-#### Step 1: Check Available Resources
-
-Before provisioning, check the available TEEPods and KMS instances. This will help you select the appropriate TEEPod and KMS instance in the next steps.
+Upgrade your deployed applications with new configurations:
 
 ```bash
-# List all available TEEPods and KMS instances
-phala cvms list-nodes
+# Basic upgrade with new compose file
+phala cvms upgrade <app-id> --compose docker-compose.prod.yml
+
+# Upgrade with new compose file and environment variables and private key
+phala cvms upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
 ```
-
-Take note of the `ID` of the TEEPod and the `ID` of the KMS instance you wish to use.
-
-#### Step 2: Create Initial CVM Configuration
-
-Next, use `phala cvms create` to configure your CVM and get the necessary parameters for the on-chain deployment. This step is interactive and similar to creating a standard CVM, but with a flag to enable on-chain KMS.
-
-```bash
-# Interactively create a CVM for on-chain KMS
-phala cvms create --use-onchain-kms true --allowed-envs "API_KEY,DEBUG"
-```
-
-The CLI will guide you through the process, and you will be prompted to select one of the available KMS instances.
-```bash
-# ? Enter a name for the CVM: my-onchain-kms-app
-# ? Enter the path to your Docker Compose file: (docker-compose.yml) ./docker-compose.yml
-# ? Enter number of vCPUs (default: 1): 1
-# ? Enter memory in MB (default: 2048): 2048
-# ? Enter disk size in GB (default: 20): 20
-# ℹ 🔐 Using public DockerHub registry...
-# ✔ Do you want to skip environment variable prompt? Yes
-# ℹ Skipping environment variable prompt
-# ⟳ Fetching available TEEPods... ✓
-# ✔ Select a TEEPod to use: testnet1 (ID: 7, Remaining vCPUs: 9, Remaining Memory: 77472MB)
-# ✔ Select a KMS instance to use: https://dstack-testnet-kms.phala.network (ID: kms_xBOVROQz)
-# ⟳ Creating for on-chain KMS...... ℹ {"app_id":null,"app_env_encrypt_pubkey":"","compose_hash":"68ac8e9ee2bd6e91da2d6ddab4f2965a99f943f5ffd252a35fe11e5fe4624686","fmspc":"90c06f000000","device_id":"46055654047ca3357ab0fa0bc08c8c9c0a68060eac686e32510f45bc1629868d","os_image_hash":"2e66f1f5c94cd911f31bb0b227add7c004a5559237ace47deabe670676c4b88c"}
-# ✓ CVM created for on-chain KMS successfully!
-# ℹ Please use the following details for `kms deploy` and `cvms provision` commands.
-╭───────────────┬─────────────────────────────────────────────────────────────────────╮
-├───────────────┼─────────────────────────────────────────────────────────────────────┤
-│ App ID        │                                                                     │
-├───────────────┼─────────────────────────────────────────────────────────────────────┤
-│ Device ID     │ 46055654047ca3357ab0fa0bc08c8c9c0a68060eac686e32510f45bc1629868d    │
-├───────────────┼─────────────────────────────────────────────────────────────────────┤
-│ Compose Hash  │ 68ac8e9ee2bd6e91da2d6ddab4f2965a99f943f5ffd252a35fe11e5fe4624686    │
-├───────────────┼─────────────────────────────────────────────────────────────────────┤
-│ FMSPC         │ 90c06f000000                                                        │
-├───────────────┼─────────────────────────────────────────────────────────────────────┤
-│ OS Image Hash │ 2e66f1f5c94cd911f31bb0b227add7c004a5559237ace47deabe670676c4b88c    │
-╰───────────────┴─────────────────────────────────────────────────────────────────────╯
-```
-**Save the output `KMS Parameters` JSON. You will need it for the next two steps.**
-
-#### Step 3: Deploy or Register the On-Chain AppAuth Contract
-
-Next, deploy or register your AppAuth contract. The required `kms_contract_address` comes from the `kms_info` object in the `create` step output. You have three options:
-
-**Option A: Register an Existing AppAuth Contract**
-
-If you have already deployed an AppAuth contract, you can register it with the KmsAuth contract.
-
-```bash
-# Register an existing AppAuth contract
-phala kms deploy \
-  --kms-contract-address "0x..." \
-  --private-key "your_on_chain_private_key" \
-  --network "phala" \
-  --app-auth-address "your_deployed_appauth_contract_address"
-```
-
-**Option B: Deploy a Default AppAuth Contract**
-
-Use this method to deploy a standard AppAuth contract via the KmsAuth factory. The `initial-device-id` and `compose-hash` come from the `create` step output.
-
-```bash
-# Deploy the default AppAuth contract
-phala kms deploy \
-  --kms-contract-address "0x..." \
-  --private-key "your_on_chain_private_key" \
-  --network "phala" \
-  --deployer-address "your_deployer_address" \
-  --initial-device-id "0x..." \
-  --compose-hash "0x..."
-```
-
-**Option C: Deploy a Custom AppAuth Contract**
-
-If you have a custom AppAuth contract, provide the path to the `.sol` file to deploy it.
-
-```bash
-# Deploy a custom AppAuth contract
-phala kms deploy \
-  --kms-contract-address "0x..." \
-  --private-key "your_on_chain_private_key" \
-  --network "phala" \
-  --app-auth-contract-path "./path/to/your/AppAuth.sol" \
-  --deployer-address "your_deployer_address" \
-  --initial-device-id "0x..." \
-  --compose-hash "0x..."
-```
-
-Upon successful execution, the command will log the deployed or registered `appId` (which is the AppAuth contract address).
-
-**Save the `appId` / `AppAuth Contract Address`.**
-
-#### Step 4: Provision the CVM Instance
-
-Finally, use `phala cvms provision` with the parameters from the previous steps to launch your CVM instance and link it to the on-chain KMS.
-
-```bash
-# Provision the CVM instance and link it to the AppAuth contract
-phala cvms provision \
-  --app-id "your_app_id" \
-  --compose-hash "sha256:..." \
-  --app-auth-contract-address "your_deployed_appauth_contract_address" \
-  --deployer-address "your_deployer_address" \
-  --kms-id "your_kms_id" \
-  --kms-node-url "https://..."
-```
-If you have environment variables to encrypt, you can add `--env-file ./.env`.
-
-```bash
-#   ⟳ Fetching public key from KMS...... ✓
-#   ⟳ Encrypting environment variables... ✓
-#   ⟳ Creating CVM... ✓
-#   ✓ CVM created successfully.
-#   ℹ CVM ID: 4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
-#   ℹ Name: my-onchain-kms-app
-#   ℹ Status: creating
-#   ℹ App ID: 0xNewAppId...
-#   ℹ Endpoint: https://cloud.phala.network/dashboard/cvms/4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
-#    ℹ
-#    ℹ Your CVM is being created. You can check its status with:
-#    ℹ phala cvms status 4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
-#    ℹ Secrets will be securely managed by your on-chain AppAuth contract.
-```
-Your CVM is now running with its secrets securely managed on-chain.
 
 ## 💼 Real-World Use Cases for Confidential Computing
 

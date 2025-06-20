@@ -145,15 +145,8 @@ async function determineAction(options: any): Promise<{ action: 'register' | 'de
   return { action: 'deployDefault' };
 }
 
-async function gatherDeploymentInputs(options: any): Promise<{ deployerAddress: string, initialDeviceId: string, composeHash: string }> {
+async function gatherDeploymentInputs(options: any, wallet: Wallet): Promise<{ deployerAddress: string, initialDeviceId: string, composeHash: string }> {
   const answers = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'deployerAddress',
-      message: 'Enter the address of the deployer/owner for the new AppAuth instance:',
-      when: !options.deployerAddress,
-      validate: (input) => ethers.isAddress(input) || 'Please enter a valid Ethereum address.',
-    },
     {
       type: 'input',
       name: 'initialDeviceId',
@@ -173,7 +166,7 @@ async function gatherDeploymentInputs(options: any): Promise<{ deployerAddress: 
   ]);
 
   return {
-    deployerAddress: options.deployerAddress || answers.deployerAddress,
+    deployerAddress: wallet.address,
     initialDeviceId: options.initialDeviceId || answers.initialDeviceId,
     composeHash: options.composeHash || answers.composeHash,
   };
@@ -244,24 +237,28 @@ async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress:
   }
 }
 
-export async function handleAppAuthDeployment(options: any, wallet: Wallet): Promise<AppAuthResult> {
-  const { action, appAuthAddress, appAuthContractPath } = await determineAction(options);
+export async function handleAppAuthDeployment(options: any, wallet: Wallet, kmsContractAddress: string): Promise<AppAuthResult> {
+  // const { action, appAuthAddress, appAuthContractPath } = await determineAction(options);
 
-  if (!options.kmsContractAddress) {
+  if (!options.kmsId) {
+    throw new Error('KMS ID is required.');
+  }
+
+  if (!kmsContractAddress) {
     throw new Error('KMS Contract Address is required.');
   }
 
-  if (action === 'register') {
-    if (!appAuthAddress) throw new Error('AppAuth address is required for registration.');
-    return await registerAppAuth(options.kmsContractAddress, appAuthAddress, wallet);
-  }
+  // if (action === 'register') {
+  //   if (!appAuthAddress) throw new Error('AppAuth address is required for registration.');
+  //   return await registerAppAuth(options.kmsContractAddress, appAuthAddress, wallet);
+  // }
 
-  const params = await gatherDeploymentInputs(options);
+  const params = await gatherDeploymentInputs(options, wallet);
 
-  if (action === 'deployCustom') {
-    if (!appAuthContractPath) throw new Error('AppAuth contract path is required for custom deployment.');
-    return await deployCustomAppAuth(options.kmsContractAddress, appAuthContractPath, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet);
-  }
+  // if (action === 'deployCustom') {
+  //   if (!appAuthContractPath) throw new Error('AppAuth contract path is required for custom deployment.');
+  //   return await deployCustomAppAuth(options.kmsContractAddress, appAuthContractPath, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet);
+  // }
 
-  return await deployDefaultAppAuth(options.kmsContractAddress, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet);
+  return await deployDefaultAppAuth(kmsContractAddress, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet);
 }

@@ -74,6 +74,69 @@ phala nodes list
 phala nodes ls
 ```
 
+## Deployment Commands
+
+### `phala deploy`
+
+Deploy a new Confidential Virtual Machine (CVM) to Phala Cloud with optional on-chain KMS integration.
+
+#### Options:
+
+**Basic Configuration:**
+- `-n, --name <name>`: Name of the CVM (3-20 chars, alphanumeric with underscores/hyphens)
+- `-c, --compose <path>`: Path to Docker Compose file (default: looks for docker-compose.yml/yaml in current dir)
+- `--vcpu <number>`: Number of vCPUs (default: 1)
+- `--memory <number>`: Memory in MB (default: 2048)
+- `--disk-size <number>`: Disk size in GB (default: 20)
+- `--teepod-id <id>`: TEEPod ID to use (will prompt if not provided)
+- `-e, --env-file <path>`: Path to environment file (default: looks for .env.production, .env.prod, .env)
+- `--skip-env`: Skip environment variable prompt (use with caution)
+- `--pre-launch-script <path>`: Path to pre-launch script to run before starting the CVM
+
+**On-Chain KMS Configuration:**
+- `--kms-id <id>`: KMS ID to use for on-chain key management
+- `--custom-app-id <address>`: Use an existing AppAuth contract address
+- `--private-key <key>`: Private key for on-chain operations (or set PRIVATE_KEY environment variable)
+
+#### Environment Variables:
+- `PRIVATE_KEY`: Can be used instead of `--private-key` flag
+
+#### Examples:
+
+```bash
+# Basic deployment with interactive prompts (standard CVM without on-chain KMS)
+phala deploy
+
+# Deploy with on-chain KMS (will deploy a new AppAuth contract)
+export PRIVATE_KEY=your_private_key_here
+phala deploy --kms-id your_kms_id
+
+# Use existing AppAuth contract with on-chain KMS (no private key needed)
+phala deploy --kms-id your_kms_id --custom-app-id 0x1234...
+
+# Full deployment with all options specified (new AppAuth contract)
+phala deploy \
+  --name my-app \
+  --compose docker-compose.prod.yml \
+  --env-file .env.prod \
+  --vcpu 2 \
+  --memory 4096 \
+  --disk-size 50 \
+  --kms-id your_kms_id \
+  --private-key 0xabc123... \
+  --pre-launch-script ./pre-launch.sh
+
+# Standard deployment without on-chain KMS
+phala deploy --name my-app --compose docker-compose.yml
+```
+
+#### Notes:
+- When using `--kms-id`, the command will use on-chain KMS for key management
+- **Important**: `--private-key` and `--custom-app-id` are mutually exclusive:
+  - Use `--private-key` when you need to deploy a new AppAuth contract
+  - Use `--custom-app-id` when using an existing AppAuth contract (no private key needed)
+- Environment variables from the specified file will be automatically encrypted and made available to the CVM
+
 ## CVM Management
 
 ### `phala cvms`
@@ -87,29 +150,6 @@ Manage Phala Confidential Virtual Machines (CVMs).
 - **`get <id>`**: Get details of a specific CVM
   - Arguments:
     - `id`: ID of the CVM to get details for
-
-- **`list-nodes`**: List all available worker nodes
-
-- **`onchain-create`**: (Recommended) Create a new CVM with on-chain KMS in a single step. This command combines the `create`, `kms deploy`, and `provision` steps.
-  - Options:
-    - `-n, --name <name>`: Name of the CVM
-    - `-c, --compose <compose>`: Path to Docker Compose file
-    - `--vcpu <vcpu>`: Number of vCPUs
-    - `--memory <memory>`: Memory in MB
-    - `--disk-size <diskSize>`: Disk size in GB
-    - `--teepod-id <teepodId>`: TEEPod ID to use
-    - `--image <image>`: Version of dstack image to use
-    - `-e, --env-file <envFile>`: Path to environment file
-    - `--skip-env`: Skip environment variable prompt
-    - `--allowed-envs <allowedEnvs>`: Allowed environment variables for the CVM.
-    - `--kms-contract-address <kmsContractAddress>`: Address of the main KmsAuth contract.
-    - `--private-key <privateKey>`: Private key for signing transactions.
-    - `--network <network>`: The network to deploy to (e.g., hardhat, phala, sepolia, test)
-    - `--rpc-url <rpc-url>`: RPC URL for the blockchain.
-    - `--deployer-address <deployerAddress>`: Address of the owner for the new AppAuth instance.
-    - `--app-auth-address <appAuthAddress>`: Register a pre-deployed AppAuth contract at this address.
-    - `--app-auth-contract-path <appAuthContractPath>`: Path to a custom AppAuth contract file for deployment.
-    - `--use-default-app-auth <boolean>`: Use the default AppAuth contract for deployment.
 
 - **`create`**: Create a new CVM. This is the first step for both standard and on-chain KMS CVMs.
   - Options:
@@ -143,16 +183,18 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `[app-id]`: CVM app ID to upgrade (will prompt for selection if not provided)
   - Options:
     - `-c, --compose <compose>`: Path to new Docker Compose file
-    - `-e, --env-file <envFile>`: Path to environment file
+    - `-e, --env-file <envFile>`: Path to new environment file (optional)
+    - `--private-key <key>`: Private key for on-chain operations (or set PRIVATE_KEY environment variable)
     - `--debug`: Enable debug mode
 
-- **`update [app-id]`**: Update a CVM's Docker Compose configuration. For CVMs with on-chain KMS, it will prompt for the AppAuth contract address if not provided.
-  - Arguments:
-    - `[app-id]`: CVM app ID to update (will prompt for selection if not provided)
-  - Options:
-    - `-c, --compose <compose>`: Path to new Docker Compose file
-    - `-e, --env-file <envFile>`: Path to new environment file (optional)
-    - `--debug`: Enable debug mode
+    - Example:
+    ```bash
+    # Basic upgrade with new compose file
+    PRIVATE_KEY=your_private_key_here phala cvms upgrade <app-id> --compose docker-compose.prod.yml
+    
+    # Upgrade with new compose file and environment variables and private key
+    phala cvms upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
+    ```
 
 - **`start <id>`**: Start a CVM
   - Arguments:
@@ -203,58 +245,6 @@ Manage Phala Confidential Virtual Machines (CVMs).
     phala cvms replicate <cvm-id> --teepod-id <teepod-id>
     ```
 
-## On-Chain KMS Management
-
-### `phala kms`
-
-Manage On-Chain Key Management Service (KMS) components.
-
-#### Subcommands:
-
-- **`deploy`**: Deploy or register an AppAuth contract for on-chain KMS. This is part of the advanced, multi-step workflow. It will prompt for the main KmsAuth contract address if not provided. This command supports interactive prompts for all parameters if not provided as options.
-
-  - **Options:**
-    - `--kms-contract-address <kmsContractAddress>`: Address of the main KMS contract.
-    - `--private-key <privateKey>`: Private key for signing transactions.
-    - `--network <network>`: The network to deploy to (e.g., `hardhat`, `phala`, `sepolia`, `test`).
-    - `--rpc-url <rpcUrl>`: The RPC URL for the blockchain (overrides network default).
-    - `--app-auth-address <appAuthAddress>`: Register a pre-deployed AppAuth contract at this address.
-    - `--app-auth-contract-path <appAuthContractPath>`: Path to a custom AppAuth contract file for deployment.
-    - `--deployer-address <deployerAddress>`: Address of the owner for the new AppAuth instance (defaults to the wallet address).
-    - `--initial-device-id <initialDeviceId>`: Initial device ID for the AppAuth contract (32-byte hex string with 0x prefix, e.g., 0x000...000).
-    - `--compose-hash <composeHash>`: Initial compose hash for the AppAuth contract (32-byte hex string with 0x prefix, e.g., 0x000...000).
-
-  When run without required options, the command will prompt for missing values interactively.
-
-  **Example Workflows:**
-  
-  1. **Register an existing AppAuth contract:**
-     ```bash
-      phala kms deploy \
-        --kms-contract-address 0x1234... \
-        --app-auth-address 0xabcd... \
-        --private-key your_private_key \
-        --network phala
-     ```
-
-  2. **Deploy a default AppAuth contract (interactive):**
-     ```bash
-     phala kms deploy \
-       --compose-hash sha256:...
-     ```
-
-  3. **Deploy with a custom AppAuth contract:**
-     ```bash
-      phala kms deploy \
-        --kms-contract-address 0x1234... \
-        --app-auth-contract-path ./path/to/custom/AppAuth.sol \
-        --private-key your_private_key \
-        --network phala \
-        --deployer-address your_deployer_address \
-        --initial-device-id 0x000...000 \
-        --compose-hash sha256:...
-     ```
-
 ## Simulator Commands
 
 ### `phala simulator`
@@ -285,6 +275,3 @@ phala cvms list
 
 # Start the TEE simulator
 phala simulator start
-
-# Create a CVM with on-chain KMS in one step
-phala cvms onchain-create -n "my-onchain-cvm" -c ./docker-compose.yml --network phala --private-key <your-private-key> --kms-contract-address <kms-auth-contract> --deployer-address <your-deployer-address>
