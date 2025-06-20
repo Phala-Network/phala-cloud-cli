@@ -7,8 +7,8 @@
       "@/*": ["./*"]
     },
     "rootDir": "src",
-    "moduleResolution": "Node",
-    "module": "CommonJS",
+    "moduleResolution": "bundler",
+    "module": "esnext",
     "outDir": "./dist",
     "esModuleInterop": true,
     "resolveJsonModule": true
