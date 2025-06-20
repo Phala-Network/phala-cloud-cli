@@ -41,6 +41,8 @@ export const API_ENDPOINTS = {
   CVM_UPGRADE: (appId: string) => `/api/v1/cvms/app_${appId}/compose`,
   CVM_ATTESTATION: (appId: string) => `/api/v1/cvms/app_${appId}/attestation`,
   CVM_RESIZE: (appId: string) => `/api/v1/cvms/app_${appId}/resources`,
+  CVM_COMPOSE: (cvmId: string) => `/api/v1/cvms/${cvmId}/compose`,
+  REPLICATE_CVM: (appId: string) => `/api/v1/cvms/${appId}/replicas`,
 };
 
 export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3.8'

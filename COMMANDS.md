@@ -57,6 +57,9 @@ Manage Phala Confidential Virtual Machines (CVMs).
 #### Subcommands:
 
 - **`list`**: List all CVMs
+
+- **`list-nodes`**: List all available worker nodes and their details
+  - Shows TEEPod IDs that can be used with the `replicate` command
   
 - **`get <id>`**: Get details of a specific CVM
   - Arguments:
@@ -112,6 +115,25 @@ Manage Phala Confidential Virtual Machines (CVMs).
     - `--vcpu <vcpu>`: New number of vCPUs
     - `--memory <memory>`: New memory allocation in MB
     - `--disk-size <diskSize>`: New disk size in GB
+
+- **`list-nodes`**: List all available worker nodes
+  - Shows available TEEPod nodes that can be used with the `replicate` command
+  - Example: `phala cvms list-nodes`
+
+- **`replicate <id>`**: Create a replica of an existing CVM
+  - Arguments:
+    - `id`: ID of the CVM to replicate (which can be found with `phala cvms ls`)
+  - Options:
+    - `--teepod-id <teepodId>`: TEEPod ID to use for the replica (optional, use `list-nodes` to see available TEEPod IDs)
+    - `-e, --env-file <envFile>`: Path to environment file for the replica (optional)
+  - Example:
+    ```bash
+    # First, list available nodes to find a teepod-id
+    phala cvms list-nodes
+    
+    # Then use the teepod-id to create a replica
+    phala cvms replicate <cvm-id> --teepod-id <teepod-id>
+    ```
 
 ## Simulator Commands
 
