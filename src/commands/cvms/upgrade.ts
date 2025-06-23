@@ -15,8 +15,13 @@ import { base } from 'viem/chains';
 
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   if (!cvmId) {
-    const { id } = await inquirer.prompt([{ type: 'input', name: 'id', message: 'Enter the CVM ID to update:' }]);
-    cvmId = id;
+    if (!options.interactive) {
+      logger.error('CVM ID is required. Use --app-id to enter it');
+      process.exit(1);
+    } else {
+      const { id } = await inquirer.prompt([{ type: 'input', name: 'id', message: 'Enter the CVM ID to update:' }]);
+      cvmId = id;
+    }
   }
 
   const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
@@ -29,9 +34,14 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   }
 
   if (!options.compose) {
-    const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
-    const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
-    options.compose = await promptForFile('Enter the path to your new Docker Compose file:', composeFileName, 'file');
+    if (!options.interactive) {
+      logger.error('Docker Compose file is required. Use --compose to select it');
+      process.exit(1);
+    } else {
+      const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
+      const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
+      options.compose = await promptForFile('Enter the path to your new Docker Compose file:', composeFileName, 'file');
+    }
   }
 
   let envs: EnvVar[] = [];
@@ -54,7 +64,12 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
 
       // If no env file found, ask user if they want to provide one
       if (!envFilePath) {
-        envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+        if (!options.interactive) {
+          logger.error('Environment file is required. Use --env-file to select it');
+          process.exit(1);
+        } else {
+          envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+        }
       }
     }
 
@@ -94,6 +109,10 @@ async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ co
       process.exit(1);
     }
   } else {
+    if (!options.interactive) {
+      logger.error('Environment file is required. Use --env-file to select it');
+      process.exit(1);
+    }
     const { useEnvFile } = await inquirer.prompt([{
       type: 'confirm',
       name: 'useEnvFile',
@@ -228,11 +247,12 @@ async function applyUpdate(cvmId: string, composeHash: string, encryptedEnv: str
 export const upgradeCommand = new Command()
   .name('upgrade')
   .description('Upgrade a CVM to a new version')
-  .argument('[app-id]', 'CVM app ID to upgrade ')
+  .argument('[app-id]', 'CVM app ID to upgrade')
   .option('-c, --compose <compose>', 'Path to new Docker Compose file')
   .option('-e, --env-file <envFile>', 'Path to environment file')
-  .option('--private-key <privateKey>', 'Private key for signing transactions.')
+  .option('--private-key <privateKey>', 'Private key for signing transactions')
   .option('--debug', 'Enable debug mode', false)
+  .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
   .action(async (appId, options) => {
     try {
 
