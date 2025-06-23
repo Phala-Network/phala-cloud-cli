@@ -23,27 +23,41 @@ import { parseEnv } from '@/src/utils/secrets';
  */
 async function gatherCvmConfig(options: any) {
   if (!options.name) {
-    const { name } = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: 'Enter a name for the CVM:',
-        validate: (input) => {
-          if (!input.trim()) return 'CVM name is required';
-          if (input.trim().length > 20) return 'CVM name must be less than 20 characters';
-          if (input.trim().length < 3) return 'CVM name must be at least 3 characters';
-          if (!/^[a-zA-Z0-9_-]+$/.test(input)) return 'CVM name must contain only letters, numbers, underscores, and hyphens';
-          return true;
+    if (!options.interactive) {
+      const folderName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+      options.name = folderName;
+    } else {
+      // Use current directory name as default
+      const folderName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+
+      const { name } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'name',
+          message: 'Enter a name for the CVM:',
+          default: folderName,
+          validate: (input) => {
+            if (!input.trim()) return 'CVM name is required';
+            if (input.trim().length > 20) return 'CVM name must be less than 20 characters';
+            if (input.trim().length < 3) return 'CVM name must be at least 3 characters';
+            if (!/^[a-zA-Z0-9_-]+$/.test(input)) return 'CVM name must contain only letters, numbers, underscores, and hyphens';
+            return true;
+          }
         }
-      }
-    ]);
-    options.name = name;
+      ]);
+      options.name = name;
+    }
   }
 
   if (!options.compose) {
-    const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
-    const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
-    options.compose = await promptForFile('Enter the path to your Docker Compose file:', composeFileName, 'file');
+    if (!options.interactive) {
+      logger.error('Docker Compose file is required. Use --compose or --interactive to select it');
+      process.exit(1);
+    } else {
+      const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
+      const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
+      options.compose = await promptForFile('Enter the path to your Docker Compose file:', composeFileName, 'file');
+    }
   }
 
   const composePath = path.resolve(options.compose);
@@ -73,7 +87,12 @@ async function gatherCvmConfig(options: any) {
 
       // If no env file found, ask user if they want to provide one
       if (!envFilePath) {
-        envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+        if (!options.interactive) {
+          logger.error('Environment file is required. Use --env-file to select it');
+          process.exit(1);
+        } else {
+          envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+        }
       }
     }
 
@@ -139,13 +158,26 @@ async function gatherCvmConfig(options: any) {
       throw new Error(`Selected TEEPod with ID ${options.teepodId} is not available or does not support on-chain KMS.`);
     }
   } else {
-    const { teepod } = await inquirer.prompt([{ type: 'list', name: 'teepod', message: 'Select a TEEPod to use:', choices: availableTeepods.map(t => ({ name: `${t.name} (ID: ${t.teepod_id})`, value: t })) }]);
-    selectedTeepod = teepod;
+    if (!options.interactive) {
+      logger.error('TEEPod is required. Use --teepod-id to select it');
+      process.exit(1);
+    } else {
+      const { teepod } = await inquirer.prompt([{ type: 'list', name: 'teepod', message: 'Select a TEEPod to use:', choices: availableTeepods.map(t => ({ name: `${t.name} (ID: ${t.teepod_id})`, value: t })) }]);
+      selectedTeepod = teepod;
+    }
   }
 
-  const selectedImage = selectedTeepod.images?.find(image => image.name === DEFAULT_ONCHAIN_IMAGE);
-  if (!selectedImage) {
-    throw new Error(`Failed to find default image ${DEFAULT_ONCHAIN_IMAGE} for the selected TEEPod.`);
+  // Find the dev image in the TEEPod's images
+  let selectedImage;
+  if (options.image) {
+    selectedImage = selectedTeepod.images?.find(image => image.name === options.image);
+    if (!selectedImage) throw new Error(`Failed to find selected image '${options.image}' for the selected TEEPod.`);
+  } else {
+    selectedImage = selectedTeepod.images?.find(image => image.is_dev);
+    if (!selectedImage) {
+      throw new Error('No dev image found for the selected TEEPod. Please ensure the TEEPod has at least one dev image available.');
+    }
+    logger.info(`Using dev image: ${selectedImage.name}`);
   }
 
   // allowedEnvs is already set above from the env file parsing
@@ -298,9 +330,11 @@ export const deployCommand = new Command()
   .option('--vcpu <vcpu>', `Number of vCPUs, default is ${DEFAULT_VCPU}`)
   .option('--memory <memory>', `Memory in MB, default is ${DEFAULT_MEMORY}`)
   .option('--disk-size <diskSize>', `Disk size in GB, default is ${DEFAULT_DISK_SIZE}`)
-  .option('--teepod-id <teepodId>', 'TEEPod ID to use.')
+  .option('--image <image>', 'Version of dstack image to use')
+  .option('--teepod-id <teepodId>', 'TEEPod ID to use')
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
+  .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
   .option('--kms-id <kmsId>', 'KMS ID to use.')
   .option('--custom-app-id <customAppId>', 'Custom App ID to use.')
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
@@ -379,10 +413,10 @@ export const deployCommand = new Command()
           }
 
           // Ensure customAppId has 0x prefix
-          const customAppId = options.customAppId.startsWith('0x') 
-            ? options.customAppId 
+          const customAppId = options.customAppId.startsWith('0x')
+            ? options.customAppId
             : `0x${options.customAppId}`;
-            
+
           // Query the KMS contract for app registration details
           const [isRegistered, controllerAddress] = await publicClient.readContract({
             address: kmsContractAddress as `0x${string}`,
