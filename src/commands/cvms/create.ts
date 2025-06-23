@@ -143,7 +143,7 @@ export const createCommand = new Command()
       const teepodsSpinner = logger.startSpinner('Fetching available TEEPods');
       const teepods = await getTeepods();
       teepodsSpinner.stop(true);
-      if (teepods.length === 0) {
+      if (teepods.nodes.length === 0) {
         logger.error('No TEEPods available. Please try again later.');
         process.exit(1);
       }
@@ -151,13 +151,13 @@ export const createCommand = new Command()
       let selectedTeepod: TEEPod;
       // Fetch available TEEPods
       if (!options.teepodId) {
-        selectedTeepod = teepods[0];
+        selectedTeepod = teepods.nodes[0];
         if (!selectedTeepod) {
           logger.error('Failed to find default TEEPod');
           process.exit(1);
         }
       } else {
-        selectedTeepod = teepods.find(pod => pod.teepod_id === Number(options.teepodId));
+        selectedTeepod = teepods.nodes.find(pod => pod.teepod_id === Number(options.teepodId));
         if (!selectedTeepod) {
           logger.error('Failed to find selected TEEPod');
           process.exit(1);
