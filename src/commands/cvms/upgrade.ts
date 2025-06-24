@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getCvmByCvmId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '@/src/api/cvms';
+import { getCvmByAppId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'node:fs';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
@@ -12,6 +12,7 @@ import inquirer from 'inquirer';
 import { ethers } from 'ethers';
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
+import { getNetworkConfig } from '@/src/utils/blockchain';
 
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   if (!cvmId) {
@@ -25,7 +26,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   }
 
   const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
-  const currentCvm = await getCvmByCvmId(cvmId);
+  const currentCvm = await getCvmByAppId(cvmId);
   spinner.stop(true);
 
   if (!currentCvm) {
@@ -64,10 +65,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
 
       // If no env file found, ask user if they want to provide one
       if (!envFilePath) {
-        if (!options.interactive) {
-          logger.error('Environment file is required. Use --env-file to select it');
-          process.exit(1);
-        } else {
+        if (options.interactive) {
           envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
         }
       }
@@ -93,7 +91,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
     }
   }
 
-  return { ...options, cvmId, currentCvm, allowedEnvs };
+  return { ...options, cvmId: currentCvm.vm_uuid.replace(/-/g, ''), currentCvm, allowedEnvs };
 }
 
 async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ composeString: string; encryptedEnv: string }> {
@@ -108,11 +106,7 @@ async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ co
       logger.error(`Failed to process environment file: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
     }
-  } else {
-    if (!options.interactive) {
-      logger.error('Environment file is required. Use --env-file to select it');
-      process.exit(1);
-    }
+  } else if (options.interactive) {
     const { useEnvFile } = await inquirer.prompt([{
       type: 'confirm',
       name: 'useEnvFile',
@@ -136,13 +130,13 @@ async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ co
   return { composeString, encryptedEnv };
 }
 
-async function registerComposeHash(composeHash: string, appId: string, wallet: ethers.Wallet, kmsContractAddress: string): Promise<void> {
+async function registerComposeHash(composeHash: string, appId: string, wallet: ethers.Wallet, kmsContractAddress: string, rpcUrl: string): Promise<void> {
   const spinner = logger.startSpinner('Adding compose hash for on-chain KMS...');
   let appAuthAddress: any;
   try {
     const publicClient = createPublicClient({
       chain: base,
-      transport: http('https://mainnet.base.org')
+      transport: http(rpcUrl)
     });
 
     // KMS Auth ABI for reading app registration details
@@ -253,6 +247,7 @@ export const upgradeCommand = new Command()
   .option('--private-key <privateKey>', 'Private key for signing transactions')
   .option('--debug', 'Enable debug mode', false)
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
+  .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
   .action(async (appId, options) => {
     try {
 
@@ -293,10 +288,10 @@ export const upgradeCommand = new Command()
           throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
         
-        const wallet = new ethers.Wallet(privateKey);
+        const { wallet } = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl });
         logger.info(`Using wallet: ${wallet.address}`);
         logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
-        await registerComposeHash(response.compose_hash, appId, wallet, currentCvm.kms_info.kms_contract_address);
+        await registerComposeHash(response.compose_hash, appId, wallet, currentCvm.kms_info.kms_contract_address, options.rpcUrl);
       }
 
       await applyUpdate(finalCvmId, response.compose_hash, encryptedEnv);

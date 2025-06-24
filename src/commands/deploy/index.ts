@@ -7,7 +7,7 @@ import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_ONC
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import { getKmsPubkey } from '@/src/api/kms';
-import { handleAppAuthDeployment, ensureHexPrefix } from '@/src/utils/blockchain';
+import { handleAppAuthDeployment, ensureHexPrefix, getNetworkConfig } from '@/src/utils/blockchain';
 import { ethers } from 'ethers';
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
@@ -340,6 +340,7 @@ export const deployCommand = new Command()
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
   // Blockchain options
   .option('--private-key <privateKey>', 'Private key for signing transactions.')
+  .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
   .action(async (options) => {
     try {
       // Step 1: Gather CVM configuration
@@ -366,7 +367,8 @@ export const deployCommand = new Command()
         if (!privateKey) {
           throw new Error('Private key is required for on-chain KMS operations if no custom app ID is provided. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
-        wallet = new ethers.Wallet(privateKey);
+        const networkConfig = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl });
+        wallet = networkConfig.wallet;
         logger.info(`Using wallet: ${wallet.address}`);
       }
 
@@ -375,6 +377,7 @@ export const deployCommand = new Command()
         initialDeviceId: provisionResponse.device_id,
         composeHash: provisionResponse.compose_hash
       };
+      console.log('deployOptions', deployOptions);
 
       let appAuthResult;
 
@@ -385,7 +388,7 @@ export const deployCommand = new Command()
         // Initialize public client for Base Mainnet
         const publicClient = createPublicClient({
           chain: base,
-          transport: http('https://mainnet.base.org')
+          transport: http(options.rpcUrl)
         });
 
         // KMS Auth ABI for reading app registration details

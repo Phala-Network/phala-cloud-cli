@@ -38,7 +38,7 @@ async function getAndEncryptEnvs(options: any): Promise<string> {
   let envs: EnvVar[] = [];
   if (options.envFile) {
     envs = parseEnv([], options.envFile);
-  } else if (!options.skipEnv) {
+  } else if (options.interactive) {
     const { useEnvFile } = await inquirer.prompt([{
       type: 'confirm',
       name: 'useEnvFile',
@@ -110,11 +110,14 @@ export const provisionCommand = new Command()
   .option('-e, --env-file <envFile>', 'Path to environment file.')
   .option('--skip-env', 'Skip environment variable prompt.', false)
   .option('--debug', 'Enable debug mode', false)
+  .option('-c, --compose <compose>', 'Path to Docker Compose file')
   .action(async (options) => {
     try {
-      const fullOptions = await gatherProvisionInputs(options);
-      const encryptedEnv = await getAndEncryptEnvs(fullOptions);
-      const vmConfig = buildVmConfig(fullOptions, encryptedEnv);
+      if (options.interactive) {
+        options = await gatherProvisionInputs(options);
+      }
+      const encryptedEnv = await getAndEncryptEnvs(options);
+      const vmConfig = buildVmConfig(options, encryptedEnv);
 
       const createSpinner = logger.startSpinner('Provisioning CVM...');
       if (options.debug) {
