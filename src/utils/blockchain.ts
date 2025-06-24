@@ -217,7 +217,7 @@ async function deployCustomAppAuth(kmsContractAddress: string, contractPath: str
 }
 
 async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress: string, initialDeviceId: string, composeHash: string, wallet: Wallet): Promise<AppAuthResult> {
-  const spinner = logger.startSpinner('Deploying AppAuth instance via KmsAuth factory...');
+  const spinner = logger.startSpinner(`Deploying AppAuth instance via KmsAuth factory at ${kmsContractAddress}...`);
   const kmsAuthContract = new ethers.Contract(kmsContractAddress, KMS_AUTH_ABI, wallet);
   const tx = await kmsAuthContract.deployAndRegisterApp(deployerAddress, false, true, ensureHexPrefix(initialDeviceId), ensureHexPrefix(composeHash));
   const receipt = await tx.wait();

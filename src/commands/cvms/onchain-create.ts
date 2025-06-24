@@ -267,7 +267,7 @@ export const onchainCreateCommand = new Command()
         deployOptions.kmsContractAddress = addr;
       }
 
-      const appAuthResult = await handleAppAuthDeployment(deployOptions, wallet);
+      const appAuthResult = await handleAppAuthDeployment(deployOptions, wallet, deployOptions.kmsContractAddress);
 
       // Step 4: Create the final CVM
       await createFinalCvm(appAuthResult, provisionResponse, envs, teepods);
