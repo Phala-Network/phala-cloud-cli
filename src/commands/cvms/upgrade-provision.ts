@@ -1,18 +1,20 @@
 import { Command } from 'commander';
-import { getCvmByAppId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '@/src/api/cvms';
+import { getCvmByAppId, updateCvmCompose, getCvmComposeFile } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
-import fs from 'node:fs';
-import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
-import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
-import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
-import { resolveCvmAppId } from '@/src/utils/cvms';
+import { promptForFile } from '@/src/utils/prompts';
+import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
 import { CLOUD_URL } from '@/src/utils/constants';
+import fs from 'fs-extra';
+import path from 'path';
 import inquirer from 'inquirer';
+import { detectFileInCurrentDir } from '@/src/utils/prompts';
+import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+import { resolveCvmAppId } from '@/src/utils/cvms';
 import { ethers } from 'ethers';
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
-import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
+
 
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   if (!cvmId) {
@@ -136,16 +138,15 @@ async function registerComposeHash(composeHash: string, appId: string, wallet: e
   try {
     // Get network config which will handle chain validation and RPC URL resolution
     const { rpcUrl } = await getNetworkConfig({ rpcUrl: rawRpcUrl }, chainId);
-
+    
     // Get the chain config
     const chain = getChainConfig(chainId);
-
+    
     // Initialize public client with the appropriate chain and RPC URL
     const publicClient = createPublicClient({
       chain,
       transport: http(rpcUrl)
     });
-
     // KMS Auth ABI for reading app registration details
     const kmsAuthAbi = [
       {
@@ -225,53 +226,24 @@ async function registerComposeHash(composeHash: string, appId: string, wallet: e
   }
 }
 
-async function applyUpdate(cvmId: string, composeHash: string, encryptedEnv: string): Promise<void> {
-  const spinner = logger.startSpinner('Applying update...');
-  try {
-    const payload = { compose_hash: composeHash, encrypted_env: encryptedEnv };
-    const response = await updatePatchCvmCompose(cvmId, payload);
 
-    if (response === null) {
-      spinner.stop(true);
-      logger.success('Update applied successfully!');
-    } else {
-      spinner.stop(false);
-      logger.error(`Failed to apply update: ${JSON.stringify(response.detail, null, 2)}`);
-      process.exit(1);
-    }
-  } catch (error) {
-    spinner.stop(false);
-    throw error;
-  }
-}
-
-export const upgradeCommand = new Command()
-  .name('upgrade')
-  .description('Upgrade a CVM to a new version')
-  .argument('[app-id]', 'CVM app ID to upgrade')
+export const upgradeProvisionCommand = new Command()
+  .name('upgrade-provision')
+  .description('Provision a CVM upgrade with a new compose file')
+  .argument('<cvm-id>', 'ID of the CVM to upgrade')
   .option('-c, --compose <compose>', 'Path to new Docker Compose file')
   .option('-e, --env-file <envFile>', 'Path to environment file')
-  .option('--private-key <privateKey>', 'Private key for signing transactions')
-  .option('--debug', 'Enable debug mode', false)
-  .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
-  .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
-  .action(async (appId, options) => {
+  .option('--skip-env', 'Skip environment variable prompt', false)
+  .option('--debug', 'Enable debug logging', false)
+  .option('--private-key <privateKey>', 'Private key for on-chain operations')
+  .option('--rpc-url <rpcUrl>', 'RPC URL for blockchain interactions')
+  .option('-i, --interactive', 'Enable interactive mode', false)
+  .action(async (cvmId: string, options) => {
     try {
-
-      const resolvedAppId = await resolveCvmAppId(appId);
+      // Get current CVM details
+      const resolvedAppId = await resolveCvmAppId(cvmId);
       const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(resolvedAppId, options);
-
       const { composeString, encryptedEnv } = await prepareUpdatePayload(gatheredOptions, currentCvm);
-      // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
-      await deleteSimulatorEndpointEnv();
-      // Print if they are using a private registry
-      if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
-        logger.info("🔐 Using private DockerHub registry credentials...");
-      } else if (process.env.DSTACK_AWS_ACCESS_KEY_ID && process.env.DSTACK_AWS_SECRET_ACCESS_KEY && process.env.DSTACK_AWS_REGION && process.env.DSTACK_AWS_ECR_REGISTRY) {
-        logger.info(`🔐 Using private AWS ECR registry: ${process.env.DSTACK_AWS_ECR_REGISTRY}`);
-      } else {
-        logger.info("🔐 Using public DockerHub registry...");
-      }
 
       const spinner = logger.startSpinner(`Updating CVM ${finalCvmId}`);
       const currentComposeFile = await getCvmComposeFile(finalCvmId);
@@ -294,16 +266,15 @@ export const upgradeCommand = new Command()
         if (!privateKey) {
           throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
-        
+
         const { wallet } = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, currentCvm.kms_info.chain_id);
         logger.info(`Using wallet: ${wallet.address}`);
         logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
-        await registerComposeHash(response.compose_hash, appId, wallet, currentCvm.kms_info.kms_contract_address, options.rpcUrl, currentCvm.kms_info.chain_id);
+        await registerComposeHash(response.compose_hash, cvmId, wallet, currentCvm.kms_info.kms_contract_address, options.rpcUrl, currentCvm.kms_info.chain_id);
       }
 
-      await applyUpdate(finalCvmId, response.compose_hash, encryptedEnv);
     } catch (error) {
-      logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(`Failed to provision CVM upgrade: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
     }
-  }); 
+  });

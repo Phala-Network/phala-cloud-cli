@@ -9,7 +9,7 @@ export const replicateCommand = new Command()
     .name('replicate')
     .description('Create a replica of an existing CVM')
     .argument('<cvm-id>', 'UUID of the CVM to replicate')
-    .option('--teepod-id <teepodId>', 'TEEPod ID to use for the replica')
+    .option('--node-id <nodeId>', 'Node ID to use for the replica')
     .option('-e, --env-file <envFile>', 'Path to environment file')
     .action(async (cvmId, options) => {
         try {
@@ -54,8 +54,8 @@ export const replicateCommand = new Command()
                 encrypted_env?: string;
             } = {};
 
-            if (options.teepodId) {
-                requestBody.teepod_id = parseInt(options.teepodId, 10);
+            if (options.nodeId) {
+                requestBody.teepod_id = parseInt(options.nodeId, 10);
             }
             if (encryptedEnv) {
                 requestBody.encrypted_env = encryptedEnv;
@@ -71,7 +71,7 @@ export const replicateCommand = new Command()
                 'App ID': replica.app_id,
                 'Name': replica.name,
                 'Status': replica.status,
-                'TEEPod': `${replica.teepod.name} (ID: ${replica.teepod_id})`,
+                'Node': `${replica.teepod.name} (ID: ${replica.teepod_id})`,
                 'vCPUs': replica.vcpu,
                 'Memory': `${replica.memory} MB`,
                 'Disk Size': `${replica.disk_size} GB`,

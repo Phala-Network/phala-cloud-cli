@@ -7,10 +7,10 @@ import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_ONC
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import { getKmsPubkey } from '@/src/api/kms';
-import { handleAppAuthDeployment, ensureHexPrefix, getNetworkConfig } from '@/src/utils/blockchain';
+import { handleAppAuthDeployment, ensureHexPrefix, getNetworkConfig, getChainConfig } from '../../utils/blockchain';
+import { parseMemoryInput, parseDiskSizeInput } from '@/src/utils/units';
 import { ethers } from 'ethers';
 import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
 
 import fs from 'fs-extra';
 import path from 'node:path';
@@ -116,11 +116,11 @@ async function gatherCvmConfig(options: any) {
     }
   }
 
-  const teepodsSpinner = logger.startSpinner('Fetching available TEEPods');
+  const teepodsSpinner = logger.startSpinner('Fetching available Nodes');
   const teepods = await getTeepods();
   teepodsSpinner.stop(true);
   if (teepods.nodes.length === 0) {
-    throw new Error('No TEEPods available.');
+    throw new Error('No Nodes available.');
   }
 
   // Filter TEEpods based on on-chain KMS support
@@ -130,8 +130,8 @@ async function gatherCvmConfig(options: any) {
 
   if (availableTeepods.length === 0) {
     const errorMessage = options.kmsId
-      ? 'No TEEPods available that support on-chain KMS.'
-      : 'No TEEPod available that does not support on-chain KMS.';
+      ? 'No Nodes available that support on-chain KMS.'
+      : 'No Nodes available that does not support on-chain KMS.';
     throw new Error(errorMessage);
   }
 
@@ -144,7 +144,7 @@ async function gatherCvmConfig(options: any) {
     kmsInfo = allKmsInfos.find(kms => kms.id === options.kmsId);
 
     if (!kmsInfo) {
-      throw new Error(`No KMS found with ID: ${options.kmsId} in the available TEEPods`);
+      throw new Error(`No KMS found with ID: ${options.kmsId} in the available Nodes`);
     }
 
     kmsContractAddress = kmsInfo.kms_contract_address;
@@ -152,32 +152,31 @@ async function gatherCvmConfig(options: any) {
   }
 
   let selectedTeepod: TEEPod;
-  if (options.teepodId) {
-    selectedTeepod = availableTeepods.find(pod => pod.teepod_id === Number(options.teepodId));
+  if (options.nodeId) {
+    selectedTeepod = availableTeepods.find(pod => pod.teepod_id === Number(options.nodeId));
     if (!selectedTeepod) {
-      throw new Error(`Selected TEEPod with ID ${options.teepodId} is not available or does not support on-chain KMS.`);
+      throw new Error(`Selected Node with ID ${options.nodeId} is not available or does not support on-chain KMS.`);
     }
   } else {
     if (!options.interactive) {
-      logger.error('TEEPod is required. Use --teepod-id to select it');
+      logger.error('Node is required. Use --node-id to select it');
       process.exit(1);
     } else {
-      const { teepod } = await inquirer.prompt([{ type: 'list', name: 'teepod', message: 'Select a TEEPod to use:', choices: availableTeepods.map(t => ({ name: `${t.name} (ID: ${t.teepod_id})`, value: t })) }]);
-      selectedTeepod = teepod;
+      const { node } = await inquirer.prompt([{ type: 'list', name: 'node', message: 'Select a Node to use:', choices: availableTeepods.map(t => ({ name: `${t.name} (Region: ${t.region_identifier})`, value: t })) }]);
+      selectedTeepod = node;
     }
   }
 
-  // Find the dev image in the TEEPod's images
   let selectedImage;
   if (options.image) {
     selectedImage = selectedTeepod.images?.find(image => image.name === options.image);
-    if (!selectedImage) throw new Error(`Failed to find selected image '${options.image}' for the selected TEEPod.`);
+    if (!selectedImage) throw new Error(`Failed to find selected image '${options.image}' for the selected Node.`);
   } else {
-    selectedImage = selectedTeepod.images?.find(image => image.is_dev);
+    selectedImage = selectedTeepod.images?.[0];
     if (!selectedImage) {
-      throw new Error('No dev image found for the selected TEEPod. Please ensure the TEEPod has at least one dev image available.');
+      throw new Error('No images found for the selected Node.');
     }
-    logger.info(`Using dev image: ${selectedImage.name}`);
+    logger.info(`Using image: ${selectedImage.name}`);
   }
 
   // allowedEnvs is already set above from the env file parsing
@@ -198,13 +197,34 @@ async function gatherCvmConfig(options: any) {
     composeFile.pre_launch_script = options.preLaunchScript;
   }
 
+  // Parse memory and disk size with units
+  let memoryMB = DEFAULT_MEMORY;
+  if (options.memory) {
+    try {
+      memoryMB = parseMemoryInput(options.memory);
+      logger.info(`Using memory: ${memoryMB}MB (parsed from: ${options.memory})`);
+    } catch (error) {
+      logger.warn(`Invalid memory format '${options.memory}'. Using default: ${DEFAULT_MEMORY}MB`);
+    }
+  }
+
+  let diskSizeGB = DEFAULT_DISK_SIZE;
+  if (options.diskSize) {
+    try {
+      diskSizeGB = parseDiskSizeInput(options.diskSize);
+      logger.info(`Using disk size: ${diskSizeGB}GB (parsed from: ${options.diskSize})`);
+    } catch (error) {
+      logger.warn(`Invalid disk size format '${options.diskSize}'. Using default: ${DEFAULT_DISK_SIZE}GB`);
+    }
+  }
+
   const vmConfig = {
     teepod_id: selectedTeepod.teepod_id,
     name: options.name,
     image: selectedImage.name,
     vcpu: Number(options.vcpu) || DEFAULT_VCPU,
-    memory: Number(options.memory) || DEFAULT_MEMORY,
-    disk_size: Number(options.diskSize) || DEFAULT_DISK_SIZE,
+    memory: memoryMB,
+    disk_size: diskSizeGB,
     compose_file: composeFile,
     listed: false,
   }
@@ -328,10 +348,10 @@ export const deployCommand = new Command()
   .option('-n, --name <name>', 'Name of the CVM')
   .option('-c, --compose <compose>', 'Path to Docker Compose file')
   .option('--vcpu <vcpu>', `Number of vCPUs, default is ${DEFAULT_VCPU}`)
-  .option('--memory <memory>', `Memory in MB, default is ${DEFAULT_MEMORY}`)
-  .option('--disk-size <diskSize>', `Disk size in GB, default is ${DEFAULT_DISK_SIZE}`)
+  .option('--memory <memory>', `Memory with optional unit (e.g., 2G, 500MB, 1024), default is ${DEFAULT_MEMORY}MB`)
+  .option('--disk-size <diskSize>', `Disk size with optional unit (e.g., 50G, 1T, 100), default is ${DEFAULT_DISK_SIZE}GB`)
   .option('--image <image>', 'Version of dstack image to use')
-  .option('--teepod-id <teepodId>', 'TEEPod ID to use')
+  .option('--node-id <nodeId>', 'Node ID to use')
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
@@ -367,7 +387,7 @@ export const deployCommand = new Command()
         if (!privateKey) {
           throw new Error('Private key is required for on-chain KMS operations if no custom app ID is provided. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
-        const networkConfig = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl });
+        const networkConfig = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, teepods.kms_list[0].chain_id);
         wallet = networkConfig.wallet;
         logger.info(`Using wallet: ${wallet.address}`);
       }
@@ -385,10 +405,22 @@ export const deployCommand = new Command()
       if (options.customAppId) {
         logger.info(`Using custom App ID: ${options.customAppId}, fetching AppAuth details from KMS...`);
 
-        // Initialize public client for Base Mainnet
+        // Get the first available KMS to determine the chain
+        const kms = teepods.kms_list?.[0];
+        if (!kms) {
+          throw new Error('No KMS available');
+        }
+
+        // Get network config which will handle chain validation and RPC URL resolution
+        const { rpcUrl } = await getNetworkConfig({ rpcUrl: options.rpcUrl }, kms.chain_id);
+        
+        // Get the chain config
+        const chain = getChainConfig(kms.chain_id);
+        
+        // Initialize public client with the appropriate chain and RPC URL
         const publicClient = createPublicClient({
-          chain: base,
-          transport: http(options.rpcUrl)
+          chain,
+          transport: http(rpcUrl)
         });
 
         // KMS Auth ABI for reading app registration details

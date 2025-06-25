@@ -5,7 +5,8 @@ import { logger } from './logger';
 import dotenv from 'dotenv';
 import { execSync } from 'child_process';
 import fs from 'fs-extra';
-
+import { defineChain, type Chain } from 'viem';
+import { base, mainnet, sepolia, anvil } from 'viem/chains';
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 // Helper to ensure a hex string has a '0x' prefix
@@ -22,52 +23,51 @@ export interface AppAuthResult {
   deployerAddress: string;
 }
 
+export const SUPPORTED_CHAINS: Record<number, Chain> = {
+  [mainnet.id]: mainnet,
+  [sepolia.id]: sepolia,
+  [base.id]: base,
+  15107: defineChain({
+    id: 15107,
+    name: "T16Z",
+    nativeCurrency: {
+      name: "ETH",
+      symbol: "ETH",
+      decimals: 18,
+    },
+    rpcUrls: {
+      default: {
+        http: ["https://rpc.t16z.com"],
+      },
+    },
+  }),
+  [anvil.id]: {
+    ...anvil,
+    rpcUrls: {
+      default: {
+        http: ["http://66.220.6.113:8545"],
+      },
+    },
+  },
+};
 /**
  * Configures the blockchain network connection, including RPC URL and wallet.
  */
-export async function getNetworkConfig(options: any): Promise<NetworkConfig> {
-  let { rpcUrl, network, privateKey } = options;
-
-  if (!network && !rpcUrl) {
-    const answers = await inquirer.prompt([{
-      type: 'list',
-      name: 'network',
-      message: 'Select the network to deploy to:',
-      choices: ['hardhat', 'phala', 'sepolia', 'test'],
-      default: 'hardhat',
-    }]);
-    network = answers.network;
+export function getChainConfig(chainId: number): Chain {
+  const chain = SUPPORTED_CHAINS[chainId];
+  if (!chain) {
+    throw new Error(`Unsupported chain ID: ${chainId}`);
   }
+  return chain;
+}
 
-  if (!rpcUrl) {
-    switch (network) {
-      case 'phala':
-        rpcUrl = 'https://rpc.phala.network';
-        break;
-      case 'sepolia':
-        let alchemyApiKey = process.env.ALCHEMY_API_KEY;
-        if (!alchemyApiKey) {
-          const { apiKey } = await inquirer.prompt([{
-            type: 'password',
-            name: 'apiKey',
-            message: 'Enter your Alchemy API Key for Sepolia:',
-            mask: '*',
-            validate: (input) => input.length > 0 || 'API Key cannot be empty.',
-          }]);
-          alchemyApiKey = apiKey;
-        }
-        rpcUrl = `https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`;
-        break;
-      case 'test':
-        rpcUrl = process.env.RPC_URL || 'http://127.0.0.1:8545/';
-        break;
-      case 'hardhat':
-      default:
-        rpcUrl = 'http://127.0.0.1:8545';
-        break;
-    }
+export async function getNetworkConfig(options: any, chainId?: number): Promise<NetworkConfig> {
+  let { rpcUrl, privateKey } = options;
+
+  if (!rpcUrl && chainId) {
+    const chain = getChainConfig(chainId);
+    rpcUrl = chain.rpcUrls.default.http[0];
   }
-
   if (!privateKey) {
     // Check for PRIVATE_KEY environment variable
     if (process.env.PRIVATE_KEY) {
@@ -83,7 +83,6 @@ export async function getNetworkConfig(options: any): Promise<NetworkConfig> {
       privateKey = key;
     }
   }
-
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new ethers.Wallet(ensureHexPrefix(privateKey), provider);
