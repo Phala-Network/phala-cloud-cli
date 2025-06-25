@@ -10,10 +10,13 @@ import { deleteCommand } from './delete';
 import { upgradeCommand } from './upgrade';
 import { resizeCommand } from './resize';
 import { replicateCommand } from './replicate';
-import { provisionCommand } from './provision';
+import { commitProvisionCommand } from './commit-provision';
 import { listNodesCommand } from './list-nodes';
 import { updateCommand } from './update';
 import { onchainCreateCommand } from './onchain-create';
+import { provisionCommand } from './provision';
+import { upgradeProvisionCommand } from './upgrade-provision';
+import { upgradeCommitCommand } from './upgrade-commit';
 
 export const cvmsCommand = new Command()
   .name('cvms')
@@ -31,5 +34,8 @@ export const cvmsCommand = new Command()
   .addCommand(upgradeCommand)
   .addCommand(listNodesCommand)
   .addCommand(replicateCommand)
+  .addCommand(commitProvisionCommand)
+  .addCommand(updateCommand)
   .addCommand(provisionCommand)
-  .addCommand(updateCommand);
+  .addCommand(upgradeProvisionCommand)
+  .addCommand(upgradeCommitCommand);
