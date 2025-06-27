@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { logger } from '@/src/utils/logger';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
-import { getKmsPubkey } from '@/src/api/kms';
+import { getKmsPubkey, getKmsPubkeyDirectly } from '@/src/api/kms';
 import { CLOUD_URL } from '@/src/utils/constants';
 
 import { parseEnv } from '@/src/utils/secrets';
@@ -71,7 +71,12 @@ async function getAndEncryptEnvs(options: any): Promise<string> {
   }
 
   const spinner = logger.startSpinner('Fetching public key from KMS...');
-  const kmsResponse = await getKmsPubkey(options.kmsId, options.appId);
+  let kmsResponse;
+  if (!options.kmsId) {
+    kmsResponse = await getKmsPubkeyDirectly(options.appId);
+  } else {
+    kmsResponse = await getKmsPubkey(options.kmsId, options.appId);
+  }
   const pubkey = kmsResponse.public_key;
   spinner.stop(true);
 
@@ -109,6 +114,7 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   logger.info(`Using KMS contract address: ${kmsContractAddress} from KMS ID: ${options.kmsId}`);
 
   // Get the first available KMS to determine the chain
+  // TODO: when multiple KMS are available, how to choose one?
   const kms = teepods.kms_list?.[0];
   if (!kms) {
     throw new Error('No KMS available');
@@ -188,17 +194,33 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   };
 }
 
-function displayProvisionResult(response: any): void {
+function displayProvisionResult(response: any, options: any): void {
   logger.success('CVM provisioned successfully');
   logger.break();
-  const tableData = {
-    'CVM ID': response.vm_uuid.replace(/-/g, ''),
-    'Name': response.name,
-    'Status': response.status,
-    'App ID': response.app_id,
-    'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-  };
-  logger.keyValueTable(tableData);
+  if (options.json !== false) {
+    // Output as JSON for script consumption
+    const jsonOutput = {
+      success: true,
+      data: {
+        cvm_id: response.vm_uuid.replace(/-/g, ''),
+        name: response.name,
+        status: response.status,
+        app_id: response.app_id,
+        endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+      }
+    };
+    console.log(JSON.stringify(jsonOutput, null, 2));
+  } else {
+    // Human-readable output
+    const tableData = {
+      'CVM ID': response.vm_uuid.replace(/-/g, ''),
+      'Name': response.name,
+      'Status': response.status,
+      'App ID': response.app_id,
+      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+    };
+    logger.keyValueTable(tableData);
+  }
 }
 
 export const commitProvisionCommand = new Command()
@@ -213,6 +235,8 @@ export const commitProvisionCommand = new Command()
   .option('--skip-env', 'Skip environment variable prompt.', false)
   .option('--debug', 'Enable debug mode', false)
   .option('-c, --compose <compose>', 'Path to Docker Compose file')
+  .option('--json', 'Output in JSON format (default: true)', true)
+  .option('--no-json', 'Disable JSON output format')
   .action(async (options) => {
     try {
       const encryptedEnv = await getAndEncryptEnvs(options);
@@ -229,14 +253,23 @@ export const commitProvisionCommand = new Command()
         throw new Error('Failed to provision CVM. The API returned an empty response.');
       }
 
-      displayProvisionResult(response);
+      displayProvisionResult(response, options);
 
     } catch (error) {
       // Spinners are stopped within their respective functions on success or failure.
       // We just need to log the final error here.
-      logger.error(`Failed to provision CVM: ${error instanceof Error ? error.message : String(error)}`);
-      if (options.debug && error.stack) {
-        logger.error(error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage,
+          stack: options.debug && error instanceof Error ? error.stack : undefined
+        }, null, 2));
+      } else {
+        logger.error(`Failed to provision CVM: ${errorMessage}`);
+        if (options.debug && error.stack) {
+          logger.error(error.stack);
+        }
       }
       process.exit(1);
     }

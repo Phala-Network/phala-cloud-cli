@@ -237,7 +237,7 @@ async function gatherCvmConfig(options: any) {
 /**
  * Provisions the CVM and logs the result.
  */
-async function provisionAndLogCvm(vmConfig: any) {
+async function provisionAndLogCvm(vmConfig: any, options: any) {
   const provisionSpinner = logger.startSpinner('Provisioning CVM for on-chain KMS...');
   const provisionResponse = await provisionCvm(vmConfig);
   provisionSpinner.stop(true);
@@ -246,13 +246,26 @@ async function provisionAndLogCvm(vmConfig: any) {
     throw new Error('Failed to provision CVM for on-chain KMS');
   }
 
-  logger.success('CVM provisioned successfully!');
-  logger.keyValueTable({
-    'App ID': provisionResponse.app_id,
-    'Device ID': provisionResponse.device_id,
-    'Compose Hash': provisionResponse.compose_hash,
-    'OS Image Hash': provisionResponse.os_image_hash,
-  });
+  if (options.json !== false) {
+    console.log(JSON.stringify({
+      success: true,
+      data: {
+        app_id: provisionResponse.app_id,
+        device_id: provisionResponse.device_id,
+        compose_hash: provisionResponse.compose_hash,
+        os_image_hash: provisionResponse.os_image_hash,
+        raw: provisionResponse
+      }
+    }, null, 2));
+  } else {
+    logger.success('CVM provisioned successfully!');
+    logger.keyValueTable({
+      'App ID': provisionResponse.app_id,
+      'Device ID': provisionResponse.device_id,
+      'Compose Hash': provisionResponse.compose_hash,
+      'OS Image Hash': provisionResponse.os_image_hash,
+    });
+  }
 
   return provisionResponse;
 }
@@ -273,19 +286,37 @@ async function executeStandardCreation(vmConfig: any, envs: EnvVar[], options: a
   createSpinner.stop(true);
   if (!response) throw new Error('Failed to create CVM');
 
-  logger.success('CVM created successfully');
-  logger.break();
-  const tableData: { [key: string]: any } = {
-    'CVM ID': response.vm_uuid.replace(/-/g, ''),
-    'App ID': response.app_id,
-    'Name': response.name,
-    'Status': response.status,
-    'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-    'Created At': new Date(response.created_at).toLocaleString(),
-  };
-  if (response.kms_contract_address) tableData['KMS Contract Address'] = response.kms_contract_address;
-  if (response.kms_owner_address) tableData['KMS Owner Address'] = response.kms_owner_address;
-  logger.keyValueTable(tableData);
+  if (options.json !== false) {
+    const jsonOutput: any = {
+      success: true,
+      data: {
+        cvm_id: response.vm_uuid.replace(/-/g, ''),
+        app_id: response.app_id,
+        name: response.name,
+        status: response.status,
+        endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+        created_at: response.created_at,
+        raw: response
+      }
+    };
+    if (response.kms_contract_address) jsonOutput.data.kms_contract_address = response.kms_contract_address;
+    if (response.kms_owner_address) jsonOutput.data.kms_owner_address = response.kms_owner_address;
+    console.log(JSON.stringify(jsonOutput, null, 2));
+  } else {
+    logger.success('CVM created successfully');
+    logger.break();
+    const tableData: { [key: string]: any } = {
+      'CVM ID': response.vm_uuid.replace(/-/g, ''),
+      'App ID': response.app_id,
+      'Name': response.name,
+      'Status': response.status,
+      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+      'Created At': new Date(response.created_at).toLocaleString(),
+    };
+    if (response.kms_contract_address) tableData['KMS Contract Address'] = response.kms_contract_address;
+    if (response.kms_owner_address) tableData['KMS Owner Address'] = response.kms_owner_address;
+    logger.keyValueTable(tableData);
+  }
 }
 
 export const provisionCommand = new Command()
@@ -304,6 +335,8 @@ export const provisionCommand = new Command()
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
   .option('--kms-id <kmsId>', 'KMS ID to use.')
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
+  .option('--json', 'Output in JSON format (default: true)', true)
+  .option('--no-json', 'Disable JSON output format')
   .action(async (options) => {
     try {
       // Step 1: Gather CVM configuration
@@ -318,10 +351,19 @@ export const provisionCommand = new Command()
       }
       // Step 2: Provision the CVM
       logger.info('\nStep 2: Provisioning CVM...');
-      await provisionAndLogCvm(vmConfig);
+      await provisionAndLogCvm(vmConfig, options);
 
     } catch (error) {
-      logger.error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage,
+          stack: options.debug && error instanceof Error ? error.stack : undefined
+        }, null, 2));
+      } else {
+        logger.error(`Failed to create CVM: ${errorMessage}`);
+      }
       process.exit(1);
     }
   });
