@@ -1,14 +1,13 @@
 import { Command } from 'commander';
 import { updatePatchCvmCompose, getCvmByAppId } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
-import fs from 'node:fs';
 import { parseEnv } from '@/src/utils/secrets';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import inquirer from 'inquirer';
 import { promptForFile } from '@/src/utils/prompts';
 import { CLOUD_URL } from '@/src/utils/constants';
 
-async function applyUpdate(cvmId: string, composeHash: string, encryptedEnv: string): Promise<void> {
+async function applyUpdate(cvmId: string, composeHash: string, encryptedEnv: string, options: any = {}): Promise<void> {
   const spinner = logger.startSpinner('Applying update...');
   try {
     const payload = { compose_hash: composeHash, encrypted_env: encryptedEnv };
@@ -16,10 +15,30 @@ async function applyUpdate(cvmId: string, composeHash: string, encryptedEnv: str
 
     if (response === null) {
       spinner.stop(true);
-      logger.success('Update applied successfully!');
+      if (options && options.json !== false) {
+        console.log(JSON.stringify({
+          success: true,
+          data: {
+            cvm_id: cvmId,
+            message: 'Update applied successfully',
+            dashboard_url: `${CLOUD_URL}/dashboard/cvms/${cvmId.replace(/-/g, '')}`
+          }
+        }, null, 2));
+      } else {
+        logger.success('Update applied successfully!');
+        logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${cvmId.replace(/-/g, '')}`);
+      }
     } else {
       spinner.stop(false);
-      logger.error(`Failed to apply update: ${JSON.stringify(response.detail, null, 2)}`);
+      const errorMessage = `Failed to apply update: ${JSON.stringify(response.detail, null, 2)}`;
+      if (options && options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage
+        }, null, 2));
+      } else {
+        logger.error(errorMessage);
+      }
       process.exit(1);
     }
   } catch (error) {
@@ -70,6 +89,8 @@ export const upgradeCommitCommand = new Command()
   .requiredOption('--compose-hash <composeHash>', 'Compose hash from the provision step')
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
+  .option('--json', 'Output in JSON format (default: true)', true)
+  .option('--no-json', 'Disable JSON output format')
   .action(async (cvmId: string, options) => {
     try {
       const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
@@ -80,9 +101,18 @@ export const upgradeCommitCommand = new Command()
         process.exit(1);
       }
       const { encryptedEnv } = await prepareUpdatePayload(options, currentCvm);
-      await applyUpdate(cvmId, options.composeHash, encryptedEnv);
+      await applyUpdate(cvmId, options.composeHash, encryptedEnv, options);
     } catch (error) {
-      logger.error(`Failed to commit CVM upgrade: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = `Failed to commit CVM upgrade: ${error instanceof Error ? error.message : String(error)}`;
+      if (options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage,
+          stack: options.debug && error instanceof Error ? error.stack : undefined
+        }, null, 2));
+      } else {
+        logger.error(errorMessage);
+      }
       process.exit(1);
     }
   });

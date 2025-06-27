@@ -3,17 +3,11 @@ import { getCvmByAppId, updateCvmCompose, getCvmComposeFile } from '@/src/api/cv
 import { logger } from '@/src/utils/logger';
 import { parseEnv } from '@/src/utils/secrets';
 import { promptForFile } from '@/src/utils/prompts';
-import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
 import { CLOUD_URL } from '@/src/utils/constants';
 import fs from 'fs-extra';
-import path from 'path';
 import inquirer from 'inquirer';
 import { detectFileInCurrentDir } from '@/src/utils/prompts';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
-import { resolveCvmAppId } from '@/src/utils/cvms';
-import { ethers } from 'ethers';
-import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
 
 
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
@@ -132,101 +126,6 @@ async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ co
   return { composeString, encryptedEnv };
 }
 
-async function registerComposeHash(composeHash: string, appId: string, wallet: ethers.Wallet, kmsContractAddress: string, rawRpcUrl: string, chainId: number): Promise<void> {
-  const spinner = logger.startSpinner('Adding compose hash for on-chain KMS...');
-  let appAuthAddress: any;
-  try {
-    // Get network config which will handle chain validation and RPC URL resolution
-    const { rpcUrl } = await getNetworkConfig({ rpcUrl: rawRpcUrl }, chainId);
-    
-    // Get the chain config
-    const chain = getChainConfig(chainId);
-    
-    // Initialize public client with the appropriate chain and RPC URL
-    const publicClient = createPublicClient({
-      chain,
-      transport: http(rpcUrl)
-    });
-    // KMS Auth ABI for reading app registration details
-    const kmsAuthAbi = [
-      {
-        inputs: [{ name: 'app', type: 'address' }],
-        name: 'apps',
-        outputs: [
-          { name: 'isRegistered', type: 'bool' },
-          { name: 'controller', type: 'address' },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ] as const;
-
-    try {
-      // Ensure the KMS contract address is valid
-      if (!ethers.isAddress(kmsContractAddress)) {
-        throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
-      }
-
-      if (!ethers.isAddress(appId)) {
-        throw new Error(`Invalid custom App ID: ${appId}`);
-      }
-
-      // Ensure customAppId has 0x prefix
-      const customAppId = appId.startsWith('0x')
-        ? appId
-        : `0x${appId}`;
-
-      // Query the KMS contract for app registration details
-      const [isRegistered, controllerAddress] = await publicClient.readContract({
-        address: kmsContractAddress as `0x${string}`,
-        abi: kmsAuthAbi,
-        functionName: 'apps',
-        args: [customAppId as `0x${string}`]
-      });
-
-      // Validate the response
-      if (!isRegistered) {
-        throw new Error(`App ${appId} is not registered in KMS contract ${kmsContractAddress}`);
-      }
-
-      if (!controllerAddress || controllerAddress === ethers.ZeroAddress) {
-        throw new Error(`Invalid controller address for app ${appId}`);
-      }
-
-      logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
-
-      appAuthAddress = controllerAddress;
-    } catch (error) {
-      throw new Error(`Failed to verify custom App ID: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    const appAuthAbi = ['function addComposeHash(bytes32 composeHash)', 'event ComposeHashAdded(bytes32 composeHash)'];
-    const appAuthContract = new ethers.Contract(appAuthAddress, appAuthAbi, wallet);
-
-    const formattedHash = composeHash.startsWith('0x') ? composeHash : `0x${composeHash}`;
-    const tx = await appAuthContract.addComposeHash(formattedHash);
-    const receipt = await tx.wait();
-
-    spinner.stop(true);
-    logger.success('Compose hash added successfully!');
-    logger.info(`Transaction hash: ${tx.hash}`);
-
-    const appAuthInterface = new ethers.Interface(appAuthAbi);
-    const eventTopic = appAuthInterface.getEvent('ComposeHashAdded').topicHash;
-    const log = receipt.logs.find((l: any) => l.topics[0] === eventTopic);
-
-    if (log) {
-      const parsedLog = appAuthInterface.parseLog({ topics: Array.from(log.topics), data: log.data });
-      logger.info(`  - Compose Hash: ${parsedLog.args.composeHash}`);
-    } else {
-      logger.warn('Could not find ComposeHashAdded event to extract Compose Hash.');
-    }
-  } catch (error) {
-    spinner.stop(false);
-    throw error;
-  }
-}
-
-
 export const upgradeProvisionCommand = new Command()
   .name('upgrade-provision')
   .description('Provision a CVM upgrade with a new compose file')
@@ -235,14 +134,12 @@ export const upgradeProvisionCommand = new Command()
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
   .option('--debug', 'Enable debug logging', false)
-  .option('--private-key <privateKey>', 'Private key for on-chain operations')
-  .option('--rpc-url <rpcUrl>', 'RPC URL for blockchain interactions')
   .option('-i, --interactive', 'Enable interactive mode', false)
+  .option('--json', 'Output in JSON format (default: true)', true)
+  .option('--no-json', 'Disable JSON output format')
   .action(async (cvmId: string, options) => {
     try {
-      // Get current CVM details
-      const resolvedAppId = await resolveCvmAppId(cvmId);
-      const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(resolvedAppId, options);
+      const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(cvmId, options);
       const { composeString, encryptedEnv } = await prepareUpdatePayload(gatheredOptions, currentCvm);
 
       const spinner = logger.startSpinner(`Updating CVM ${finalCvmId}`);
@@ -257,24 +154,33 @@ export const upgradeProvisionCommand = new Command()
         process.exit(1);
       }
 
-      logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
-      logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`);
-
-      if (currentCvm.kms_info) {
-        // Check for private key in options or environment variables
-        const privateKey = options.privateKey || process.env.PRIVATE_KEY;
-        if (!privateKey) {
-          throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
-        }
-
-        const { wallet } = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, currentCvm.kms_info.chain_id);
-        logger.info(`Using wallet: ${wallet.address}`);
-        logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
-        await registerComposeHash(response.compose_hash, cvmId, wallet, currentCvm.kms_info.kms_contract_address, options.rpcUrl, currentCvm.kms_info.chain_id);
+      if (options.json !== false) {
+        console.log(JSON.stringify({
+          success: true,
+          data: {
+            cvm_id: currentCvm.vm_uuid.replace(/-/g, ''),
+            app_id: finalCvmId,
+            compose_hash: response.compose_hash,
+            dashboard_url: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
+            raw: response
+          }
+        }, null, 2));
+      } else {
+        logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
+        logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`);
       }
 
     } catch (error) {
-      logger.error(`Failed to provision CVM upgrade: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = `Failed to provision CVM upgrade: ${error instanceof Error ? error.message : String(error)}`;
+      if (options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage,
+          stack: options.debug && error instanceof Error ? error.stack : undefined
+        }, null, 2));
+      } else {
+        logger.error(errorMessage);
+      }
       process.exit(1);
     }
   });

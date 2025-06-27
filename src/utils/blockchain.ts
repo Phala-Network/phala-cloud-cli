@@ -45,7 +45,7 @@ export const SUPPORTED_CHAINS: Record<number, Chain> = {
     ...anvil,
     rpcUrls: {
       default: {
-        http: ["http://66.220.6.113:8545"],
+        http: ["http://127.0.0.1:8545"],
       },
     },
   },

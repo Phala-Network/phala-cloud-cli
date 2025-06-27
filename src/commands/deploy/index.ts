@@ -235,7 +235,7 @@ async function gatherCvmConfig(options: any) {
 /**
  * Provisions the CVM and logs the result.
  */
-async function provisionAndLogCvm(vmConfig: any) {
+async function provisionAndLogCvm(vmConfig: any, options: { json?: boolean } = {}) {
   const provisionSpinner = logger.startSpinner('Provisioning CVM for on-chain KMS...');
   const provisionResponse = await provisionCvm(vmConfig);
   provisionSpinner.stop(true);
@@ -244,13 +244,26 @@ async function provisionAndLogCvm(vmConfig: any) {
     throw new Error('Failed to provision CVM for on-chain KMS');
   }
 
-  logger.success('CVM provisioned successfully!');
-  logger.keyValueTable({
-    'App ID': provisionResponse.app_id,
-    'Device ID': provisionResponse.device_id,
-    'Compose Hash': provisionResponse.compose_hash,
-    'OS Image Hash': provisionResponse.os_image_hash,
-  });
+  if (options?.json !== false) {
+    console.log(JSON.stringify({
+      success: true,
+      data: {
+        app_id: provisionResponse.app_id,
+        device_id: provisionResponse.device_id,
+        compose_hash: provisionResponse.compose_hash,
+        os_image_hash: provisionResponse.os_image_hash,
+        raw: provisionResponse
+      }
+    }, null, 2));
+  } else {
+    logger.success('CVM provisioned successfully!');
+    logger.keyValueTable({
+      'App ID': provisionResponse.app_id,
+      'Device ID': provisionResponse.device_id,
+      'Compose Hash': provisionResponse.compose_hash,
+      'OS Image Hash': provisionResponse.os_image_hash,
+    });
+  }
 
   return provisionResponse;
 }
@@ -300,18 +313,36 @@ async function createFinalCvm(appAuthResult: any, provisionResponse: any, envs: 
     throw new Error('Failed to create CVM');
   }
 
-  logger.success('CVM created successfully!');
-  logger.break();
-  logger.keyValueTable({
-    'CVM ID': finalResponse.vm_uuid.replace(/-/g, ''),
-    'Name': finalResponse.name,
-    'Status': finalResponse.status,
-    'App ID': finalResponse.app_id,
-    'Endpoint': `${CLOUD_URL}/dashboard/cvms/${finalResponse.vm_uuid.replace(/-/g, '')}`,
-  });
+  if (options?.json !== false) {
+    console.log(JSON.stringify({
+      success: true,
+      data: {
+        vm_uuid: finalResponse.vm_uuid.replace(/-/g, ''),
+        name: finalResponse.name,
+        status: finalResponse.status,
+        app_id: finalResponse.app_id,
+        endpoint: `${CLOUD_URL}/dashboard/cvms/${finalResponse.vm_uuid.replace(/-/g, '')}`,
+        raw: finalResponse
+      }
+    }, null, 2));
+  } else {
+    logger.success('CVM created successfully!');
+    logger.break();
+    logger.keyValueTable({
+      'CVM ID': finalResponse.vm_uuid.replace(/-/g, ''),
+      'Name': finalResponse.name,
+      'Status': finalResponse.status,
+      'App ID': finalResponse.app_id,
+      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${finalResponse.vm_uuid.replace(/-/g, '')}`,
+    });
+  }
 }
 
-async function executeStandardCreation(vmConfig: any, envs: EnvVar[], options: any) {
+async function executeStandardCreation(
+  vmConfig: any,
+  envs: EnvVar[],
+  options: { json?: boolean; debug?: boolean } = {}
+) {
   const spinner = logger.startSpinner('Getting public key from CVM');
   const pubkey = await getPubkeyFromCvm(vmConfig);
   spinner.stop(true);
@@ -326,24 +357,45 @@ async function executeStandardCreation(vmConfig: any, envs: EnvVar[], options: a
   createSpinner.stop(true);
   if (!response) throw new Error('Failed to create CVM');
 
-  logger.success('CVM created successfully');
-  logger.break();
-  const tableData: { [key: string]: any } = {
-    'CVM ID': response.vm_uuid.replace(/-/g, ''),
-    'App ID': response.app_id,
-    'Name': response.name,
-    'Status': response.status,
-    'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-    'Created At': new Date(response.created_at).toLocaleString(),
-  };
-  if (response.kms_contract_address) tableData['KMS Contract Address'] = response.kms_contract_address;
-  if (response.kms_owner_address) tableData['KMS Owner Address'] = response.kms_owner_address;
-  logger.keyValueTable(tableData);
+  if (options?.json !== false) {
+    const jsonOutput: any = {
+      success: true,
+      data: {
+        cvm_id: response.vm_uuid.replace(/-/g, ''),
+        app_id: response.app_id,
+        name: response.name,
+        status: response.status,
+        endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+        created_at: response.created_at,
+        raw: response
+      }
+    };
+    if (response.kms_contract_address) jsonOutput.data.kms_contract_address = response.kms_contract_address;
+    if (response.kms_owner_address) jsonOutput.data.kms_owner_address = response.kms_owner_address;
+    console.log(JSON.stringify(jsonOutput, null, 2));
+  } else {
+    logger.success('CVM created successfully');
+    logger.break();
+    const tableData: { [key: string]: any } = {
+      'CVM ID': response.vm_uuid.replace(/-/g, ''),
+      'App ID': response.app_id,
+      'Name': response.name,
+      'Status': response.status,
+      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+      'Created At': new Date(response.created_at).toLocaleString(),
+    };
+    if (response.kms_contract_address) tableData['KMS Contract Address'] = response.kms_contract_address;
+    if (response.kms_owner_address) tableData['KMS Owner Address'] = response.kms_owner_address;
+    logger.keyValueTable(tableData);
+  }
 }
 
 export const deployCommand = new Command()
-  .name('deploy')
+  .command('deploy')
   .description('Create a new CVM with on-chain KMS in one step.')
+  .option('--json', 'Output in JSON format (default: true)', true)
+  .option('--no-json', 'Disable JSON output format')
+  .option('--debug', 'Enable debug logging', false)
   // CVM options
   .option('-n, --name <name>', 'Name of the CVM')
   .option('-c, --compose <compose>', 'Path to Docker Compose file')
@@ -361,7 +413,25 @@ export const deployCommand = new Command()
   // Blockchain options
   .option('--private-key <privateKey>', 'Private key for signing transactions.')
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
-  .action(async (options) => {
+  .action(async (options: {
+    name?: string;
+    compose?: string;
+    vcpu?: string;
+    memory?: string;
+    diskSize?: string;
+    image?: string;
+    nodeId?: string;
+    envFile?: string;
+    skipEnv?: boolean;
+    interactive?: boolean;
+    kmsId?: string;
+    customAppId?: string;
+    preLaunchScript?: string;
+    privateKey?: string;
+    rpcUrl?: string;
+    json?: boolean;
+    debug?: boolean;
+  }) => {
     try {
       // Step 1: Gather CVM configuration
       logger.info('Step 1: Preparing CVM configuration...');
@@ -369,7 +439,10 @@ export const deployCommand = new Command()
 
       // If no KMS ID is provided, use standard creation
       if (!options.kmsId) {
-        executeStandardCreation(vmConfig, envs, options);
+        await executeStandardCreation(vmConfig, envs, {
+          json: options.json,
+          debug: options.debug
+        });
         return;
       }
       // Step 2: Provision the CVM
@@ -389,7 +462,9 @@ export const deployCommand = new Command()
         }
         const networkConfig = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, teepods.kms_list[0].chain_id);
         wallet = networkConfig.wallet;
-        logger.info(`Using wallet: ${wallet.address}`);
+        if (options.json === false) {
+          logger.info(`Using wallet: ${wallet.address}`);
+        }
       }
 
       const deployOptions = {
@@ -403,7 +478,9 @@ export const deployCommand = new Command()
 
       // Handle custom app ID case - fetch AppAuth contract details from KMS
       if (options.customAppId) {
-        logger.info(`Using custom App ID: ${options.customAppId}, fetching AppAuth details from KMS...`);
+        if (options.json === false) {
+          logger.info(`Using custom App ID: ${options.customAppId}, fetching AppAuth details from KMS...`);
+        }
 
         // Get the first available KMS to determine the chain
         const kms = teepods.kms_list?.[0];
@@ -469,7 +546,9 @@ export const deployCommand = new Command()
             throw new Error(`Invalid controller address for app ${options.customAppId}`);
           }
 
-          logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
+          if (options.json === false) {
+            logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
+          }
 
           appAuthResult = {
             appId: options.customAppId,
@@ -492,7 +571,16 @@ export const deployCommand = new Command()
       await createFinalCvm(appAuthResult, provisionResponse, envs, teepods, options);
 
     } catch (error) {
-      logger.error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = `Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`;
+      if (options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage,
+          stack: options.debug && error instanceof Error ? error.stack : undefined
+        }, null, 2));
+      } else {
+        logger.error(errorMessage);
+      }
       process.exit(1);
     }
   });

@@ -71,6 +71,7 @@ export function parseDiskSizeInput(input: string): number {
   }
   
   // Ensure disk size doesn't exceed 250GB
+  // TODO: once the default disk size limitation removed in DStack, we should remove this as well.
   const MAX_DISK_SIZE_GB = 250;
   if (diskSizeGB > MAX_DISK_SIZE_GB) {
     throw new Error(`Maximum disk size is ${MAX_DISK_SIZE_GB}GB. Got: ${diskSizeGB}GB`);

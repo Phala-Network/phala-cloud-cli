@@ -6,12 +6,10 @@ import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
-import { resolveCvmAppId } from '@/src/utils/cvms';
 import { CLOUD_URL } from '@/src/utils/constants';
 import inquirer from 'inquirer';
 import { ethers } from 'ethers';
 import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
 import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
 
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
@@ -130,7 +128,15 @@ async function prepareUpdatePayload(options: any, currentCvm: any): Promise<{ co
   return { composeString, encryptedEnv };
 }
 
-async function registerComposeHash(composeHash: string, appId: string, wallet: ethers.Wallet, kmsContractAddress: string, rawRpcUrl: string, chainId: number): Promise<void> {
+async function registerComposeHash(
+  composeHash: string,
+  appId: string,
+  wallet: ethers.Wallet,
+  kmsContractAddress: string,
+  rawRpcUrl: string,
+  chainId: number,
+  options: { json?: boolean } = {}
+): Promise<void> {
   const spinner = logger.startSpinner('Adding compose hash for on-chain KMS...');
   let appAuthAddress: any;
   try {
@@ -206,18 +212,34 @@ async function registerComposeHash(composeHash: string, appId: string, wallet: e
     const receipt = await tx.wait();
 
     spinner.stop(true);
-    logger.success('Compose hash added successfully!');
-    logger.info(`Transaction hash: ${tx.hash}`);
-
+    
     const appAuthInterface = new ethers.Interface(appAuthAbi);
     const eventTopic = appAuthInterface.getEvent('ComposeHashAdded').topicHash;
     const log = receipt.logs.find((l: any) => l.topics[0] === eventTopic);
+    let composeHashEvent = null;
 
     if (log) {
       const parsedLog = appAuthInterface.parseLog({ topics: Array.from(log.topics), data: log.data });
-      logger.info(`  - Compose Hash: ${parsedLog.args.composeHash}`);
+      composeHashEvent = parsedLog.args.composeHash;
+    }
+
+    if (options?.json !== false) {
+      console.log(JSON.stringify({
+        success: true,
+        data: {
+          transaction_hash: tx.hash,
+          compose_hash_event: composeHashEvent,
+          event_found: !!log
+        }
+      }, null, 2));
     } else {
-      logger.warn('Could not find ComposeHashAdded event to extract Compose Hash.');
+      logger.success('Compose hash added successfully!');
+      logger.info(`Transaction hash: ${tx.hash}`);
+      if (log) {
+        logger.info(`  - Compose Hash: ${composeHashEvent}`);
+      } else {
+        logger.warn('Could not find ComposeHashAdded event to extract Compose Hash.');
+      }
     }
   } catch (error) {
     spinner.stop(false);
@@ -225,18 +247,41 @@ async function registerComposeHash(composeHash: string, appId: string, wallet: e
   }
 }
 
-async function applyUpdate(cvmId: string, composeHash: string, encryptedEnv: string): Promise<void> {
+async function applyUpdate(
+  cvmId: string,
+  composeHash: string,
+  encryptedEnv: string,
+  options: { json?: boolean } = {}
+): Promise<void> {
   const spinner = logger.startSpinner('Applying update...');
   try {
     const payload = { compose_hash: composeHash, encrypted_env: encryptedEnv };
     const response = await updatePatchCvmCompose(cvmId, payload);
+    spinner.stop(true);
 
     if (response === null) {
-      spinner.stop(true);
-      logger.success('Update applied successfully!');
+      if (options?.json !== false) {
+        console.log(JSON.stringify({
+          success: true,
+          data: {
+            message: 'Update applied successfully',
+            cvm_id: cvmId,
+            compose_hash: composeHash
+          }
+        }, null, 2));
+      } else {
+        logger.success('Update applied successfully!');
+      }
     } else {
-      spinner.stop(false);
-      logger.error(`Failed to apply update: ${JSON.stringify(response.detail, null, 2)}`);
+      const errorMessage = `Failed to apply update: ${JSON.stringify(response.detail, null, 2)}`;
+      if (options?.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage
+        }, null, 2));
+      } else {
+        logger.error(errorMessage);
+      }
       process.exit(1);
     }
   } catch (error) {
@@ -255,22 +300,24 @@ export const upgradeCommand = new Command()
   .option('--debug', 'Enable debug mode', false)
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
+  .option('--json', 'Output in JSON format (default: true)', true)
+  .option('--no-json', 'Disable JSON output format')
   .action(async (appId, options) => {
     try {
-
-      const resolvedAppId = await resolveCvmAppId(appId);
-      const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(resolvedAppId, options);
+      const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(appId, options);
 
       const { composeString, encryptedEnv } = await prepareUpdatePayload(gatheredOptions, currentCvm);
       // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
       await deleteSimulatorEndpointEnv();
-      // Print if they are using a private registry
-      if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
-        logger.info("🔐 Using private DockerHub registry credentials...");
-      } else if (process.env.DSTACK_AWS_ACCESS_KEY_ID && process.env.DSTACK_AWS_SECRET_ACCESS_KEY && process.env.DSTACK_AWS_REGION && process.env.DSTACK_AWS_ECR_REGISTRY) {
-        logger.info(`🔐 Using private AWS ECR registry: ${process.env.DSTACK_AWS_ECR_REGISTRY}`);
-      } else {
-        logger.info("🔐 Using public DockerHub registry...");
+      // Only show registry info in non-JSON mode
+      if (options.json === false) {
+        if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
+          logger.info("🔐 Using private DockerHub registry credentials...");
+        } else if (process.env.DSTACK_AWS_ACCESS_KEY_ID && process.env.DSTACK_AWS_SECRET_ACCESS_KEY && process.env.DSTACK_AWS_REGION && process.env.DSTACK_AWS_ECR_REGISTRY) {
+          logger.info(`🔐 Using private AWS ECR registry: ${process.env.DSTACK_AWS_ECR_REGISTRY}`);
+        } else {
+          logger.info("🔐 Using public DockerHub registry...");
+        }
       }
 
       const spinner = logger.startSpinner(`Updating CVM ${finalCvmId}`);
@@ -285,8 +332,21 @@ export const upgradeCommand = new Command()
         process.exit(1);
       }
 
-      logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
-      logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`);
+      if (options.json !== false) {
+        console.log(JSON.stringify({
+          success: true,
+          data: {
+            cvm_id: currentCvm.vm_uuid.replace(/-/g, ''),
+            app_id: finalCvmId,
+            compose_hash: response.compose_hash,
+            dashboard_url: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
+            raw: response
+          }
+        }, null, 2));
+      } else {
+        logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
+        logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`);
+      }
 
       if (currentCvm.kms_info) {
         // Check for private key in options or environment variables
@@ -296,14 +356,42 @@ export const upgradeCommand = new Command()
         }
         
         const { wallet } = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, currentCvm.kms_info.chain_id);
-        logger.info(`Using wallet: ${wallet.address}`);
-        logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
-        await registerComposeHash(response.compose_hash, appId, wallet, currentCvm.kms_info.kms_contract_address, options.rpcUrl, currentCvm.kms_info.chain_id);
+        if (options.json !== false) {
+          console.log(JSON.stringify({
+            success: true,
+            data: {
+              wallet_address: wallet.address
+            }
+          }, null, 2));
+        } else {
+          logger.info(`Using wallet: ${wallet.address}`);
+        }
+        if (options.json === false) {
+          logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
+        }
+        await registerComposeHash(
+          response.compose_hash, 
+          appId, 
+          wallet, 
+          currentCvm.kms_info.kms_contract_address, 
+          options.rpcUrl, 
+          currentCvm.kms_info.chain_id,
+          { json: options.json }
+        );
       }
 
-      await applyUpdate(finalCvmId, response.compose_hash, encryptedEnv);
+      await applyUpdate(finalCvmId, response.compose_hash, encryptedEnv, { json: options.json });
     } catch (error) {
-      logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (options.json !== false) {
+        console.error(JSON.stringify({
+          success: false,
+          error: errorMessage,
+          stack: options.debug && error instanceof Error ? error.stack : undefined
+        }, null, 2));
+      } else {
+        logger.error(`Failed to upgrade CVM: ${errorMessage}`);
+      }
       process.exit(1);
     }
   }); 
