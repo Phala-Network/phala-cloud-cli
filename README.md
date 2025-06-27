@@ -100,14 +100,14 @@ ___
    #   ⟳ Encrypting environment variables... ✓
    #   ⟳ Creating CVM... ✓
    #   ✓ CVM created successfully
-   #   ℹ CVM ID: 2755
+   #   ℹ CVM ID: 87a117814c8348dba6a51196d256b1fc
    #   ℹ Name: webshell
    #   ℹ Status: creating
    #   ℹ App ID: e15c1a29a9dfb522da528464a8d5ce40ac28039f
-   #   ℹ App URL: <https://cloud.phala.network/dashboard/cvms/app_e15c1a29a9dfb522da528464a8d5ce40ac28039f>
+   #   ℹ Endpoint: https://cloud.phala.network/dashboard/cvms/87a117814c8348dba6a51196d256b1fc
    #    ℹ
    #    ℹ Your CVM is being created. You can check its status with:
-   #    ℹ phala cvms status e15c1a29a9dfb522da528464a8d5ce40ac28039f
+   #    ℹ phala cvms status 87a117814c8348dba6a51196d256b1fc
    ```
 
    Now interact with your application in Phala Cloud by going to the url on port 7681 (Example of what a url at port 7681 would look like https://e15c1a29a9dfb522da528464a8d5ce40ac28039f-7681.dstack-prod5.phala.network)
@@ -163,6 +163,37 @@ phala docker push --image my-tee-app --tag v1.0.0
 phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
 
 # Access your app via the provided URL
+```
+
+### 3️⃣ Simplified Workflow: One-Step On-Chain KMS CVM Creation
+
+Deploy new applications with the `deploy` command:
+
+```bash
+# Basic deployment with interactive prompts
+phala deploy
+
+# Deployment with private key from environment, assume user want to deploy the default AppAuth contract we provide
+export PRIVATE_KEY=your_private_key_here
+phala deploy --kms-id 0x1234...
+
+# Deployment with custom-app-id, assume user already deployed the AppAuth contract onchain
+phala deploy \
+  --kms-id 0xabc123 \
+  --custom-app-id 0x5678... \
+  --pre-launch-script ./pre-launch.sh
+```
+
+### 4️⃣ Upgrade Existing Applications
+
+Upgrade your deployed applications with new configurations:
+
+```bash
+# Basic upgrade with new compose file
+phala cvms upgrade <app-id> --compose docker-compose.prod.yml
+
+# Upgrade with new compose file and environment variables and private key
+phala cvms upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
 ```
 
 ## 💼 Real-World Use Cases for Confidential Computing

@@ -40,7 +40,7 @@ export const resizeCommand = new Command()
               }
               return true;
             },
-            default: cvm.vcpu,
+            default: cvm.vcpu.toString(),
             filter: (input) => parseInt(input)
           }
         ]);
@@ -61,7 +61,7 @@ export const resizeCommand = new Command()
               }
               return true;
             },
-            default: cvm.memory,
+            default: cvm.memory.toString(),
             filter: (input) => parseInt(input)
           }
         ]);
@@ -82,7 +82,7 @@ export const resizeCommand = new Command()
               }
               return true;
             },
-            default: cvm.disk_size,
+            default: cvm.disk_size.toString(),
             filter: (input) => parseInt(input)
           }
         ]);
