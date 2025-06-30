@@ -95,13 +95,15 @@ export const upgradeCommitCommand = new Command()
     try {
       const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
       const currentCvm = await getCvmByAppId(cvmId);
+      logger.info(`\nCVM UUID: ${currentCvm.vm_uuid.replace(/-/g, '')}`);
+      logger.info(`App ID: ${currentCvm.app_id}`);
       spinner.stop(true);
       if (!currentCvm) {
         logger.error(`CVM with CVM ID ${cvmId} not found`);
         process.exit(1);
       }
       const { encryptedEnv } = await prepareUpdatePayload(options, currentCvm);
-      await applyUpdate(cvmId, options.composeHash, encryptedEnv, options);
+      await applyUpdate(currentCvm.vm_uuid.replace(/-/g, ''), options.composeHash, encryptedEnv, options);
     } catch (error) {
       const errorMessage = `Failed to commit CVM upgrade: ${error instanceof Error ? error.message : String(error)}`;
       if (options.json !== false) {

@@ -120,11 +120,9 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
     throw new Error('No KMS available');
   }
 
-  // Get network config which will handle chain validation and RPC URL resolution
-  const { rpcUrl } = await getNetworkConfig({ rpcUrl: options.rpcUrl }, kms.chain_id);
-  
   // Get the chain config
   const chain = getChainConfig(kms.chain_id);
+  const rpcUrl = options.rpcUrl || chain.rpcUrls.default.http[0];
   
   // Initialize public client with the appropriate chain and RPC URL
   const publicClient = createPublicClient({
@@ -152,14 +150,14 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
       throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
     }
 
-    if (!ethers.isAddress(options.customAppId)) {
-      throw new Error(`Invalid custom App ID: ${options.customAppId}`);
+    if (!ethers.isAddress(options.appId)) {
+      throw new Error(`Invalid custom App ID: ${options.appId}`);
     }
 
     // Ensure customAppId has 0x prefix
-    const customAppId = options.customAppId.startsWith('0x')
-      ? options.customAppId
-      : `0x${options.customAppId}`;
+    const customAppId = options.appId.startsWith('0x')
+      ? options.appId
+      : `0x${options.appId}`;
 
     // Query the KMS contract for app registration details
     const [isRegistered, controllerAddress] = await publicClient.readContract({
@@ -171,11 +169,11 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
 
     // Validate the response
     if (!isRegistered) {
-      throw new Error(`App ${options.customAppId} is not registered in KMS contract ${kmsContractAddress}`);
+      throw new Error(`App ${options.appId} is not registered in KMS contract ${kmsContractAddress}`);
     }
 
     if (!controllerAddress || controllerAddress === ethers.ZeroAddress) {
-      throw new Error(`Invalid controller address for app ${options.customAppId}`);
+      throw new Error(`Invalid controller address for app ${options.appId}`);
     }
 
     logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
@@ -237,6 +235,7 @@ export const commitProvisionCommand = new Command()
   .option('-c, --compose <compose>', 'Path to Docker Compose file')
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
+  .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
   .action(async (options) => {
     try {
       const encryptedEnv = await getAndEncryptEnvs(options);

@@ -61,7 +61,7 @@ export function getChainConfig(chainId: number): Chain {
   return chain;
 }
 
-export async function getNetworkConfig(options: any, chainId?: number): Promise<NetworkConfig> {
+export async function getNetworkConfig(options: any, chainId?: number, interactive?: boolean): Promise<NetworkConfig> {
   let { rpcUrl, privateKey } = options;
 
   if (!rpcUrl && chainId) {
@@ -73,7 +73,7 @@ export async function getNetworkConfig(options: any, chainId?: number): Promise<
     if (process.env.PRIVATE_KEY) {
       privateKey = process.env.PRIVATE_KEY;
       logger.debug('Using private key from PRIVATE_KEY environment variable');
-    } else {
+    } else if (interactive) {
       const { key } = await inquirer.prompt([{
         type: 'password',
         name: 'key',
