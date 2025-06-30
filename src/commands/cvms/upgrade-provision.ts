@@ -154,6 +154,9 @@ export const upgradeProvisionCommand = new Command()
         process.exit(1);
       }
 
+      logger.info(`CVM UUID: ${currentCvm.vm_uuid.replace(/-/g, '')}`);
+      logger.info(`App ID: ${currentCvm.app_id}`);
+
       if (options.json !== false) {
         console.log(JSON.stringify({
           success: true,
