@@ -98,12 +98,15 @@ export const postCvmResponseSchema = z.object({
   memory: z.number(),
   disk_size: z.number(),
   manifest_version: z.number(),
-  version: z.string(),
+  version: z.string().nullable(),
   runner: z.string(),
   docker_compose_file: z.string(),
   features: z.array(z.string()).nullable(),
   created_at: z.string(),
-  encrypted_env_pubkey: z.string()
+  encrypted_env_pubkey: z.string(),
+  device_id: z.string().optional(),
+  kms_contract_address: z.string().optional(),
+  kms_owner_address: z.string().optional(),
 });
 
 // Get Pubkey From CVM Response Schema
@@ -133,7 +136,9 @@ export const getCvmByAppIdResponseSchema = z.object({
   encrypted_env_pubkey: z.string(),
   listed: z.boolean(),
   project_id: z.string(),
-  project_type: z.string().nullable()
+  project_type: z.string().nullable(),
+  compose_file: composeFileSchema.optional(),
+  kms_info: z.any().optional(),
 });
 
 // Get User Info Response Schema
@@ -156,6 +161,51 @@ export const getCvmsByUserIdResponseSchema = z.array(cvmInstanceSchema);
 // Upgrade CVM Response Schema
 export const upgradeCvmResponseSchema = z.object({
   detail: z.string()
+});
+
+// Returns null if successful, otherwise returns error message
+const updatePatchCvmComposeErrorDetailSchema = z.object({
+  loc: z.array(z.union([z.string(), z.number()])),
+  msg: z.string(),
+  type: z.string(),
+});
+export const updatePatchCvmComposeResponseSchema = z.union([
+  z.null(),
+  z.object({
+    detail: z.array(updatePatchCvmComposeErrorDetailSchema),
+  }),
+]);
+
+// Update CVM Compose Response Schema
+export const updateCvmComposeResponseSchema = z.object({
+  app_id: z.string(),
+  device_id: z.string(),
+  compose_hash: z.string(),
+  kms_info: z.object({
+    chain_id: z.number(),
+    kms_url: z.string(),
+    kms_contract_address: z.string(),
+  }).optional(),
+});
+
+// Get CVM Compose File Response Schema
+export const getCvmComposeFileResponseSchema = z.object({
+  allowed_envs: z.array(z.string()),
+  bash_script: z.string().nullable(),
+  docker_compose_file: z.string(),
+  kms_enabled: z.boolean(),
+  local_key_provider_enabled: z.boolean(),
+  manifest_version: z.number(),
+  name: z.string(),
+  no_instance_id: z.boolean(),
+  pre_launch_script: z.string(),
+  public_logs: z.boolean(),
+  public_sysinfo: z.boolean(),
+  runner: z.string(),
+  salt: z.string().nullable(),
+  tproxy_enabled: z.boolean(),
+  gateway_enabled: z.boolean(),
+  features: z.array(z.string()),
 });
 
 // Encrypted Env Item Schema
@@ -238,7 +288,18 @@ export const getCvmNetworkResponseSchema = z.object({
   })),
 });
 
+
+
+// KMS Pubkey Response Schema
+export const kmsPubkeyResponseSchema = z.object({
+  public_key: z.string(),
+  signature: z.string(),
+});
+
 // Type exports
+
+
+export type KmsPubkeyResponse = z.infer<typeof kmsPubkeyResponseSchema>;
 export type KmsListItem = z.infer<typeof kmsListItemSchema>;
 export type DockerConfig = z.infer<typeof dockerConfigSchema>;
 export type ComposeFile = z.infer<typeof composeFileSchema>;
@@ -253,6 +314,9 @@ export type GetCvmByAppIdResponse = z.infer<typeof getCvmByAppIdResponseSchema>;
 export type GetUserInfoResponse = z.infer<typeof getUserInfoResponseSchema>;
 export type GetCvmsByUserIdResponse = z.infer<typeof getCvmsByUserIdResponseSchema>;
 export type UpgradeCvmResponse = z.infer<typeof upgradeCvmResponseSchema>;
+export type UpdateCvmComposeResponse = z.infer<typeof updateCvmComposeResponseSchema>;
+export type UpdatePatchCvmComposeResponse = z.infer<typeof updatePatchCvmComposeResponseSchema>;
+export type GetCvmComposeFileResponse = z.infer<typeof getCvmComposeFileResponseSchema>;
 export type EncryptedEnvItem = z.infer<typeof encryptedEnvItemSchema>;
 export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
@@ -260,6 +324,18 @@ export type Capacity = z.infer<typeof capacitySchema>;
 export type TeepodResponse = z.infer<typeof teepodResponseSchema>;
 export type CvmAttestationResponse = z.infer<typeof cvmAttestationResponseSchema>;
 export type GetCvmNetworkResponse = z.infer<typeof getCvmNetworkResponseSchema>;
+
+// Provision CVM Response Schema
+export const provisionCvmResponseSchema = z.object({
+  app_id: z.string().nullable(),
+  app_env_encrypt_pubkey: z.string(),
+  compose_hash: z.string(),
+  fmspc: z.string(),
+  device_id: z.string(),
+  os_image_hash: z.string(),
+});
+
+export type ProvisionCvmResponse = z.infer<typeof provisionCvmResponseSchema>;
 /**
  * Certificate naming information
  */

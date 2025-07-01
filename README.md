@@ -100,14 +100,14 @@ ___
    #   ⟳ Encrypting environment variables... ✓
    #   ⟳ Creating CVM... ✓
    #   ✓ CVM created successfully
-   #   ℹ CVM ID: 2755
+   #   ℹ CVM ID: 87a117814c8348dba6a51196d256b1fc
    #   ℹ Name: webshell
    #   ℹ Status: creating
    #   ℹ App ID: e15c1a29a9dfb522da528464a8d5ce40ac28039f
-   #   ℹ App URL: <https://cloud.phala.network/dashboard/cvms/app_e15c1a29a9dfb522da528464a8d5ce40ac28039f>
+   #   ℹ Endpoint: https://cloud.phala.network/dashboard/cvms/87a117814c8348dba6a51196d256b1fc
    #    ℹ
    #    ℹ Your CVM is being created. You can check its status with:
-   #    ℹ phala cvms status e15c1a29a9dfb522da528464a8d5ce40ac28039f
+   #    ℹ phala cvms status 87a117814c8348dba6a51196d256b1fc
    ```
 
    Now interact with your application in Phala Cloud by going to the url on port 7681 (Example of what a url at port 7681 would look like https://e15c1a29a9dfb522da528464a8d5ce40ac28039f-7681.dstack-prod5.phala.network)
@@ -163,6 +163,128 @@ phala docker push --image my-tee-app --tag v1.0.0
 phala cvms create --name my-tee-app --compose ./docker-compose.yml --env-file ./.env
 
 # Access your app via the provided URL
+```
+
+### 3️⃣ Simplified Workflow: One-Step On-Chain KMS CVM Creation
+
+Deploy new applications with the `deploy` command:
+
+```bash
+# Basic deployment with interactive prompts
+phala deploy
+
+# Deployment with private key from environment, assume user want to deploy the default AppAuth contract we provide
+export PRIVATE_KEY=your_private_key_here
+phala deploy --kms-id 0x1234...
+
+# Deployment with custom-app-id, assume user already deployed the AppAuth contract onchain
+phala deploy \
+  --kms-id 0xabc123 \
+  --custom-app-id 0x5678... \
+  --pre-launch-script ./pre-launch.sh
+```
+
+### 4️⃣ Advanced CVM Management
+
+#### Upgrade Existing Applications
+
+Upgrade your deployed applications with new configurations:
+
+```bash
+# Basic upgrade with new compose file
+phala cvms upgrade <app-id> --compose docker-compose.prod.yml
+
+# Upgrade with new compose file and environment variables and private key
+phala cvms upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
+
+# Interactive upgrade with resource adjustments
+phala cvms upgrade <app-id> --interactive --vcpu 4 --memory 8192 --disk-size 50
+```
+
+#### Two-Phase Provisioning for On-Chain KMS
+
+For advanced use cases with on-chain KMS, use the two-phase provisioning process:
+
+```bash
+# Phase 1: Commit the provisioning
+phala cvms commit-provision <app-id> <sha256-hash> \
+  --kms-id <kms-id> \
+  --deployer-address <deployer-address> \
+  --compose docker-compose.yml \
+  --env-file .env
+
+# Phase 2: Complete the provisioning
+phala cvms provision <app-id> \
+  --kms-id <kms-id> \
+  --compose docker-compose.yml \
+  --env-file .env
+```
+
+#### Two-Phase Upgrade for On-Chain KMS
+
+For zero-downtime upgrades with on-chain KMS:
+
+```bash
+# Phase 1: Commit the upgrade (interactive mode)
+phala cvms upgrade-commit <cvm-id> --interactive
+
+# Or with all options specified
+phala cvms upgrade-commit <cvm-id> \
+  --kms-id <kms-id> \
+  --compose docker-compose.prod.yml \
+  --env-file .env.prod \
+  --rpc-url <rpc-url>
+
+# Phase 2: Complete the upgrade (interactive mode)
+phala cvms upgrade-provision <cvm-id> --interactive
+
+# Or with all options specified
+phala cvms upgrade-provision <cvm-id> \
+  --compose docker-compose.prod.yml \
+  --env-file .env.prod
+```
+
+## 🔄 Workflow Examples
+
+### Standard CVM Lifecycle
+
+```bash
+# Create a new CVM
+phala cvms create --name my-app --compose docker-compose.yml
+
+# List all CVMs
+phala cvms list
+
+# Get CVM details
+phala cvms get <app-id>
+
+# Upgrade a CVM
+phala cvms upgrade <app-id> --compose docker-compose.v2.yml
+
+# Delete a CVM
+phala cvms delete <app-id>
+```
+
+### On-Chain KMS Integration
+
+```bash
+# Deploy with on-chain KMS (single command)
+phala deploy --kms-id <kms-id> --private-key $PRIVATE_KEY
+
+# Or use two-phase provisioning
+phala cvms commit-provision <app-id> <compose-hash> \
+  --kms-id <kms-id> \
+  --compose docker-compose.yml \
+  --env-file .env
+
+phala cvms provision <app-id> \
+  --kms-id <kms-id> \
+  --compose docker-compose.yml \
+  --env-file .env
+
+# Upgrade with zero downtime (interactive mode)
+phala cvms upgrade-commit <cvm-id> --interactive
+phala cvms upgrade-provision <cvm-id> --interactive
 ```
 
 ## 💼 Real-World Use Cases for Confidential Computing
