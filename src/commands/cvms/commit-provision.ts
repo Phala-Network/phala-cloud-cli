@@ -8,47 +8,38 @@ import { CLOUD_URL } from '@/src/utils/constants';
 import { parseEnv } from '@/src/utils/secrets';
 import { promptForFile } from '@/src/utils/prompts';
 import { createCvmOnChainKms } from '@/src/api/cvms';
-import fs from 'fs-extra';
 import inquirer from 'inquirer';
 import { getTeepods } from '@/src/api/teepods';
 import { createPublicClient, http } from 'viem';
 import { ethers } from 'ethers';
-import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
+import { getChainConfig } from '@/src/utils/blockchain';
 
 async function getAndEncryptEnvs(options: any): Promise<string> {
   let envs: EnvVar[] = [];
-  if (!options.skipEnv) {
-    // If envFile is not provided, try to find one automatically
-    let envFilePath = options.envFile;
+  let envFilePath = options.envFile;
 
-    if (!envFilePath) {
-      // Check for environment files in order of priority
-      const envFiles = ['.env.production', '.env.prod', '.env'];
-      for (const file of envFiles) {
-        if (fs.existsSync(file)) {
-          envFilePath = file;
-          logger.info(`Using environment file: ${envFilePath}`);
-          break;
-        }
-      }
+  // Only process environment variables if -e/--env-file is provided
+  if (options.interactive && (!options.envFile || envFilePath === true)) {
+    // In interactive mode, prompt for environment file if -e is specified without a value
+    envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+  } else if (!options.envFile || envFilePath === true) {
+    // Skip environment variables if not explicitly requested
+    logger.info('Environment file not specified. Skipping environment variables.');
+    return '';
+  }
 
-      // If no env file found, ask user if they want to provide one
-      if (!envFilePath) {
-        if (!options.interactive) {
-          logger.error('Environment file is required. Use --env-file to select it');
-          process.exit(1);
-        } else {
-          envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
-        }
+  // Process the environment file if a valid path is provided
+  if (envFilePath && envFilePath !== true) {
+    try {
+      // Read and parse environment variables
+      envs = parseEnv([], envFilePath);
+      if (envs.length > 0) {
+        logger.info(`Using environment variables from ${envFilePath}`);
+      } else {
+        logger.warn(`No environment variables found in ${envFilePath}`);
       }
-    }
-    if (envFilePath) {
-      try {
-        // Read and parse environment variables
-        envs = parseEnv([], envFilePath);
-      } catch (error) {
-        logger.error(`Error reading environment file ${envFilePath}:`, error);
-      }
+    } catch (error) {
+      throw new Error(`Error reading environment file ${envFilePath}: ${error}`);
     }
   }
 
@@ -224,22 +215,21 @@ function displayProvisionResult(response: any, options: any): void {
 export const commitProvisionCommand = new Command()
   .name('commit-provision')
   .description('Provision a new CVM with on-chain KMS integration.')
+  .argument('<app-id>', 'App ID for the CVM (with 0x prefix for on-chain KMS).')
+  .argument('<compose-hash>', 'Compose hash for the CVM (SHA-256 hex string).')
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
-  .option('--app-id <appId>', 'App ID for the CVM (with 0x prefix for on-chain KMS).')
-  .option('--compose-hash <composeHash>', 'Compose hash for the CVM (SHA-256 hex string).')
   .option('--kms-id <kmsId>', 'KMS ID for API-based public key retrieval.')
   .option('--deployer-address <deployerAddress>', 'Deployer address for the CVM.')
   .option('-e, --env-file <envFile>', 'Path to environment file.')
-  .option('--skip-env', 'Skip environment variable prompt.', false)
   .option('--debug', 'Enable debug mode', false)
   .option('-c, --compose <compose>', 'Path to Docker Compose file')
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
-  .action(async (options) => {
+  .action(async (appId: string, composeHash: string, options) => {
     try {
       const encryptedEnv = await getAndEncryptEnvs(options);
-      const vmConfig = await buildVmConfig(options, encryptedEnv);
+      const vmConfig = await buildVmConfig({ ...options, appId, composeHash }, encryptedEnv);
 
       const createSpinner = logger.startSpinner('Provisioning CVM...');
       if (options.debug) {

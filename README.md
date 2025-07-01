@@ -184,7 +184,9 @@ phala deploy \
   --pre-launch-script ./pre-launch.sh
 ```
 
-### 4️⃣ Upgrade Existing Applications
+### 4️⃣ Advanced CVM Management
+
+#### Upgrade Existing Applications
 
 Upgrade your deployed applications with new configurations:
 
@@ -194,6 +196,95 @@ phala cvms upgrade <app-id> --compose docker-compose.prod.yml
 
 # Upgrade with new compose file and environment variables and private key
 phala cvms upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
+
+# Interactive upgrade with resource adjustments
+phala cvms upgrade <app-id> --interactive --vcpu 4 --memory 8192 --disk-size 50
+```
+
+#### Two-Phase Provisioning for On-Chain KMS
+
+For advanced use cases with on-chain KMS, use the two-phase provisioning process:
+
+```bash
+# Phase 1: Commit the provisioning
+phala cvms commit-provision <app-id> <sha256-hash> \
+  --kms-id <kms-id> \
+  --deployer-address <deployer-address> \
+  --compose docker-compose.yml \
+  --env-file .env
+
+# Phase 2: Complete the provisioning
+phala cvms provision <app-id> \
+  --kms-id <kms-id> \
+  --compose docker-compose.yml \
+  --env-file .env
+```
+
+#### Two-Phase Upgrade for On-Chain KMS
+
+For zero-downtime upgrades with on-chain KMS:
+
+```bash
+# Phase 1: Commit the upgrade (interactive mode)
+phala cvms upgrade-commit <cvm-id> --interactive
+
+# Or with all options specified
+phala cvms upgrade-commit <cvm-id> \
+  --kms-id <kms-id> \
+  --compose docker-compose.prod.yml \
+  --env-file .env.prod \
+  --rpc-url <rpc-url>
+
+# Phase 2: Complete the upgrade (interactive mode)
+phala cvms upgrade-provision <cvm-id> --interactive
+
+# Or with all options specified
+phala cvms upgrade-provision <cvm-id> \
+  --compose docker-compose.prod.yml \
+  --env-file .env.prod
+```
+
+## 🔄 Workflow Examples
+
+### Standard CVM Lifecycle
+
+```bash
+# Create a new CVM
+phala cvms create --name my-app --compose docker-compose.yml
+
+# List all CVMs
+phala cvms list
+
+# Get CVM details
+phala cvms get <app-id>
+
+# Upgrade a CVM
+phala cvms upgrade <app-id> --compose docker-compose.v2.yml
+
+# Delete a CVM
+phala cvms delete <app-id>
+```
+
+### On-Chain KMS Integration
+
+```bash
+# Deploy with on-chain KMS (single command)
+phala deploy --kms-id <kms-id> --private-key $PRIVATE_KEY
+
+# Or use two-phase provisioning
+phala cvms commit-provision <app-id> <compose-hash> \
+  --kms-id <kms-id> \
+  --compose docker-compose.yml \
+  --env-file .env
+
+phala cvms provision <app-id> \
+  --kms-id <kms-id> \
+  --compose docker-compose.yml \
+  --env-file .env
+
+# Upgrade with zero downtime (interactive mode)
+phala cvms upgrade-commit <cvm-id> --interactive
+phala cvms upgrade-provision <cvm-id> --interactive
 ```
 
 ## 💼 Real-World Use Cases for Confidential Computing
