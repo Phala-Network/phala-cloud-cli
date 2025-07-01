@@ -65,50 +65,34 @@ async function gatherCvmConfig(options: any) {
   // Handle environment variables
   let envs: EnvVar[] = [];
   let allowedEnvs: string[] = [];
+  let envFilePath = options.envFile;
 
-  if (!options.skipEnv) {
-    // If envFile is not provided, try to find one automatically
-    let envFilePath = options.envFile;
+  // Only process environment variables if -e/--env-file is provided
+  if (options.interactive && (!options.envFile || envFilePath === true)) {
+    // In interactive mode, prompt for environment file if -e is specified without a value
+    envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
+  } else if (!options.envFile || envFilePath === true) {
+    // Skip environment variables if not explicitly requested
+    logger.info('Environment file not specified. Skipping environment variables.');
+  }
 
-    if (!envFilePath) {
-      // Check for environment files in order of priority
-      const envFiles = ['.env.production', '.env.prod', '.env'];
-      for (const file of envFiles) {
-        if (fs.existsSync(file)) {
-          envFilePath = file;
-          logger.info(`Using environment file: ${envFilePath}`);
-          break;
-        }
+  // Process the environment file if a valid path is provided
+  if (envFilePath && envFilePath !== true) {
+    try {
+      // Read and parse environment variables
+      envs = parseEnv([], envFilePath);
+
+      // Extract just the keys for allowed_envs
+      allowedEnvs = envs.map(env => env.key);
+
+      if (allowedEnvs.length > 0) {
+        logger.info(`Using environment variables from ${envFilePath}`);
+        logger.debug(`Allowed environment variables: ${allowedEnvs.join(', ')}`);
+      } else {
+        logger.warn(`No environment variables found in ${envFilePath}`);
       }
-
-      // If no env file found, ask user if they want to provide one
-      if (!envFilePath) {
-        if (!options.interactive) {
-          logger.error('Environment file is required. Use --env-file to select it');
-          process.exit(1);
-        } else {
-          envFilePath = await promptForFile('Enter the path to your environment file:', '.env', 'file');
-        }
-      }
-    }
-
-    if (envFilePath) {
-      try {
-        // Read and parse environment variables
-        envs = parseEnv([], envFilePath);
-
-        // Extract just the keys for allowed_envs
-        allowedEnvs = envs.map(env => env.key);
-
-        if (allowedEnvs.length > 0) {
-          logger.info(`Using environment variables from ${envFilePath}`);
-          logger.debug(`Allowed environment variables: ${allowedEnvs.join(', ')}`);
-        } else {
-          logger.warn(`No environment variables found in ${envFilePath}`);
-        }
-      } catch (error) {
-        logger.error(`Error reading environment file ${envFilePath}:`, error);
-      }
+    } catch (error) {
+      throw new Error(`Error reading environment file ${envFilePath}: ${error}`);
     }
   }
 
@@ -331,7 +315,6 @@ export const provisionCommand = new Command()
   .option('--image <image>', 'Version of dstack image to use')
   .option('--node-id <nodeId>', 'Node ID to use')
   .option('-e, --env-file <envFile>', 'Path to environment file')
-  .option('--skip-env', 'Skip environment variable prompt', false)
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
   .option('--kms-id <kmsId>', 'KMS ID to use.')
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
