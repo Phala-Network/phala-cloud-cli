@@ -247,6 +247,8 @@ export const createCommand = new Command()
         'CVM ID': response.id,
         'Name': response.name,
         'Status': response.status,
+        'Pod Name': response.teepod.name,
+        'Base Image': response.base_image,
         'App ID': `app_${response.app_id}`,
         'App URL': response.app_url ? response.app_url : `${CLOUD_URL}/dashboard/cvms/app_${response.app_id}`,
       };
