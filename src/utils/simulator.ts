@@ -7,28 +7,27 @@ import { logger } from './logger';
 
 // Configuration for simulator
 const SIMULATOR_CONFIG = {
-  version: '0.5.0',
-  baseUrl: 'https://github.com/mondaylord/simulator-test/releases/download/v0.1.0',
+  version: '0.5.3',
+  baseUrl: 'https://github.com/Dstack-TEE/dstack/releases/download/v0.5.3',
   installDir: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator'),
   // Default log file path
   defaultLogPath: path.join(os.homedir(), '.phala-cloud', 'logs', 'dstack-simulator.log'),
   platforms: {
     darwin: {
-      filename: 'dstack-simulator-0.5.x-aarch64-apple-darwin.tgz',
-      extractedFolder: 'dstack-simulator-0.5.x-aarch64-apple-darwin',
-      socketPath: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator', 'dstack-simulator-0.5.x-aarch64-apple-darwin', 'dstack.sock'),
+      filename: 'dstack-simulator-0.5.3-aarch64-apple-darwin.tgz',
+      extractedFolder: 'dstack-simulator-0.5.3-aarch64-apple-darwin',
+      socketPath: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator', 'dstack-simulator-0.5.3-aarch64-apple-darwin', 'dstack.sock'),
       socketArg: 'unix:/tmp/dstack.sock'  // This is the internal path the simulator uses
     },
-    // TODO: Linux and windows version still WIP
     linux: {
-      filename: 'dstack-simulator-0.5.x-x86_64-linux-musl.tgz',
-      extractedFolder: 'dstack-simulator-0.5.x-x86_64-linux-musl',
+      filename: 'dstack-simulator-0.5.3-x86_64-linux-musl.tgz',
+      extractedFolder: 'dstack-simulator-0.5.3-x86_64-linux-musl',
       socketPath: '/tmp/dstack.sock',
       socketArg: 'unix:/tmp/dstack.sock'
     },
     win32: {
-      filename: 'dstack-simulator-0.5.x-x86_64-pc-windows-msvc.tgz',
-      extractedFolder: 'dstack-simulator-0.5.x-x86_64-pc-windows-msvc',
+      filename: 'dstack-simulator-0.5.3-x86_64-pc-windows-msvc.tgz',
+      extractedFolder: 'dstack-simulator-0.5.3-x86_64-pc-windows-msvc',
       socketPath: '127.0.0.1:8090',
       socketArg: '127.0.0.1:8090'
     }
@@ -101,6 +100,11 @@ export async function installSimulator(
   try {
     const platform = getPlatform();
     const platformConfig = SIMULATOR_CONFIG.platforms[platform];
+    
+    // Check if platform is Windows
+    if (platform === 'win32') {
+      throw new Error('Windows platform is currently not supported. Support will be added in a future release.');
+    }
     
     // Create installation directory if it doesn't exist
     if (!fs.existsSync(SIMULATOR_CONFIG.installDir)) {
