@@ -10,7 +10,7 @@ export const dockerConfigSchema = z.object({
 // Compose File Schema
 export const composeFileSchema = z.object({
   docker_compose_file: z.string(),
-  docker_config: dockerConfigSchema.optional(),
+  docker_config: dockerConfigSchema.optional().nullable(),
   features: z.array(z.string()),
   kms_enabled: z.boolean(),
   manifest_version: z.number(),
@@ -21,18 +21,18 @@ export const composeFileSchema = z.object({
   salt: z.string().nullable().optional(),
   tproxy_enabled: z.boolean(),
   version: z.string().optional()
-});
+}).passthrough();
 
 // Configuration Schema
 export const configurationSchema = z.object({
   name: z.string(),
   image: z.string(),
-  compose_file: composeFileSchema.nullable(),
+  compose_file: composeFileSchema.nullable().optional(),
   vcpu: z.number(),
   memory: z.number(),
   disk_size: z.number(),
   ports: z.array(z.any())
-});
+}).passthrough();
 
 // Hosted Schema
 export const hostedSchema = z.object({
@@ -40,16 +40,16 @@ export const hostedSchema = z.object({
   name: z.string(),
   status: z.string(),
   uptime: z.string(),
-  app_url: z.string(),
+  app_url: z.string().nullable(),
   app_id: z.string(),
-  instance_id: z.string(),
-  configuration: configurationSchema,
-  exited_at: z.string(),
-  boot_progress: z.string(),
-  boot_error: z.string(),
-  shutdown_progress: z.string(),
-  image_version: z.string()
-});
+  instance_id: z.string().nullable(),
+  configuration: configurationSchema.nullable().optional(),
+  exited_at: z.string().nullable(),
+  boot_progress: z.string().nullable(),
+  boot_error: z.string().nullable(),
+  shutdown_progress: z.string().nullable(),
+  image_version: z.string().nullable(),
+}).passthrough();
 
 // Managed User Schema
 export const managedUserSchema = z.object({
@@ -210,11 +210,12 @@ export const capacitySchema = z.object({
 // KMS List Item Schema
 export const kmsListItemSchema = z.object({
   id: z.string(),
+  slug: z.string(),
   url: z.string(),
   version: z.string(),
   chain_id: z.number(),
   kms_contract_address: z.string(),
-  gateway_app_id: z.string(),
+  gateway_app_id: z.string().nullable().optional(),
 });
 
 // TeepodResponse Schema
