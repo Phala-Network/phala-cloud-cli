@@ -351,7 +351,7 @@ Start the TEE simulator locally for development and testing.
 
 **Options:**
 
-- `-i, --image <image>`: Simulator image (defaults to 'phalanetwork/tappd-simulator:latest')
+- `-p, --port <port>`: Port to bind the simulator to (default: 8000)
 
 **Example:**
 ```bash

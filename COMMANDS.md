@@ -166,7 +166,6 @@ TEE simulator commands.
 
 - **`start`**: Start the TEE simulator
   - Options:
-    - `-t, --tag <tag>`: Tag for the simulator image
     - `-p, --port <port>`: Port to bind the simulator to (default: 8000)
 
 - **`stop`**: Stop the TEE simulator
