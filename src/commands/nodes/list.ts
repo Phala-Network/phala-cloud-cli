@@ -36,12 +36,14 @@ export async function listNodes() {
       logger.info('\nAvailable KMS Instances:');
       kmsList.forEach((kms: KmsListItem) => {
         logger.info('----------------------------------------');
-        logger.info(`  ID:                 ${kms.id}`);
+        logger.info(`  Slug:               ${kms.slug}`);
         logger.info(`  URL:                ${kms.url}`);
         logger.info(`  Version:            ${kms.version}`);
-        logger.info(`  Chain ID:           ${kms.chain_id}`);
-        logger.info(`  Contract Address:   ${kms.kms_contract_address}`);
-        logger.info(`  Gateway App ID:     ${kms.gateway_app_id}`);
+        if (kms.chain_id) {
+          logger.info(`  Chain ID:           ${kms.chain_id}`);
+          logger.info(`  Contract Address:   ${kms.kms_contract_address}`);
+          logger.info(`  Gateway App ID:     ${kms.gateway_app_id}`);
+        }
       });
     }
   } catch (error) {
