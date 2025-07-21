@@ -398,7 +398,7 @@ export function getSimulatorEndpoint(): string {
 
   // Use the socket path from platform config, or fallback to default
   const socketPath = platformConfig.socketPath || `/tmp/dstack.sock`;
-  return `unix:${socketPath}`;
+  return `${socketPath}`;
 }
 
 /**
