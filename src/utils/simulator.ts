@@ -7,25 +7,29 @@ import { logger } from './logger';
 
 // Configuration for simulator
 const SIMULATOR_CONFIG = {
-  version: '0.1.4',
-  baseUrl: 'https://github.com/Leechael/tappd-simulator/releases/download/v0.1.4',
-  installDir: path.join(os.homedir(), '.phala-cloud', 'tappd-simulator'),
+  version: '0.5.0',
+  baseUrl: 'https://github.com/mondaylord/simulator-test/releases/download/v0.1.0',
+  installDir: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator'),
   // Default log file path
-  defaultLogPath: path.join(os.homedir(), '.phala-cloud', 'logs', 'tappd-simulator.log'),
+  defaultLogPath: path.join(os.homedir(), '.phala-cloud', 'logs', 'dstack-simulator.log'),
   platforms: {
     darwin: {
-      filename: 'tappd-simulator-0.1.4-aarch64-apple-darwin.tgz',
-      extractedFolder: 'tappd-simulator-0.1.4-aarch64-apple-darwin',
-      socketArg: 'unix:/tmp/tappd.sock'
+      filename: 'dstack-simulator-0.5.x-aarch64-apple-darwin.tgz',
+      extractedFolder: 'dstack-simulator-0.5.x-aarch64-apple-darwin',
+      socketPath: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator', 'dstack-simulator-0.5.x-aarch64-apple-darwin', 'dstack.sock'),
+      socketArg: 'unix:/tmp/dstack.sock'  // This is the internal path the simulator uses
     },
+    // TODO: Linux and windows version still WIP
     linux: {
-      filename: 'tappd-simulator-0.1.4-x86_64-linux-musl.tgz',
-      extractedFolder: 'tappd-simulator-0.1.4-x86_64-linux-musl',
-      socketArg: 'unix:/tmp/tappd.sock'
+      filename: 'dstack-simulator-0.5.x-x86_64-linux-musl.tgz',
+      extractedFolder: 'dstack-simulator-0.5.x-x86_64-linux-musl',
+      socketPath: '/tmp/dstack.sock',
+      socketArg: 'unix:/tmp/dstack.sock'
     },
     win32: {
-      filename: 'tappd-simulator-0.1.4-x86_64-pc-windows-msvc.tgz',
-      extractedFolder: 'tappd-simulator-0.1.4-x86_64-pc-windows-msvc',
+      filename: 'dstack-simulator-0.5.x-x86_64-pc-windows-msvc.tgz',
+      extractedFolder: 'dstack-simulator-0.5.x-x86_64-pc-windows-msvc',
+      socketPath: '127.0.0.1:8090',
       socketArg: '127.0.0.1:8090'
     }
   }
@@ -59,7 +63,7 @@ export function isSimulatorInstalled(): boolean {
     }
 
     // Check if the executable exists
-    const executableName = platform === 'win32' ? 'tappd-simulator.exe' : 'tappd-simulator';
+    const executableName = platform === 'win32' ? 'dstack-simulator.exe' : 'dstack-simulator';
     const executablePath = path.join(extractedFolderPath, executableName);
     return fs.existsSync(executablePath);
   } catch (error) {
@@ -145,7 +149,7 @@ export async function runSimulator(options: {
     process.chdir(extractedFolderPath);
     
     // Start the simulator
-    const executableName = platform === 'win32' ? 'tappd-simulator.exe' : './tappd-simulator';
+    const executableName = platform === 'win32' ? 'dstack-simulator.exe' : './dstack-simulator';
     
     // Default options
     const runOptions = {
@@ -163,31 +167,35 @@ export async function runSimulator(options: {
       logger.info(`Simulator logs will be written to: ${runOptions.logFilePath}`);
     }
     
-    logger.info(`Starting simulator with: ${executableName} -l ${platformConfig.socketArg}`);
+    logger.info(`Starting simulator with: ${executableName}`);
     
     // Configure stdio based on logging preferences
-    let stdio: StdioOptions = 'inherit';
-    let outputStream: fs.WriteStream = null;
+    const stdio: StdioOptions = runOptions.logToFile 
+      ? [
+          'ignore', // stdin
+          fs.openSync(runOptions.logFilePath, 'a'), // stdout
+          fs.openSync(runOptions.logFilePath, 'a')  // stderr
+        ]
+      : 'inherit';
     
-    if (runOptions.logToFile) {
-      // Create/open the log file for appending
-      outputStream = fs.createWriteStream(runOptions.logFilePath, { flags: 'a' });
-      
-      // Use the stream for both stdout and stderr
-      stdio = ['ignore', outputStream, outputStream];
-    }
-    
-    // Run the simulator
-    const simulatorProcess = spawn(executableName, ['-l', platformConfig.socketArg], {
+    // Run the simulator - dstack-simulator doesn't accept any arguments
+    const simulatorProcess = spawn(executableName, [], {
       stdio,
       shell: platform === 'win32', // Use shell on Windows
       detached: runOptions.background // Detach process when running in background
     });
     
+    // Close file descriptors if they were opened
+    if (runOptions.logToFile && Array.isArray(stdio)) {
+      if (typeof stdio[1] === 'number') fs.closeSync(stdio[1]);
+      if (typeof stdio[2] === 'number') fs.closeSync(stdio[2]);
+    }
+    
     // Write startup entry to log file with timestamp
-    if (outputStream) {
+    if (runOptions.logToFile) {
       const timestamp = new Date().toISOString();
-      outputStream.write(`\n[${timestamp}] Simulator started\n`);
+      const logEntry = `\n=== Simulator started at ${timestamp} ===\nCommand: ${executableName}\n\n`;
+      fs.appendFileSync(runOptions.logFilePath, logEntry);
     }
     
     // If running in background, unref to allow the parent process to exit
@@ -240,8 +248,7 @@ export async function isSimulatorRunning(): Promise<boolean> {
     const platformConfig = SIMULATOR_CONFIG.platforms[platform];
     
     if (platform === 'darwin' || platform === 'linux') {
-      // For Unix platforms, check if the socket file exists and is accessible
-      const socketPath = '/tmp/tappd.sock';
+      const socketPath = platformConfig.socketPath;
       
       // Check if the socket file exists
       if (!fs.existsSync(socketPath)) {
@@ -315,8 +322,8 @@ export async function stopSimulator(): Promise<boolean> {
       // For Windows, find the process listening on port 8080 and kill it
       execSync('for /f "tokens=5" %a in (\'netstat -ano ^| findstr :8080\') do taskkill /F /PID %a', { stdio: 'inherit' });
     } else {
-      // For Unix platforms, find and kill the tappd-simulator process
-      execSync('pkill -f tappd-simulator', { stdio: 'inherit' });
+      // For Unix platforms, find and kill the dstack-simulator process
+      execSync('pkill -f dstack-simulator', { stdio: 'inherit' });
     }
     
     // Verify the simulator has stopped
@@ -379,12 +386,15 @@ export function getSimulatorLogs(options: {
  */
 export function getSimulatorEndpoint(): string {
   const platform = getPlatform();
+  const platformConfig = SIMULATOR_CONFIG.platforms[platform];
   
   if (platform === 'win32') {
     return 'http://127.0.0.1:8090';
   }
 
-  return 'unix:///tmp/tappd.sock';
+  // Use the socket path from platform config, or fallback to default
+  const socketPath = platformConfig.socketPath || `/tmp/dstack.sock`;
+  return `unix:${socketPath}`;
 }
 
 /**
