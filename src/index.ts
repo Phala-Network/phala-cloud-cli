@@ -9,7 +9,6 @@ import { cvmsCommand } from "./commands/cvms";
 import { joinCommand } from "./commands/join";
 import { demoCommands } from "./commands/demo";
 import { nodesCommand } from "./commands/nodes";
-import { kmsCommand } from "./commands/kms";
 import { deployCommand } from "./commands/deploy";
 import { setApiKey } from './utils/context';
 
@@ -31,7 +30,6 @@ async function main() {
 			.addCommand(simulatorCommands)
 			.addCommand(demoCommands)
 			.addCommand(joinCommand)
-			.addCommand(kmsCommand)
 			.addCommand(nodesCommand)
 			.addCommand(deployCommand);
 
