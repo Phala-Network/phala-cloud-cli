@@ -9,20 +9,20 @@ import { logger } from './logger';
 const SIMULATOR_CONFIG = {
   version: '0.5.3',
   baseUrl: 'https://github.com/Dstack-TEE/dstack/releases/download/v0.5.3',
-  installDir: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator'),
+  installDir: path.join(os.homedir(), '.phala-cloud', 'simulator'),
   // Default log file path
   defaultLogPath: path.join(os.homedir(), '.phala-cloud', 'logs', 'dstack-simulator.log'),
   platforms: {
     darwin: {
       filename: 'dstack-simulator-0.5.3-aarch64-apple-darwin.tgz',
-      extractedFolder: 'dstack-simulator-0.5.3-aarch64-apple-darwin',
-      socketPath: path.join(os.homedir(), '.phala-cloud', 'dstack-simulator', 'dstack-simulator-0.5.3-aarch64-apple-darwin', 'dstack.sock'),
+      extractedFolder: '0.5.3',
+      socketPath: path.join(os.homedir(), '.phala-cloud', 'simulator', '0.5.3', 'dstack.sock'),
       socketArg: 'unix:/tmp/dstack.sock'  // This is the internal path the simulator uses
     },
     linux: {
       filename: 'dstack-simulator-0.5.3-x86_64-linux-musl.tgz',
-      extractedFolder: 'dstack-simulator-0.5.3-x86_64-linux-musl',
-      socketPath: '/tmp/dstack.sock',
+      extractedFolder: '0.5.3',
+      socketPath: path.join(os.homedir(), '.phala-cloud', 'simulator', '0.5.3', 'dstack.sock'),
       socketArg: 'unix:/tmp/dstack.sock'
     },
     win32: {
@@ -120,9 +120,18 @@ export async function installSimulator(
     logger.info(`Downloading simulator from ${downloadUrl}`);
     execSync(`wget ${downloadUrl}`, { stdio: 'inherit' });
     
-    // Extract the archive
-    logger.info(`Extracting ${platformConfig.filename}`);
-    execSync(`tar -xvf ${platformConfig.filename}`, { stdio: 'inherit' });
+    // Create the version-specific directory if it doesn't exist
+    const versionDir = path.join(SIMULATOR_CONFIG.installDir, platformConfig.extractedFolder);
+    if (!fs.existsSync(versionDir)) {
+      fs.mkdirSync(versionDir, { recursive: true });
+    }
+
+    // Extract the archive into the version directory
+    logger.info(`Extracting ${platformConfig.filename} to ${versionDir}`);
+    execSync(`tar -xvf ${platformConfig.filename} -C ${versionDir} --strip-components=1`, { stdio: 'inherit' });
+    
+    // Clean up the downloaded archive
+    fs.unlinkSync(platformConfig.filename);
     
     logger.success('Simulator installation completed successfully');
   } catch (error) {
