@@ -53,12 +53,13 @@ export const replicateCommand = new Command()
 
             // Prepare the request body
             const requestBody: {
-                teepod_id?: number;
+                node_id?: number;
                 encrypted_env?: string;
             } = {};
 
             if (options.nodeId) {
-                requestBody.teepod_id = parseInt(options.nodeId, 10);
+                const nodeId = parseInt(options.nodeId, 10);
+                requestBody.node_id = nodeId;
             }
             if (encryptedEnv) {
                 requestBody.encrypted_env = encryptedEnv;

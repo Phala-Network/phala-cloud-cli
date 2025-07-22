@@ -200,7 +200,7 @@ async function gatherCvmConfig(options: any) {
   }
 
   const vmConfig = {
-    teepod_id: selectedTeepod.teepod_id,
+    node_id: selectedTeepod.teepod_id,
     name: options.name,
     image: selectedImage.name,
     vcpu: Number(options.vcpu) || DEFAULT_VCPU,

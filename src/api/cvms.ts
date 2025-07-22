@@ -432,7 +432,7 @@ export async function getCvmComposeConfig(cvmId: string): Promise<CvmComposeConf
 export async function replicateCvm(
   appId: string,
   payload: {
-    teepod_id?: number;
+    node_id?: number;
     encrypted_env?: string;
   }
 ): Promise<ReplicateCvmResponse> {
