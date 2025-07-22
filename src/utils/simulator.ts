@@ -101,8 +101,14 @@ export async function installSimulator(
     const platform = getPlatform();
     const platformConfig = SIMULATOR_CONFIG.platforms[platform];
     
-    // Check if platform is Windows
+    // Check if platform is Windows, now we only support darwin and linux
     if (platform === 'win32') {
+      try {
+        // Test if tar is available
+        execSync('tar --version', { stdio: 'ignore' });
+      } catch (error) {
+        throw new Error('Windows 10 build 17063 or later is required (includes tar command). Please update your Windows version.');
+      }
       throw new Error('Windows platform is currently not supported. Support will be added in a future release.');
     }
     
@@ -128,10 +134,19 @@ export async function installSimulator(
 
     // Extract the archive into the version directory
     logger.info(`Extracting ${platformConfig.filename} to ${versionDir}`);
-    execSync(`tar -xvf ${platformConfig.filename} -C ${versionDir} --strip-components=1`, { stdio: 'inherit' });
     
-    // Clean up the downloaded archive
-    fs.unlinkSync(platformConfig.filename);
+    // Use the same tar command for all platforms (Windows 10+ includes tar)
+    const tarCommand = `tar -xvf "${platformConfig.filename}" -C "${versionDir}" --strip-components=1`;
+    logger.debug(`Running: ${tarCommand}`);
+    
+    try {
+      execSync(tarCommand, { stdio: 'inherit' });
+      // Clean up the downloaded archive
+      fs.unlinkSync(platformConfig.filename);
+    } catch (error) {
+      logger.error(`Failed to extract ${platformConfig.filename}:`, error);
+      throw new Error(`Failed to extract simulator archive. Make sure you have sufficient permissions and disk space.`);
+    }
     
     logger.success('Simulator installation completed successfully');
   } catch (error) {
@@ -145,6 +160,58 @@ export async function installSimulator(
  * @param options Configuration options for running the simulator
  * @returns A child process representing the running simulator
  */
+// PID file path for tracking the running simulator process
+const getPidFilePath = () => path.join(os.tmpdir(), 'dstack-simulator.pid');
+
+/**
+ * Check if socket path is too long (Unix domain sockets have a max length of 104-108 bytes)
+ * @param path Socket path to check
+ * @returns boolean indicating if path is too long
+ */
+function isSocketPathTooLong(socketPath: string): boolean {
+  // Unix domain sockets typically have a max length of 104-108 bytes
+  return socketPath.length > 104;
+}
+
+/**
+ * Get the PID of the running simulator process
+ * @returns PID as number or null if not running
+ */
+function getSimulatorPid(): number | null {
+  try {
+    const pidFile = getPidFilePath();
+    if (fs.existsSync(pidFile)) {
+      const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
+      // Verify the process is still running
+      try {
+        process.kill(pid, 0); // Check if process exists
+        return pid;
+      } catch (e) {
+        // Process doesn't exist, clean up stale PID file
+        fs.unlinkSync(pidFile);
+      }
+    }
+    return null;
+  } catch (error) {
+    logger.warn('Error checking simulator PID:', error);
+    return null;
+  }
+}
+
+/**
+ * Save the simulator process PID to a file
+ * @param pid Process ID to save
+ */
+function saveSimulatorPid(pid: number): void {
+  try {
+    const pidFilePath = getPidFilePath();
+    logger.info(`Saving simulator PID ${pid} to: ${pidFilePath}`);
+    fs.writeFileSync(pidFilePath, pid.toString(), 'utf-8');
+  } catch (error) {
+    logger.warn('Failed to save simulator PID:', error);
+  }
+}
+
 export async function runSimulator(options: {
   background?: boolean;
   logToFile?: boolean;
@@ -158,11 +225,37 @@ export async function runSimulator(options: {
       platformConfig.extractedFolder
     );
     
+    // Check if simulator is already running
+    const existingPid = getSimulatorPid();
+    if (existingPid) {
+      throw new Error(`Simulator is already running with PID: ${existingPid}`);
+    }
+    
+    // Check socket path length for Unix platforms
+    if (platform !== 'win32' && isSocketPathTooLong(platformConfig.socketPath)) {
+      throw new Error(`Socket path is too long (${platformConfig.socketPath.length} chars, max 104): ${platformConfig.socketPath}`);
+    }
+    
+    // Clean up any existing socket file
+    if (platform !== 'win32' && fs.existsSync(platformConfig.socketPath)) {
+      logger.warn(`Removing existing socket file: ${platformConfig.socketPath}`);
+      try {
+        fs.unlinkSync(platformConfig.socketPath);
+      } catch (error) {
+        logger.warn(`Failed to remove existing socket file: ${error}`);
+      }
+    }
+    
     // Change to the extracted folder directory
     process.chdir(extractedFolderPath);
     
     // Start the simulator
     const executableName = platform === 'win32' ? 'dstack-simulator.exe' : './dstack-simulator';
+    
+    // Log the socket path for debugging
+    if (platform !== 'win32') {
+      logger.info(`Using socket path: ${platformConfig.socketPath}`);
+    }
     
     // Default options
     const runOptions = {
@@ -209,6 +302,11 @@ export async function runSimulator(options: {
       const timestamp = new Date().toISOString();
       const logEntry = `\n=== Simulator started at ${timestamp} ===\nCommand: ${executableName}\n\n`;
       fs.appendFileSync(runOptions.logFilePath, logEntry);
+    }
+    
+    // Save the PID for later reference
+    if (simulatorProcess.pid) {
+      saveSimulatorPid(simulatorProcess.pid);
     }
     
     // If running in background, unref to allow the parent process to exit
@@ -317,38 +415,79 @@ export async function isSimulatorRunning(): Promise<boolean> {
 }
 
 /**
+/**
  * Stops the simulator if it's running
  * @returns Promise<boolean> indicating if the simulator was successfully stopped
  */
 export async function stopSimulator(): Promise<boolean> {
   try {
-    const platform = getPlatform();
+    const pid = getSimulatorPid();
+    const isRunning = await isSimulatorRunning();
     
-    if (!await isSimulatorRunning()) {
+    if (!isRunning && !pid) {
       logger.info('Simulator is not running');
       return true;
     }
-    
-    logger.info('Stopping simulator...');
+
+    const platform = getPlatform();
+    let success = false;
     
     if (platform === 'win32') {
-      // For Windows, find the process listening on port 8080 and kill it
-      execSync('for /f "tokens=5" %a in (\'netstat -ano ^| findstr :8080\') do taskkill /F /PID %a', { stdio: 'inherit' });
+      // On Windows, try to kill by PID first, then fall back to taskkill
+      try {
+        if (pid) {
+          logger.info(`Stopping simulator process (PID: ${pid})...`);
+          process.kill(pid, 'SIGTERM');
+        } else {
+          execSync('taskkill /F /IM dstack-simulator.exe', { stdio: 'ignore' });
+        }
+        success = true;
+      } catch (error: any) {
+        // Process might already be stopped
+        if (error.code !== 'ESRCH') { // No such process
+          logger.error('Failed to stop simulator:', error);
+          return false;
+        }
+        success = true; // Process was already stopped
+      }
     } else {
-      // For Unix platforms, find and kill the dstack-simulator process
-      execSync('pkill -f dstack-simulator', { stdio: 'inherit' });
+      // On Unix, try to kill by PID first, then fall back to pkill
+      try {
+        if (pid) {
+          logger.info(`Stopping simulator process (PID: ${pid})...`);
+          process.kill(pid, 'SIGTERM');
+        } else {
+          execSync('pkill -f dstack-simulator', { stdio: 'ignore' });
+        }
+        success = true;
+      } catch (error: any) {
+        // Process might already be stopped
+        if (error.code !== 'ESRCH') { // No such process
+          logger.error('Failed to stop simulator:', error);
+          return false;
+        }
+        success = true; // Process was already stopped
+      }
     }
     
-    // Verify the simulator has stopped
-    const stopped = !(await isSimulatorRunning());
-    if (stopped) {
-      logger.success('Simulator stopped successfully');
-    } else {
-      logger.error('Failed to stop simulator');
+    // Clean up PID file if it exists
+    const pidFile = getPidFilePath();
+    if (fs.existsSync(pidFile)) {
+      try {
+        fs.unlinkSync(pidFile);
+      } catch (error) {
+        logger.warn('Failed to remove PID file:', error);
+      }
     }
     
+    // Clean up environment variable
     await deleteSimulatorEndpointEnv();
-    return stopped;
+    
+    if (success) {
+      logger.success('Simulator stopped successfully');
+    }
+    
+    return success;
   } catch (error) {
     logger.error('Error stopping simulator:', error);
     return false;
