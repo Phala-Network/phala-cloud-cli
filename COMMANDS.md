@@ -8,6 +8,75 @@ This document provides a comprehensive list of all commands and options availabl
 phala [command] [subcommand] [options]
 ```
 
+## KMS (Key Management Service) Commands
+
+### `phala kms`
+
+Manage Key Management Service (KMS) instances.
+
+#### Subcommands:
+
+- **`list`**: List all available KMS instances
+  - Options:
+    - `--page <number>`: Page number (default: 1)
+    - `--page-size <number>`: Items per page (default: 20)
+    - `--onchain`: Filter on-chain KMS instances only
+    - `--json`: Output in JSON format
+
+- **`info <identifier>`**: Get detailed information about a specific KMS instance
+  - Arguments:
+    - `identifier`: KMS instance ID or slug (e.g., `kms_mNZymZRb` or `testnet-kms-2`)
+  - Options:
+    - `--json`: Output in JSON format
+
+## Upgrade Commands
+
+### `phala upgrade`
+
+Upgrade a CVM to a new version in a single step.
+
+#### Usage:
+
+```
+phala upgrade [app-id] [options]
+```
+
+#### Arguments:
+- `[app-id]`: (Optional) CVM app ID to upgrade. Will be prompted if not provided.
+
+#### Options:
+- `-c, --compose <file>`: Path to the new Docker Compose file
+- `-e, --env-file <file>`: Path to environment file
+- `--private-key <key>`: Private key for signing transactions
+- `--rpc-url <url>`: RPC URL for the blockchain
+- `-i, --interactive`: Enable interactive mode for required parameters
+- `--json`: Output in JSON format (default: true)
+- `--no-json`: Disable JSON output format
+- `--debug`: Enable debug mode
+
+#### Examples:
+
+1. Basic upgrade with interactive prompts:
+   ```
+   phala upgrade
+   ```
+
+2. Non-interactive upgrade with all parameters:
+   ```
+   phala upgrade app_123 -c docker-compose.yml -e .env --private-key 0x... --rpc-url https://...
+   ```
+
+3. Check current CVM status (no changes):
+   ```
+   phala upgrade app_123 --no-json
+   ```
+
+The upgrade process will:
+1. Validate the new Docker Compose configuration
+2. Upload the new configuration
+3. Register the compose hash on-chain (if private key is provided)
+4. Apply the update to the CVM
+
 ## Authentication Commands
 
 ### `phala auth`

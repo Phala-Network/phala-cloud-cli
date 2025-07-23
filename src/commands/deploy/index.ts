@@ -51,7 +51,7 @@ async function gatherCvmConfig(options: any) {
 
   if (!options.compose) {
     if (!options.interactive) {
-      logger.error('Docker Compose file is required. Use --compose or --interactive to select it');
+      logger.error('Docker Compose file is required.\n\nUsage examples:\n  phala deploy --compose docker-compose.yml --node-id 1\n  phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>\n\nMinimal required parameters:\n  --compose <path>    Path to docker-compose.yml\n\nFor on-chain KMS, also provide:\n  --kms-id <id>       KMS ID\n  --private-key <key> Private key for deployment\n  --rpc-url <url>     RPC URL for the blockchain\n\nRun with --interactive for guided setup');
       process.exit(1);
     } else {
       const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
@@ -122,10 +122,11 @@ async function gatherCvmConfig(options: any) {
   if (options.kmsId) {
     // Get KMS list from the teepods response (it's at the root level, not in individual teepods)
     const allKmsInfos = teepods.kms_list || [];
-    kmsInfo = allKmsInfos.find(kms => kms.id === options.kmsId);
+    // Try to find KMS by ID first, then by slug
+    kmsInfo = allKmsInfos.find(kms => kms.id === options.kmsId || kms.slug === options.kmsId);
 
     if (!kmsInfo) {
-      throw new Error(`No KMS found with ID: ${options.kmsId} in the available Nodes`);
+      throw new Error(`No KMS found with ID or slug: ${options.kmsId} in the available Nodes`);
     }
 
     kmsContractAddress = kmsInfo.kms_contract_address;
@@ -200,6 +201,7 @@ async function gatherCvmConfig(options: any) {
   }
 
   const vmConfig = {
+    teepod_id: selectedTeepod.teepod_id,
     node_id: selectedTeepod.teepod_id,
     name: options.name,
     image: selectedImage.name,

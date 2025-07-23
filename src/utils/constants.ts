@@ -52,7 +52,15 @@ export const API_ENDPOINTS = {
 
   // KMS
   KMS_DEPLOY: '/api/v1/kms/deploy',
-  KMS_PUBKEY: (kmsId: string, appId: string) => `/api/v1/kms/${kmsId}/pubkey/${appId}`,
+  KMS_PUBKEY: (kmsId: string, appId: string) => `/api/v1/${kmsId}/public_key/${appId}`,
+  KMS_LIST: (page?: number, pageSize?: number, isOnchain?: boolean) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page.toString());
+    if (pageSize) params.append('page_size', pageSize.toString());
+    if (isOnchain) params.append('is_onchain', 'true');
+    return `/api/v1/?${params.toString()}`;
+  },
+  KMS_INFO: (identifier: string) => `/api/v1/${identifier}`,
 };
 
 export const DOCKER_COMPOSE_ELIZA_V2_TEMPLATE = `version: '3.8'

@@ -121,10 +121,11 @@ async function gatherCvmConfig(options: any) {
   if (options.kmsId) {
     // Get KMS list from the teepods response (it's at the root level, not in individual teepods)
     const allKmsInfos = teepods.kms_list || [];
-    kmsInfo = allKmsInfos.find(kms => kms.id === options.kmsId);
+    // Try to find KMS by ID first, then by slug
+    kmsInfo = allKmsInfos.find(kms => kms.id === options.kmsId || kms.slug === options.kmsId);
 
     if (!kmsInfo) {
-      throw new Error(`No KMS found with ID: ${options.kmsId} in the available Nodes`);
+      throw new Error(`No KMS found with ID or slug: ${options.kmsId} in the available Nodes`);
     }
 
     kmsContractAddress = kmsInfo.kms_contract_address;
@@ -199,6 +200,7 @@ async function gatherCvmConfig(options: any) {
   }
 
   const vmConfig: any = {
+    teepod_id: selectedTeepod.teepod_id,
     node_id: selectedTeepod.teepod_id,
     name: options.name,
     image: selectedImage.name,

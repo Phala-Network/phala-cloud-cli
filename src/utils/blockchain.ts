@@ -145,29 +145,49 @@ async function determineAction(options: any): Promise<{ action: 'register' | 'de
 }
 
 async function gatherDeploymentInputs(options: any, wallet: Wallet): Promise<{ deployerAddress: string, initialDeviceId: string, composeHash: string }> {
+  // In non-interactive mode, check for required parameters
+  if (!options.interactive) {
+    if (!options.initialDeviceId || !options.composeHash) {
+      throw new Error(
+        'Missing required parameters in non-interactive mode. ' +
+        'Please provide --initial-device-id and --compose-hash parameters or use --interactive flag.'
+      );
+    }
+    return {
+      deployerAddress: wallet.address,
+      initialDeviceId: options.initialDeviceId,
+      composeHash: options.composeHash,
+    };
+  }
+
+  // In interactive mode, prompt for missing parameters
   const answers = await inquirer.prompt([
     {
       type: 'input',
       name: 'initialDeviceId',
-      message: 'Enter the initial device ID (32-byte hex):',
+      message: 'Enter the initial device ID (32-byte hex, or leave empty for zero hash):',
       when: !options.initialDeviceId,
       default: ethers.ZeroHash,
-      validate: (input) => (input.length === 66 && input.startsWith('0x')) || 'Please enter a valid 32-byte hex string (0x...).',
+      validate: (input) => 
+        (input === '' || (input.length === 66 && input.startsWith('0x'))) || 
+        'Please enter a valid 32-byte hex string starting with 0x or leave empty for zero hash.',
     },
     {
       type: 'input',
       name: 'composeHash',
-      message: 'Enter the initial compose hash (32-byte hex):',
+      message: 'Enter the initial compose hash (32-byte hex, or leave empty for zero hash):',
       when: !options.composeHash,
       default: ethers.ZeroHash,
-      validate: (input) => (input.length === 66 && input.startsWith('0x')) || 'Please enter a valid 32-byte hex string (0x...).',
+      validate: (input) => 
+        (input === '' || (input.length === 66 && input.startsWith('0x'))) || 
+        'Please enter a valid 32-byte hex string starting with 0x or leave empty for zero hash.',
     }
   ]);
 
   return {
     deployerAddress: wallet.address,
-    initialDeviceId: options.initialDeviceId || answers.initialDeviceId,
-    composeHash: options.composeHash || answers.composeHash,
+    initialDeviceId: options.initialDeviceId || answers.initialDeviceId || ethers.ZeroHash,
+    composeHash: options.composeHash || answers.composeHash || ethers.ZeroHash,
   };
 }
 

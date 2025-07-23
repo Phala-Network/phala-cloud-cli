@@ -148,7 +148,7 @@ export const upgradeProvisionCommand = new Command()
           success: true,
           data: {
             cvm_id: currentCvm.vm_uuid.replace(/-/g, ''),
-            app_id: finalCvmId,
+            app_id: response.app_id,
             compose_hash: response.compose_hash,
             dashboard_url: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
             raw: response
