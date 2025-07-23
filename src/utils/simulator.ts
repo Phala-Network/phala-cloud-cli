@@ -17,19 +17,16 @@ const SIMULATOR_CONFIG = {
       filename: 'dstack-simulator-0.5.3-aarch64-apple-darwin.tgz',
       extractedFolder: '0.5.3',
       socketPath: path.join(os.homedir(), '.phala-cloud', 'simulator', '0.5.3', 'dstack.sock'),
-      socketArg: 'unix:/tmp/dstack.sock'  // This is the internal path the simulator uses
     },
     linux: {
       filename: 'dstack-simulator-0.5.3-x86_64-linux-musl.tgz',
       extractedFolder: '0.5.3',
       socketPath: path.join(os.homedir(), '.phala-cloud', 'simulator', '0.5.3', 'dstack.sock'),
-      socketArg: 'unix:/tmp/dstack.sock'
     },
     win32: {
       filename: 'dstack-simulator-0.5.3-x86_64-pc-windows-msvc.tgz',
       extractedFolder: 'dstack-simulator-0.5.3-x86_64-pc-windows-msvc',
       socketPath: '127.0.0.1:8090',
-      socketArg: '127.0.0.1:8090'
     }
   }
 };
@@ -165,12 +162,13 @@ const getPidFilePath = () => path.join(os.tmpdir(), 'dstack-simulator.pid');
 
 /**
  * Check if socket path is too long (Unix domain sockets have a max length of 104-108 bytes)
- * @param path Socket path to check
+ * @param socketPath Socket path to check
  * @returns boolean indicating if path is too long
  */
 function isSocketPathTooLong(socketPath: string): boolean {
   // Unix domain sockets typically have a max length of 104-108 bytes
-  return socketPath.length > 104;
+  // Using Buffer.byteLength to get the actual byte length of the string
+  return Buffer.byteLength(socketPath, 'utf8') > 104;
 }
 
 /**
