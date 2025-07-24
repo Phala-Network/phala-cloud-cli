@@ -3,10 +3,10 @@ import path from 'node:path';
 import inquirer from 'inquirer';
 import { logger } from './logger';
 import dotenv from 'dotenv';
-import { execSync } from 'child_process';
 import fs from 'fs-extra';
 import { defineChain, type Chain } from 'viem';
 import { base, mainnet, sepolia, anvil } from 'viem/chains';
+import { deployAppAuth } from '@phala/cloud';
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 // Helper to ensure a hex string has a '0x' prefix
@@ -191,72 +191,107 @@ async function gatherDeploymentInputs(options: any, wallet: Wallet): Promise<{ d
   };
 }
 
-async function registerAppAuth(kmsContractAddress: string, appAuthAddress: string, wallet: Wallet): Promise<AppAuthResult> {
-  const spinner = logger.startSpinner(`Registering AppAuth contract ${appAuthAddress}...`);
-  const kmsAuthContract = new ethers.Contract(kmsContractAddress, KMS_AUTH_ABI, wallet);
-  const tx = await kmsAuthContract.registerApp(appAuthAddress, { nonce: await wallet.getNonce() });
-  const receipt = await tx.wait();
-  spinner.stop(true);
+// async function registerAppAuth(kmsContractAddress: string, appAuthAddress: string, wallet: Wallet): Promise<AppAuthResult> {
+//   const spinner = logger.startSpinner(`Registering AppAuth contract ${appAuthAddress}...`);
+//   const kmsAuthContract = new ethers.Contract(kmsContractAddress, KMS_AUTH_ABI, wallet);
+//   const tx = await kmsAuthContract.registerApp(appAuthAddress, { nonce: await wallet.getNonce() });
+//   const receipt = await tx.wait();
+//   spinner.stop(true);
 
-  const kmsAuthInterface = new ethers.Interface(KMS_AUTH_ABI);
-  const log = receipt.logs.find(l => l.topics[0] === kmsAuthInterface.getEvent('AppRegistered').topicHash);
+//   const kmsAuthInterface = new ethers.Interface(KMS_AUTH_ABI);
+//   const log = receipt.logs.find(l => l.topics[0] === kmsAuthInterface.getEvent('AppRegistered').topicHash);
 
-  if (log) {
-    const { appId } = kmsAuthInterface.parseLog({ topics: Array.from(log.topics), data: log.data }).args;
-    logger.success('AppAuth contract registered successfully!');
-    logger.keyValueTable({ 'App ID (Contract Address)': appId, 'Transaction Hash': tx.hash });
-    return { appId, proxyAddress: appAuthAddress, deployerAddress: wallet.address };
-  } else {
-    logger.warn('Could not find AppRegistered event to confirm registration.');
-    throw new Error('Registration failed: Event not found.');
-  }
-}
+//   if (log) {
+//     const { appId } = kmsAuthInterface.parseLog({ topics: Array.from(log.topics), data: log.data }).args;
+//     logger.success('AppAuth contract registered successfully!');
+//     logger.keyValueTable({ 'App ID (Contract Address)': appId, 'Transaction Hash': tx.hash });
+//     return { appId, proxyAddress: appAuthAddress, deployerAddress: wallet.address };
+//   } else {
+//     logger.warn('Could not find AppRegistered event to confirm registration.');
+//     throw new Error('Registration failed: Event not found.');
+//   }
+// }
 
-async function deployCustomAppAuth(kmsContractAddress: string, contractPath: string, deployerAddress: string, initialDeviceId: string, composeHash: string, wallet: Wallet): Promise<AppAuthResult> {
-  logger.info(`Using custom contract from: ${contractPath}`);
-  let spinner = logger.startSpinner('Compiling custom contract with Hardhat...');
-  execSync('npx hardhat compile', { stdio: 'pipe' });
-  spinner.stop(true);
+// async function deployCustomAppAuth(kmsContractAddress: string, contractPath: string, deployerAddress: string, initialDeviceId: string, composeHash: string, wallet: Wallet): Promise<AppAuthResult> {
+//   logger.info(`Using custom contract from: ${contractPath}`);
+//   let spinner = logger.startSpinner('Compiling custom contract with Hardhat...');
+//   execSync('npx hardhat compile', { stdio: 'pipe' });
+//   spinner.stop(true);
 
-  spinner = logger.startSpinner('Deploying custom AppAuth contract...');
-  const relativePath = path.relative(process.cwd(), path.resolve(contractPath));
-  const contractName = path.basename(relativePath, '.sol');
-  const artifactPath = path.resolve(process.cwd(), 'artifacts', relativePath, `${contractName}.json`);
-  if (!fs.existsSync(artifactPath)) throw new Error(`Could not find artifact at ${artifactPath}`);
+//   spinner = logger.startSpinner('Deploying custom AppAuth contract...');
+//   const relativePath = path.relative(process.cwd(), path.resolve(contractPath));
+//   const contractName = path.basename(relativePath, '.sol');
+//   const artifactPath = path.resolve(process.cwd(), 'artifacts', relativePath, `${contractName}.json`);
+//   if (!fs.existsSync(artifactPath)) throw new Error(`Could not find artifact at ${artifactPath}`);
   
-  const artifact = await fs.readJson(artifactPath);
-  const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, wallet);
-  const contract = await factory.deploy(); // Assumes no constructor args for custom contract
-  await contract.waitForDeployment();
-  const contractAddress = await contract.getAddress();
-  spinner.stop(true);
-  logger.success(`Custom AppAuth contract deployed at: ${contractAddress}`);
+//   const artifact = await fs.readJson(artifactPath);
+//   const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, wallet);
+//   const contract = await factory.deploy(); // Assumes no constructor args for custom contract
+//   await contract.waitForDeployment();
+//   const contractAddress = await contract.getAddress();
+//   spinner.stop(true);
+//   logger.success(`Custom AppAuth contract deployed at: ${contractAddress}`);
 
-  return await registerAppAuth(kmsContractAddress, contractAddress, wallet);
-}
+//   return await registerAppAuth(kmsContractAddress, contractAddress, wallet);
+// }
 
-async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress: string, initialDeviceId: string, composeHash: string, wallet: Wallet): Promise<AppAuthResult> {
+async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress: string, initialDeviceId: string, composeHash: string, wallet: Wallet, chainId: number, rpcUrl: string): Promise<AppAuthResult> {
   const spinner = logger.startSpinner(`Deploying AppAuth instance via KmsAuth factory at ${kmsContractAddress}...`);
-  const kmsAuthContract = new ethers.Contract(kmsContractAddress, KMS_AUTH_ABI, wallet);
-  const tx = await kmsAuthContract.deployAndRegisterApp(deployerAddress, false, true, ensureHexPrefix(initialDeviceId), ensureHexPrefix(composeHash));
-  const receipt = await tx.wait();
-  spinner.stop(true);
-
-  const kmsAuthInterface = new ethers.Interface(KMS_AUTH_ABI);
-  const log = receipt.logs.find(l => l.topics[0] === kmsAuthInterface.getEvent('AppDeployedViaFactory').topicHash);
-
-  if (log) {
-    const { appId, proxyAddress } = kmsAuthInterface.parseLog({ topics: Array.from(log.topics), data: log.data }).args;
+  
+  try {
+    const chain = defineChain({
+      id: chainId,
+      name: `Custom Chain ${chainId}`,
+      nativeCurrency: {
+        name: 'ETH',
+        symbol: 'ETH',
+        decimals: 18,
+      },
+      rpcUrls: {
+        default: {
+          http: [rpcUrl],
+        },
+      },
+    });
+    
+    // Use type assertion based on the expected return structure
+    const result = await deployAppAuth({
+      chain: chain,
+      kmsContractAddress: kmsContractAddress as `0x${string}`,
+      privateKey: wallet.privateKey as `0x${string}`,
+      deviceId: initialDeviceId as `0x${string}`, // This will automatically set allowAnyDevice to false
+      composeHash: composeHash as `0x${string}`,
+      minBalance: '0.01' // Minimum ETH balance required
+    }) as {
+      appId: string;
+      appAuthAddress: string;
+      transactionHash: string;
+      deployer: string;
+    };
+    
+    spinner.stop(true);
+    
     logger.success('AppAuth instance deployed and registered successfully!');
-    logger.keyValueTable({ 'App ID': appId, 'Proxy Address': proxyAddress, 'Transaction Hash': tx.hash });
-    return { appId, proxyAddress, deployerAddress };
-  } else {
-    logger.warn('Could not find AppDeployedViaFactory event to extract details.');
-    throw new Error('Deployment failed: Event not found.');
+
+    logger.keyValueTable({ 
+      'App ID': result.appId, 
+      'App Auth Address': result.appAuthAddress, 
+      'Transaction Hash': result.transactionHash 
+    });
+    
+    return { 
+      appId: result.appId,
+      proxyAddress: result.appAuthAddress,
+      deployerAddress: result.deployer 
+    };
+  } catch (error) {
+    spinner.stop(true);
+    logger.error('Failed to deploy AppAuth instance:', error instanceof Error ? error.message : String(error));
+    throw error;
   }
 }
 
-export async function handleAppAuthDeployment(options: any, wallet: Wallet, kmsContractAddress: string): Promise<AppAuthResult> {
+export async function handleAppAuthDeployment(options: any, wallet: Wallet, kmsContractAddress: string, chainId: number, rpcUrl: string): Promise<AppAuthResult> {
   // const { action, appAuthAddress, appAuthContractPath } = await determineAction(options);
 
   if (!options.kmsId) {
@@ -279,5 +314,5 @@ export async function handleAppAuthDeployment(options: any, wallet: Wallet, kmsC
   //   return await deployCustomAppAuth(options.kmsContractAddress, appAuthContractPath, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet);
   // }
 
-  return await deployDefaultAppAuth(kmsContractAddress, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet);
+  return await deployDefaultAppAuth(kmsContractAddress, params.deployerAddress, params.initialDeviceId, params.composeHash, wallet, chainId, rpcUrl);
 }

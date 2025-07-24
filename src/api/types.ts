@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ZodDecimal as zodDecimal } from '../utils/types';
+import { ProvisionCvmComposeFileUpdateResultSchema } from '@phala/cloud';
 // Docker Config Schema
 export const dockerConfigSchema = z.object({
   password: z.string(),
@@ -177,16 +178,7 @@ export const updatePatchCvmComposeResponseSchema = z.union([
 ]);
 
 // Update CVM Compose Response Schema
-export const updateCvmComposeResponseSchema = z.object({
-  app_id: z.string().nullable().optional(),
-  device_id: z.string().nullable().optional(),
-  compose_hash: z.string(),
-  kms_info: z.object({
-    chain_id: z.number(),
-    kms_url: z.string(),
-    kms_contract_address: z.string(),
-  }).nullable().optional(),
-}).passthrough();
+export const updateCvmComposeResponseSchema = ProvisionCvmComposeFileUpdateResultSchema;
 
 // Get CVM Compose File Response Schema
 export const getCvmComposeFileResponseSchema = z.object({

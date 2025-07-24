@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getCvmByAppId, updateCvmCompose, getCvmComposeFile } from '@/src/api/cvms';
+import { getCvmByCvmId, updateCvmCompose, getCvmComposeFile } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import { parseEnv } from '@/src/utils/secrets';
 import { promptForFile } from '@/src/utils/prompts';
@@ -22,7 +22,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   }
 
   const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
-  const currentCvm = await getCvmByAppId(cvmId);
+  const currentCvm = await getCvmByCvmId(cvmId);
   spinner.stop(true);
 
   if (!currentCvm) {

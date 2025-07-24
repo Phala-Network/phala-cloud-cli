@@ -3,7 +3,7 @@ import { createCvm, createCvmOnChainKms, getPubkeyFromCvm, provisionCvm } from '
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import type { TEEPod, TeepodResponse } from '@/src/api/types';
-import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_ONCHAIN_IMAGE } from '@/src/utils/constants';
+import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import { getKmsPubkey } from '@/src/api/kms';
@@ -18,24 +18,28 @@ import inquirer from 'inquirer';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
 
+
 /**
  * Gathers and validates all necessary configurations for creating a CVM.
  */
 async function gatherCvmConfig(options: any) {
   if (!options.name) {
+    let folderName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    // Ensure folder name is at least 3 characters by appending 'cvm' if needed
+    if (folderName.length < 3) {
+      folderName = folderName + '-cvm';
+    }
+    const validFolderName = folderName.slice(0, 20); // Ensure max length of 20
+    
     if (!options.interactive) {
-      const folderName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-      options.name = folderName;
+      options.name = validFolderName;
     } else {
-      // Use current directory name as default
-      const folderName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-
       const { name } = await inquirer.prompt([
         {
           type: 'input',
           name: 'name',
           message: 'Enter a name for the CVM:',
-          default: folderName,
+          default: validFolderName,
           validate: (input) => {
             if (!input.trim()) return 'CVM name is required';
             if (input.trim().length > 20) return 'CVM name must be less than 20 characters';
@@ -51,7 +55,7 @@ async function gatherCvmConfig(options: any) {
 
   if (!options.compose) {
     if (!options.interactive) {
-      logger.error('Docker Compose file is required.\n\nUsage examples:\n  phala deploy --compose docker-compose.yml --node-id 1\n  phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>\n\nMinimal required parameters:\n  --compose <path>    Path to docker-compose.yml\n\nFor on-chain KMS, also provide:\n  --kms-id <id>       KMS ID\n  --private-key <key> Private key for deployment\n  --rpc-url <url>     RPC URL for the blockchain\n\nRun with --interactive for guided setup');
+      logger.info('Docker Compose file is required.\n\nUsage examples:\n  phala deploy --compose docker-compose.yml --node-id 1\n  phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>\n\nMinimal required parameters:\n  --compose <path>    Path to docker-compose.yml\n\nFor on-chain KMS, also provide:\n  --kms-id <id>       KMS ID\n  --private-key <key> Private key for deployment\n  --rpc-url <url>     RPC URL for the blockchain\n\nRun with --interactive for guided setup');
       process.exit(1);
     } else {
       const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
@@ -139,14 +143,27 @@ async function gatherCvmConfig(options: any) {
     if (!selectedTeepod) {
       throw new Error(`Selected Node with ID ${options.nodeId} is not available or does not support on-chain KMS.`);
     }
-  } else {
+  } else if (options.kmsId) {
+    // For on-chain KMS, node-id is required
     if (!options.interactive) {
-      logger.error('Node is required. Use --node-id to select it');
+      logger.info('Node is required for on-chain KMS. Use --node-id to select it');
       process.exit(1);
     } else {
-      const { node } = await inquirer.prompt([{ type: 'list', name: 'node', message: 'Select a Node to use:', choices: availableTeepods.map(t => ({ name: `${t.name} (Region: ${t.region_identifier})`, value: t })) }]);
+      const { node } = await inquirer.prompt([{ 
+        type: 'list', 
+        name: 'node', 
+        message: 'Select a Node to use:', 
+        choices: availableTeepods.map(t => ({ 
+          name: `${t.name} (Region: ${t.region_identifier})`, 
+          value: t 
+        })) 
+      }]);
       selectedTeepod = node;
     }
+  } else {
+    // For standard CVM, use the first available node if not specified
+    selectedTeepod = availableTeepods[0];
+    logger.info(`Using default node: ${selectedTeepod.name} (ID: ${selectedTeepod.teepod_id}, Region: ${selectedTeepod.region_identifier})`);
   }
 
   let selectedImage;
@@ -255,7 +272,6 @@ async function provisionAndLogCvm(vmConfig: any, options: { json?: boolean } = {
  * Creates the final CVM with encrypted environment variables.
  */
 async function createFinalCvm(appAuthResult: any, provisionResponse: any, envs: EnvVar[], teepods: TeepodResponse, options: any) {
-  logger.info('\nStep 4: Encrypting environment variables and creating final CVM...');
   let encrypted_env = '';
   let kmsId = teepods.kms_list[0].id;
   if (options.kmsId) {
@@ -374,14 +390,14 @@ async function executeStandardCreation(
 }
 
 export const deployCommand = new Command()
-  .command('deploy')
+  .command('deploy [compose]')
   .description('Create a new CVM with on-chain KMS in one step.')
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
   .option('--debug', 'Enable debug logging', false)
   // CVM options
   .option('-n, --name <name>', 'Name of the CVM')
-  .option('-c, --compose <compose>', 'Path to Docker Compose file')
+  .option('-c, --compose <compose>', 'Path to Docker Compose file (default: docker-compose.yml in current directory)')
   .option('--vcpu <vcpu>', `Number of vCPUs, default is ${DEFAULT_VCPU}`)
   .option('--memory <memory>', `Memory with optional unit (e.g., 2G, 500MB, 1024), default is ${DEFAULT_MEMORY}MB`)
   .option('--disk-size <diskSize>', `Disk size with optional unit (e.g., 50G, 1T, 100), default is ${DEFAULT_DISK_SIZE}GB`)
@@ -395,7 +411,7 @@ export const deployCommand = new Command()
   // Blockchain options
   .option('--private-key <privateKey>', 'Private key for signing transactions.')
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
-  .action(async (options: {
+  .action(async (composeFile: string | undefined, options: {
     name?: string;
     compose?: string;
     vcpu?: string;
@@ -414,9 +430,14 @@ export const deployCommand = new Command()
     debug?: boolean;
   }) => {
     try {
+      // Use the compose file from the first argument if provided, otherwise use the one from options or default to 'docker-compose.yml'
+      const finalOptions = {
+        ...options,
+        compose: composeFile || options.compose || 'docker-compose.yml' || 'docker-compose.yaml'
+      };
+
       // Step 1: Gather CVM configuration
-      logger.info('Step 1: Preparing CVM configuration...');
-      const { vmConfig, envs, teepods, kmsContractAddress } = await gatherCvmConfig(options);
+      const { vmConfig, envs, teepods, kmsContractAddress } = await gatherCvmConfig(finalOptions);
 
       // If no KMS ID is provided, use standard creation
       if (!options.kmsId) {
@@ -427,13 +448,25 @@ export const deployCommand = new Command()
         return;
       }
       // Step 2: Provision the CVM
-      logger.info('\nStep 2: Provisioning CVM...');
       const provisionResponse = await provisionAndLogCvm(vmConfig);
 
       // Step 3: Configure network and handle AppAuth
-      logger.info('\nStep 3: Configuring network and setting up AppAuth...');
-
       let wallet = null;
+      let selectedKms = teepods.kms_list?.[0];
+
+      // If kms-id is provided, find the corresponding KMS info
+      if (options.kmsId) {
+        selectedKms = teepods.kms_list?.find(kms => kms.id === options.kmsId || kms.slug === options.kmsId);
+        if (!selectedKms) {
+          throw new Error(`No KMS found with ID or slug: ${options.kmsId}`);
+        }
+        if (options.json === false) {
+          logger.info(`Using specified KMS: ${selectedKms.name} (${selectedKms.id})`);
+        }
+      }
+      // Get the chain config for the selected KMS
+      const chain = getChainConfig(selectedKms.chain_id);
+      const rpcUrl = options.rpcUrl || selectedKms.url || chain.rpcUrls.default.http[0];
 
       // Only create wallet if we need to deploy or register a contract
       if (!options.customAppId) {
@@ -441,7 +474,8 @@ export const deployCommand = new Command()
         if (!privateKey) {
           throw new Error('Private key is required for on-chain KMS operations if no custom app ID is provided. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
-        const networkConfig = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, teepods.kms_list[0].chain_id);
+                
+        const networkConfig = await getNetworkConfig({ privateKey, rpcUrl }, selectedKms.chain_id);
         wallet = networkConfig.wallet;
         if (options.json === false) {
           logger.info(`Using wallet: ${wallet.address}`);
@@ -463,17 +497,18 @@ export const deployCommand = new Command()
           logger.info(`Using custom App ID: ${options.customAppId}, fetching AppAuth details from KMS...`);
         }
 
-        // Get the first available KMS to determine the chain
-        const kms = teepods.kms_list?.[0];
+        // Use the selected KMS or the first available one
+        const kms = selectedKms || teepods.kms_list?.[0];
         if (!kms) {
           throw new Error('No KMS available');
         }
 
-        // Get network config which will handle chain validation and RPC URL resolution
-        const { rpcUrl } = await getNetworkConfig({ rpcUrl: options.rpcUrl }, kms.chain_id);
-        
-        // Get the chain config
+        // Get the chain config and determine the RPC URL with proper fallback
         const chain = getChainConfig(kms.chain_id);
+        const rpcUrl = (options.rpcUrl || kms.url || chain.rpcUrls.default.http[0]) as string;
+        
+        // Get network config with the resolved RPC URL
+        await getNetworkConfig({ privateKey: wallet.privateKey, rpcUrl }, kms.chain_id);
         
         // Initialize public client with the appropriate chain and RPC URL
         const publicClient = createPublicClient({
@@ -545,7 +580,7 @@ export const deployCommand = new Command()
         if (!wallet) {
           throw new Error('Wallet is required when not using a custom App ID');
         }
-        appAuthResult = await handleAppAuthDeployment(deployOptions, wallet, kmsContractAddress);
+        appAuthResult = await handleAppAuthDeployment(deployOptions, wallet, kmsContractAddress, selectedKms.chain_id, rpcUrl);
       }
 
       // Step 4: Create the final CVM

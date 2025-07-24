@@ -1,9 +1,7 @@
 import { apiClient } from './client';
-import { execSync } from 'child_process';
 import { logger } from '../utils/logger';
 import { API_ENDPOINTS } from '../utils/constants';
 import { CvmComposeConfig, cvmComposeConfigSchema, kmsPubkeyResponseSchema, type KmsPubkeyResponse } from './types';
-import { recoverSignerPublicKey } from '@/src/utils/signature';
 import { z } from 'zod';
 
 // KMS List Types
@@ -23,8 +21,14 @@ export const kmsInstanceSchema = z.object({
   gateway_app_id: z.string(),
 });
 
-// The API returns an array of KMS instances directly
-export const kmsListResponseSchema = z.array(kmsInstanceSchema);
+// Define paginated response schema
+export const kmsListResponseSchema = z.object({
+  items: z.array(kmsInstanceSchema),
+  total: z.number(),
+  page: z.number(),
+  page_size: z.number(),
+  pages: z.number()
+});
 
 export type KmsInstance = z.infer<typeof kmsInstanceSchema>;
 export type KmsListResponse = z.infer<typeof kmsListResponseSchema>;
@@ -101,12 +105,13 @@ export async function getKmsInfo(identifier: string): Promise<KmsInfo> {
  */
 export async function listKmsInstances(options: KmsListOptions = {}): Promise<KmsInstance[]> {
   try {
-    const response = await apiClient.get<KmsInstance[]>(
+    const response = await apiClient.get<any>(
       API_ENDPOINTS.KMS_LIST(options.page, options.pageSize, options.isOnchain)
     );
     
-    // The API returns an array directly, so we parse it as is
-    return kmsListResponseSchema.parse(response);
+    // Parse the paginated response and return just the items array
+    const parsed = kmsListResponseSchema.parse(response);
+    return parsed.items;
   } catch (error) {
     throw new Error(
       `Failed to list KMS instances: ${error instanceof Error ? error.message : String(error)}`

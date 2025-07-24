@@ -105,16 +105,15 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   kmsContractAddress = kmsInfo.kms_contract_address;
   logger.info(`Using KMS contract address: ${kmsContractAddress} from KMS ID: ${options.kmsId}`);
 
-  // Get the first available KMS to determine the chain
-  // TODO: when multiple KMS are available, how to choose one?
-  const kms = teepods.kms_list?.[0];
+  // Use the selected KMS
+  const kms = kmsInfo;
   if (!kms) {
     throw new Error('No KMS available');
   }
 
   // Get the chain config
   const chain = getChainConfig(kms.chain_id);
-  const rpcUrl = options.rpcUrl || chain.rpcUrls.default.http[0];
+  const rpcUrl = options.rpcUrl || kms.url || chain.rpcUrls.default.http[0];
   
   // Initialize public client with the appropriate chain and RPC URL
   const publicClient = createPublicClient({

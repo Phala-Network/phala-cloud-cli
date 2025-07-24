@@ -16,16 +16,24 @@ export async function listNodes() {
       logger.info('----------------------------------------');
       logger.info(`  ID:          ${teepod.teepod_id}`);
       logger.info(`  Name:        ${teepod.name}`);
-      logger.info(`  Region:      ${teepod.region_identifier}`);
-      logger.info(`  FMSPC:       ${teepod.fmspc || 'N/A'}`);
-      logger.info(`  Device ID:   ${teepod.device_id || 'N/A'}`);
-      logger.info(`  Support Onchain KMS: ${teepod.support_onchain_kms}`);
+      if (teepod.region_identifier) {
+        logger.info(`  Region:      ${teepod.region_identifier}`);
+      }
+      if (teepod.fmspc) {
+        logger.info(`  FMSPC:       ${teepod.fmspc}`);
+      }
+      if (teepod.device_id) {
+        logger.info(`  Device ID:   ${teepod.device_id}`);
+      }
+      logger.info(`  Support Contract Owned CVM: ${teepod.support_onchain_kms}`);
       
       logger.info('  Images:');
       if (teepod.images && teepod.images.length > 0) {
         teepod.images.forEach(img => {
           logger.info(`    - ${img.name}`);
-          logger.info(`      Hash: ${img.os_image_hash || 'N/A'}`);
+          if (img.os_image_hash) {
+            logger.info(`      Hash: ${img.os_image_hash}`);
+          }
         });
       } else {
         logger.info('    N/A');
@@ -36,7 +44,7 @@ export async function listNodes() {
       logger.info('\nAvailable KMS Instances:');
       kmsList.forEach((kms: KmsListItem) => {
         logger.info('----------------------------------------');
-        logger.info(`  Slug:               ${kms.slug}`);
+        logger.info(`  Name:               ${kms.slug}`);
         logger.info(`  URL:                ${kms.url}`);
         logger.info(`  Version:            ${kms.version}`);
         if (kms.chain_id) {

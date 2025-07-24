@@ -1,4 +1,4 @@
-import { getCvmByAppId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '../../api/cvms';
+import { getCvmByCvmId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '../../api/cvms';
 import { logger } from '../../utils/logger';
 import { parseEnv } from '../../utils/secrets';
 import { deleteSimulatorEndpointEnv } from '../../utils/simulator';
@@ -11,6 +11,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { getChainConfig, getNetworkConfig } from '../../utils/blockchain';
 import { Wallet } from 'ethers';
 import type { Address, Hash, Log } from 'viem';
+import { addComposeHash } from '@phala/cloud';
+import { defineChain } from 'viem';
 import fs from 'node:fs';
 import inquirer from 'inquirer';
 
@@ -46,7 +48,7 @@ export async function upgradeCvm(appId: string, options: any) {
       success: true,
       data: {
         cvm_id: currentCvm.vm_uuid.replace(/-/g, ''),
-        app_id: finalCvmId,
+        app_id: response.app_id,
         compose_hash: response.compose_hash,
         dashboard_url: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
         raw: response
@@ -63,7 +65,11 @@ export async function upgradeCvm(appId: string, options: any) {
       throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
     }
     
-    const { wallet } = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, currentCvm.kms_info.chain_id);
+    // Get the chain config and determine the RPC URL with proper fallback
+    const chain = getChainConfig(currentCvm.kms_info.chain_id);
+    const rpcUrl = options.rpcUrl || currentCvm.kms_info.url || chain.rpcUrls.default.http[0];
+    
+    const { wallet } = await getNetworkConfig({ privateKey, rpcUrl }, currentCvm.kms_info.chain_id);
     
     if (options.json !== false) {
       console.log(JSON.stringify({
@@ -82,10 +88,10 @@ export async function upgradeCvm(appId: string, options: any) {
     
     await registerComposeHash(
       response.compose_hash, 
-      appId, 
+      response.app_id, 
       wallet, 
       currentCvm.kms_info.kms_contract_address, 
-      options.rpcUrl, 
+      rpcUrl, 
       currentCvm.kms_info.chain_id,
       { json: options.json }
     );
@@ -105,7 +111,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   }
 
   const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
-  const currentCvm = await getCvmByAppId(cvmId);
+  const currentCvm = await getCvmByCvmId(cvmId);
   spinner.stop(true);
 
   if (!currentCvm) {
@@ -226,108 +232,50 @@ async function registerComposeHash(
   options: { json?: boolean } = {}
 ): Promise<void> {
   const spinner = logger.startSpinner('Adding compose hash for on-chain KMS...');
-  let appAuthAddress: any;
+  
   try {
-    // Get network config which will handle chain validation and RPC URL resolution
-    const { rpcUrl } = await getNetworkConfig({ rpcUrl: rawRpcUrl }, chainId);
-
-    // Get the chain config
-    const chain = getChainConfig(chainId);
-
-    // Initialize public client with the appropriate chain and RPC URL
-    const publicClient = createPublicClient({
-      chain,
-      transport: http(rpcUrl)
+    // Create a custom chain configuration with the provided RPC URL
+    const chain = defineChain({
+      id: chainId,
+      name: `Custom Chain ${chainId}`,
+      nativeCurrency: {
+        name: 'ETH',
+        symbol: 'ETH',
+        decimals: 18,
+      },
+      rpcUrls: {
+        default: {
+          http: [rawRpcUrl],
+        },
+      },
     });
 
-    // KMS Auth ABI for reading app registration details
-    const kmsAuthAbi = [
-      {
-        inputs: [{ name: 'app', type: 'address' }],
-        name: 'apps',
-        outputs: [
-          { name: 'isRegistered', type: 'bool' },
-          { name: 'controller', type: 'address' },
-        ],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ] as const;
-
-    try {
-      // Ensure the KMS contract address is valid
-      if (!ethers.isAddress(kmsContractAddress)) {
-        throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
-      }
-
-      if (!ethers.isAddress(appId)) {
-        throw new Error(`Invalid custom App ID: ${appId}`);
-      }
-
-      // Ensure customAppId has 0x prefix
-      const customAppId = appId.startsWith('0x')
-        ? appId
-        : `0x${appId}`;
-
-      // Query the KMS contract for app registration details
-      const [isRegistered, controllerAddress] = await publicClient.readContract({
-        address: kmsContractAddress as `0x${string}`,
-        abi: kmsAuthAbi,
-        functionName: 'apps',
-        args: [customAppId as `0x${string}`]
-      });
-
-      // Validate the response
-      if (!isRegistered) {
-        throw new Error(`App ${appId} is not registered in KMS contract ${kmsContractAddress}`);
-      }
-
-      if (!controllerAddress || controllerAddress === ethers.ZeroAddress) {
-        throw new Error(`Invalid controller address for app ${appId}`);
-      }
-
-      logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
-
-      appAuthAddress = controllerAddress;
-    } catch (error) {
-      throw new Error(`Failed to verify custom App ID: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    const appAuthAbi = ['function addComposeHash(bytes32 composeHash)', 'event ComposeHashAdded(bytes32 composeHash)'];
-    const appAuthContract = new ethers.Contract(appAuthAddress, appAuthAbi, wallet);
-
-    const formattedHash = composeHash.startsWith('0x') ? composeHash : `0x${composeHash}`;
-    const tx = await appAuthContract.addComposeHash(formattedHash);
-    const receipt = await tx.wait();
+    const result = await addComposeHash({
+      chain: chain,
+      appId: appId as `0x${string}`,
+      privateKey: wallet.privateKey as `0x${string}`,
+      composeHash: composeHash,
+      minBalance: '0.01', // Minimum ETH balance required
+      // kmsContractAddress: kmsContractAddress as `0x${string}`,
+    }) as {
+      transactionHash: string;
+      composeHash: string;
+    };
 
     spinner.stop(true);
-    
-    const appAuthInterface = new ethers.Interface(appAuthAbi);
-    const eventTopic = appAuthInterface.getEvent('ComposeHashAdded').topicHash;
-    const log = receipt.logs.find((l: any) => l.topics[0] === eventTopic);
-    let composeHashEvent = null;
-
-    if (log) {
-      const parsedLog = appAuthInterface.parseLog({ topics: Array.from(log.topics), data: log.data });
-      composeHashEvent = parsedLog.args.composeHash;
-    }
 
     if (options?.json !== false) {
       console.log(JSON.stringify({
         success: true,
         data: {
-          transaction_hash: tx.hash,
-          compose_hash_event: composeHashEvent,
-          event_found: !!log
+          transaction_hash: result.transactionHash,
+          compose_hash: result.composeHash,
         }
       }, null, 2));
     } else {
       logger.success('Compose hash added successfully!');
-      logger.info(`Transaction hash: ${tx.hash}`);
-      if (log) {
-        logger.info(`  - Compose Hash: ${composeHashEvent}`);
-      } else {
-        logger.warn('Could not find ComposeHashAdded event to extract Compose Hash.');
-      }
+      logger.info(`Transaction hash: ${result.transactionHash}`);
+      logger.info(`  - Compose Hash: ${result.composeHash}`);
     }
   } catch (error) {
     spinner.stop(false);

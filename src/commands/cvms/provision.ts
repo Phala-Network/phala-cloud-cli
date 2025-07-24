@@ -47,7 +47,7 @@ async function gatherCvmConfig(options: any) {
 
   if (!options.compose) {
     if (!options.interactive) {
-      logger.error('Docker Compose file is required. Use --compose or --interactive to select it');
+      logger.info('Docker Compose file is required. Use --compose or --interactive to select it');
       process.exit(1);
     } else {
       const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
@@ -138,14 +138,27 @@ async function gatherCvmConfig(options: any) {
     if (!selectedTeepod) {
       throw new Error(`Selected Node with ID ${options.nodeId} is not available or does not support on-chain KMS.`);
     }
-  } else {
+  } else if (options.kmsId) {
+    // For on-chain KMS, node-id is required
     if (!options.interactive) {
-      logger.error('Node is required. Use --node-id to select it');
+      logger.info('Node is required for on-chain KMS. Use --node-id to select it');
       process.exit(1);
     } else {
-      const { node } = await inquirer.prompt([{ type: 'list', name: 'node', message: 'Select a Node to use:', choices: availableTeepods.map(t => ({ name: `${t.name} (Region: ${t.region_identifier})`, value: t })) }]);
+      const { node } = await inquirer.prompt([{ 
+        type: 'list', 
+        name: 'node', 
+        message: 'Select a Node to use:', 
+        choices: availableTeepods.map(t => ({ 
+          name: `${t.name} (Region: ${t.region_identifier})`, 
+          value: t 
+        })) 
+      }]);
       selectedTeepod = node;
     }
+  } else {
+    // For standard CVM, use the first available node if not specified
+    selectedTeepod = availableTeepods[0];
+    logger.info(`Using default node: ${selectedTeepod.name} (ID: ${selectedTeepod.teepod_id}, Region: ${selectedTeepod.region_identifier})`);
   }
 
   let selectedImage;
@@ -325,17 +338,14 @@ export const provisionCommand = new Command()
   .action(async (options) => {
     try {
       // Step 1: Gather CVM configuration
-      logger.info('Step 1: Preparing CVM configuration...');
       const { vmConfig, envs } = await gatherCvmConfig(options);
 
       // If no KMS ID is provided, use standard creation
       if (!options.kmsId) {
-        logger.info('\nStep 2: Creating CVM...');
         await executeStandardCreation(vmConfig, envs, options);
         return;
       }
       // Step 2: Provision the CVM
-      logger.info('\nStep 2: Provisioning CVM...');
       await provisionAndLogCvm(vmConfig, options);
 
     } catch (error) {

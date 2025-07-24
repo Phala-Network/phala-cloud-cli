@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getCvmByAppId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '@/src/api/cvms';
+import { getCvmByCvmId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'node:fs';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
@@ -15,7 +15,7 @@ import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   if (!cvmId) {
     if (!options.interactive) {
-      logger.error('CVM ID is required. Use --app-id to enter it');
+      logger.info('CVM ID is required. Use --app-id to enter it');
       process.exit(1);
     } else {
       const { id } = await inquirer.prompt([{ type: 'input', name: 'id', message: 'Enter the CVM ID to update:' }]);
@@ -24,7 +24,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   }
 
   const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
-  const currentCvm = await getCvmByAppId(cvmId);
+  const currentCvm = await getCvmByCvmId(cvmId);
   spinner.stop(true);
 
   if (!currentCvm) {
@@ -34,7 +34,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
 
   if (!options.compose) {
     if (!options.interactive) {
-      logger.error('Docker Compose file is required. Use --compose to select it');
+      logger.info('Docker Compose file is required. Use --compose to select it');
       process.exit(1);
     } else {
       const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
@@ -126,7 +126,7 @@ async function registerComposeHash(
   let appAuthAddress: any;
   try {
     // Get network config which will handle chain validation and RPC URL resolution
-    const { rpcUrl } = await getNetworkConfig({ rpcUrl: rawRpcUrl }, chainId);
+    const { rpcUrl } = await getNetworkConfig({ privateKey: wallet.privateKey, rpcUrl: rawRpcUrl }, chainId);
 
     // Get the chain config
     const chain = getChainConfig(chainId);
@@ -340,7 +340,11 @@ export const upgradeCommand = new Command()
           throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
         
-        const { wallet } = await getNetworkConfig({ privateKey, rpcUrl: options.rpcUrl }, currentCvm.kms_info.chain_id);
+        // Get the chain config and determine the RPC URL with proper fallback
+        const chain = getChainConfig(currentCvm.kms_info.chain_id);
+        const rpcUrl = options.rpcUrl || currentCvm.kms_info.url || chain.rpcUrls.default.http[0];
+        
+        const { wallet } = await getNetworkConfig({ privateKey, rpcUrl }, currentCvm.kms_info.chain_id);
         if (options.json !== false) {
           console.log(JSON.stringify({
             success: true,
@@ -359,7 +363,7 @@ export const upgradeCommand = new Command()
           appId, 
           wallet, 
           currentCvm.kms_info.kms_contract_address, 
-          options.rpcUrl, 
+          rpcUrl, 
           currentCvm.kms_info.chain_id,
           { json: options.json }
         );

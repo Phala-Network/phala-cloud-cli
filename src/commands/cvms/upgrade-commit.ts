@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { updatePatchCvmCompose, getCvmByAppId } from '@/src/api/cvms';
+import { updatePatchCvmCompose, getCvmByCvmId } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import { parseEnv } from '@/src/utils/secrets';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
@@ -97,7 +97,7 @@ export const upgradeCommitCommand = new Command()
   .action(async (cvmId: string, composeHash: string, options) => {
     try {
       const spinner = logger.startSpinner(`Fetching current configuration for CVM ${cvmId}`);
-      const currentCvm = await getCvmByAppId(cvmId);
+      const currentCvm = await getCvmByCvmId(cvmId);
       logger.info(`\nCVM UUID: ${currentCvm.vm_uuid.replace(/-/g, '')}`);
       logger.info(`App ID: ${currentCvm.app_id}`);
       spinner.stop(true);
