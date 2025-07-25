@@ -13,6 +13,10 @@ import {
   ReplicateCvmResponse,
   CvmComposeConfig,
   cvmComposeConfigSchema,
+  provisionCvmResponseSchema,
+  updateCvmComposeResponseSchema,
+  getCvmComposeFileResponseSchema,
+  updatePatchCvmComposeResponseSchema,
 } from './types';
 import type {
   CvmInstance,
@@ -22,6 +26,10 @@ import type {
   UpgradeCvmResponse,
   CvmAttestationResponse,
   GetCvmNetworkResponse,
+  ProvisionCvmResponse,
+  UpdateCvmComposeResponse,
+  GetCvmComposeFileResponse,
+  UpdatePatchCvmComposeResponse,
 } from './types';
 import inquirer from 'inquirer';
 import { z } from 'zod';
@@ -87,6 +95,34 @@ export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdRespons
 }
 
 /**
+ * Get a CVM by CVM ID
+ * @param cvmId CVM ID
+ * @returns CVM details
+ */
+export async function getCvmByCvmId(cvmId: string): Promise<GetCvmByAppIdResponse> {
+  try {
+    const response = await apiClient.get<GetCvmByAppIdResponse>(API_ENDPOINTS.CVM_BY_CVM_ID(cvmId));
+    return getCvmByAppIdResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to get CVM by CVM ID: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Get compose file from CVM
+ * @param cvmId CVM ID
+ * @returns Compose file
+ */
+export async function getCvmComposeFile(cvmId: string): Promise<GetCvmComposeFileResponse> {
+  try {
+    const response = await apiClient.get<GetCvmComposeFileResponse>(API_ENDPOINTS.CVM_COMPOSE_UPDATE_PATCH(cvmId));
+    return getCvmComposeFileResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to get CVM compose file: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
  * Get public key from CVM
  * @param vmConfig VM configuration
  * @returns Public key
@@ -111,6 +147,36 @@ export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkRespons
     return getCvmNetworkResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to get network information for CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Provision a new CVM for on-chain KMS.
+ * @param vmConfig VM configuration
+ * @returns Provisioning details (kms_id, compose_hash)
+ */
+export async function provisionCvm(vmConfig: VMConfig): Promise<ProvisionCvmResponse> {
+  try {
+    const response = await apiClient.post<ProvisionCvmResponse>(API_ENDPOINTS.CVM_PROVISION, vmConfig);
+    logger.info(JSON.stringify(response));
+    return provisionCvmResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to provision CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Create a new CVM for on-chain KMS.
+ * @param vmConfig VM configuration
+ * @returns Created CVM details
+ */
+export async function createCvmOnChainKms(vmConfig: VMConfig): Promise<PostCvmResponse> {
+  try {
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_CREATE, vmConfig);
+    logger.info(JSON.stringify(response));
+    return postCvmResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to create CVM on-chain KMS: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -187,6 +253,36 @@ export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<Upg
     return upgradeCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Update a CVM's compose file
+ * @param cvmId CVM ID
+ * @param payload Update payload
+ * @returns Update response
+ */
+export async function updateCvmCompose(cvmId: string, payload: unknown): Promise<UpdateCvmComposeResponse> {
+  try {
+    const response = await apiClient.post<UpdateCvmComposeResponse>(API_ENDPOINTS.CVM_COMPOSE_UPDATE(cvmId), payload);
+    return updateCvmComposeResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to update CVM compose file: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Update a CVM's compose file
+ * @param cvmId CVM ID
+ * @param payload Update payload
+ * @returns Update response
+ */
+export async function updatePatchCvmCompose(cvmId: string, payload: unknown): Promise<UpdatePatchCvmComposeResponse> {
+  try {
+    const response = await apiClient.patch<UpdatePatchCvmComposeResponse>(API_ENDPOINTS.CVM_COMPOSE_UPDATE_PATCH(cvmId), payload);
+    return updatePatchCvmComposeResponseSchema.parse(response);
+  } catch (error) {
+    throw new Error(`Failed to update CVM compose file: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -336,7 +432,7 @@ export async function getCvmComposeConfig(cvmId: string): Promise<CvmComposeConf
 export async function replicateCvm(
   appId: string,
   payload: {
-    teepod_id?: number;
+    node_id?: number;
     encrypted_env?: string;
   }
 ): Promise<ReplicateCvmResponse> {
