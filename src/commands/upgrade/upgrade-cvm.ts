@@ -205,17 +205,20 @@ async function applyUpdate(
     spinner.stop(true);
 
     if (response === null) {
-      throw new Error('Failed to apply update: No response from server');
+      // Null response indicates success
+      if (options.json !== false) {
+        console.log(JSON.stringify({
+          success: true,
+          data: { message: 'CVM update applied successfully' }
+        }, null, 2));
+      } else {
+        logger.success('CVM update applied successfully!');
+      }
+      return;
     }
-
-    if (options.json !== false) {
-      console.log(JSON.stringify({
-        success: true,
-        data: response
-      }, null, 2));
-    } else {
-      logger.success('CVM update applied successfully!');
-    }
+    
+    // If we get here, there was an unexpected response
+    throw new Error('Failed to apply update: ' + JSON.stringify(response));
   } catch (error) {
     spinner.stop(false);
     throw error;
