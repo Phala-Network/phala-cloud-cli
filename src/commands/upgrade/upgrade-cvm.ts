@@ -6,11 +6,7 @@ import { CLOUD_URL } from '../../utils/constants';
 import { detectFileInCurrentDir, promptForFile } from '../../utils/prompts';
 import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
 import { ethers } from 'ethers';
-import { createPublicClient, createWalletClient, http } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import { getChainConfig, getNetworkConfig } from '../../utils/blockchain';
-import { Wallet } from 'ethers';
-import type { Address, Hash, Log } from 'viem';
 import { addComposeHash } from '@phala/cloud';
 import { defineChain } from 'viem';
 import fs from 'node:fs';
@@ -70,17 +66,6 @@ export async function upgradeCvm(appId: string, options: any) {
     const rpcUrl = options.rpcUrl || currentCvm.kms_info.url || chain.rpcUrls.default.http[0];
     
     const { wallet } = await getNetworkConfig({ privateKey, rpcUrl }, currentCvm.kms_info.chain_id);
-    
-    if (options.json !== false) {
-      console.log(JSON.stringify({
-        success: true,
-        data: {
-          wallet_address: wallet.address
-        }
-      }, null, 2));
-    } else {
-      logger.info(`Using wallet: ${wallet.address}`);
-    }
     
     if (options.json === false) {
       logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');

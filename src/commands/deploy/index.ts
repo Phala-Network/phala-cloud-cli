@@ -279,11 +279,7 @@ async function createFinalCvm(appAuthResult: any, provisionResponse: any, envs: 
     logger.info(`Using custom KMS ID: ${kmsId}`);
   }
 
-  // Use custom app-id if provided, otherwise use the one from appAuthResult
-  const appId = options.customAppId ? options.customAppId : appAuthResult.appId;
-  if (options.customAppId) {
-    logger.info(`Using custom App ID: ${appId}`);
-  }
+  const appId = appAuthResult.appId;
   if (envs.length > 0) {
     const spinner = logger.startSpinner('Fetching public key from KMS...');
     const { public_key } = await getKmsPubkey(kmsId, appId);
@@ -487,7 +483,6 @@ export const deployCommand = new Command()
         initialDeviceId: provisionResponse.device_id,
         composeHash: provisionResponse.compose_hash
       };
-      console.log('deployOptions', deployOptions);
 
       let appAuthResult;
 
@@ -506,10 +501,7 @@ export const deployCommand = new Command()
         // Get the chain config and determine the RPC URL with proper fallback
         const chain = getChainConfig(kms.chain_id);
         const rpcUrl = (options.rpcUrl || kms.url || chain.rpcUrls.default.http[0]) as string;
-        
-        // Get network config with the resolved RPC URL
-        await getNetworkConfig({ privateKey: wallet.privateKey, rpcUrl }, kms.chain_id);
-        
+
         // Initialize public client with the appropriate chain and RPC URL
         const publicClient = createPublicClient({
           chain,
@@ -519,12 +511,9 @@ export const deployCommand = new Command()
         // KMS Auth ABI for reading app registration details
         const kmsAuthAbi = [
           {
-            inputs: [{ name: 'app', type: 'address' }],
-            name: 'apps',
-            outputs: [
-              { name: 'isRegistered', type: 'bool' },
-              { name: 'controller', type: 'address' },
-            ],
+            inputs: [{ name: '', type: 'address' }],
+            name: 'registeredApps',
+            outputs: [{ name: '', type: 'bool' }],
             stateMutability: 'view',
             type: 'function',
           },
@@ -536,39 +525,40 @@ export const deployCommand = new Command()
             throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
           }
 
-          if (!ethers.isAddress(options.customAppId)) {
+          // Remove 'app_' prefix if present
+          const cleanAppId = options.customAppId.startsWith('app_')
+            ? options.customAppId.substring(4)
+            : options.customAppId;
+
+          if (!ethers.isAddress(cleanAppId)) {
             throw new Error(`Invalid custom App ID: ${options.customAppId}`);
           }
 
           // Ensure customAppId has 0x prefix
-          const customAppId = options.customAppId.startsWith('0x')
-            ? options.customAppId
-            : `0x${options.customAppId}`;
+          const customAppId = cleanAppId.startsWith('0x')
+            ? cleanAppId
+            : `0x${cleanAppId}`;
 
-          // Query the KMS contract for app registration details
-          const [isRegistered, controllerAddress] = await publicClient.readContract({
+          // Query the KMS contract for app registration status
+          const isRegistered: boolean = await publicClient.readContract({
             address: kmsContractAddress as `0x${string}`,
             abi: kmsAuthAbi,
-            functionName: 'apps',
+            functionName: 'registeredApps',
             args: [customAppId as `0x${string}`]
           });
 
           // Validate the response
           if (!isRegistered) {
-            throw new Error(`App ${options.customAppId} is not registered in KMS contract ${kmsContractAddress}`);
-          }
-
-          if (!controllerAddress || controllerAddress === ethers.ZeroAddress) {
-            throw new Error(`Invalid controller address for app ${options.customAppId}`);
+            throw new Error(`App ${customAppId} is not registered in KMS contract ${kmsContractAddress}`);
           }
 
           if (options.json === false) {
-            logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
+            logger.info(`Successfully verified AppAuth contract for app ${customAppId}`);
           }
 
           appAuthResult = {
-            appId: options.customAppId,
-            proxyAddress: controllerAddress,
+            appId: customAppId,
+            proxyAddress: customAppId,
             deployerAddress: ''
           };
 

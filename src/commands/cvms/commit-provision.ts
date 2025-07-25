@@ -124,12 +124,9 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   // KMS Auth ABI for reading app registration details
   const kmsAuthAbi = [
     {
-      inputs: [{ name: 'app', type: 'address' }],
-      name: 'apps',
-      outputs: [
-        { name: 'isRegistered', type: 'bool' },
-        { name: 'controller', type: 'address' },
-      ],
+      inputs: [{ name: '', type: 'address' }],
+      name: 'registeredApps',
+      outputs: [{ name: '', type: 'bool' }],
       stateMutability: 'view',
       type: 'function',
     },
@@ -141,34 +138,35 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
       throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
     }
 
-    if (!ethers.isAddress(options.appId)) {
-      throw new Error(`Invalid custom App ID: ${options.appId}`);
+    // Remove 'app_' prefix if present
+    const cleanAppId = options.appId.startsWith('app_')
+      ? options.appId.substring(4)
+      : options.appId;
+
+    if (!ethers.isAddress(cleanAppId)) {
+      throw new Error(`Invalid App ID: ${options.appId}`);
     }
 
-    // Ensure customAppId has 0x prefix
-    const customAppId = options.appId.startsWith('0x')
-      ? options.appId
-      : `0x${options.appId}`;
+    // Ensure appId has 0x prefix
+    const appAddress = cleanAppId.startsWith('0x')
+      ? cleanAppId
+      : `0x${cleanAppId}`;
 
-    // Query the KMS contract for app registration details
-    const [isRegistered, controllerAddress] = await publicClient.readContract({
+    // Query the KMS contract for app registration status
+    const isRegistered: boolean = await publicClient.readContract({
       address: kmsContractAddress as `0x${string}`,
       abi: kmsAuthAbi,
-      functionName: 'apps',
-      args: [customAppId as `0x${string}`]
+      functionName: 'registeredApps',
+      args: [appAddress as `0x${string}`]
     });
 
     // Validate the response
     if (!isRegistered) {
-      throw new Error(`App ${options.appId} is not registered in KMS contract ${kmsContractAddress}`);
+      throw new Error(`App ${appAddress} is not registered in KMS contract ${kmsContractAddress}`);
     }
 
-    if (!controllerAddress || controllerAddress === ethers.ZeroAddress) {
-      throw new Error(`Invalid controller address for app ${options.appId}`);
-    }
-
-    logger.info(`Successfully verified AppAuth contract at ${controllerAddress}`);
-    appAuthContractAddress = controllerAddress;
+    logger.info(`Successfully verified AppAuth contract for app ${appAddress}`);
+    appAuthContractAddress = appAddress;
 
   } catch (error) {
     throw new Error(`Failed to verify custom App ID: ${error instanceof Error ? error.message : String(error)}`);
