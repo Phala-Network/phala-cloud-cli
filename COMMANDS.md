@@ -8,6 +8,75 @@ This document provides a comprehensive list of all commands and options availabl
 phala [command] [subcommand] [options]
 ```
 
+## KMS (Key Management Service) Commands
+
+### `phala kms`
+
+Manage Key Management Service (KMS) instances.
+
+#### Subcommands:
+
+- **`list`**: List all available KMS instances
+  - Options:
+    - `--page <number>`: Page number (default: 1)
+    - `--page-size <number>`: Items per page (default: 20)
+    - `--onchain`: Filter on-chain KMS instances only
+    - `--json`: Output in JSON format
+
+- **`info <identifier>`**: Get detailed information about a specific KMS instance
+  - Arguments:
+    - `identifier`: KMS instance ID or slug (e.g., `kms_mNZymZRb` or `testnet-kms-2`)
+  - Options:
+    - `--json`: Output in JSON format
+
+## Upgrade Commands
+
+### `phala upgrade`
+
+Upgrade a CVM to a new version in a single step.
+
+#### Usage:
+
+```
+phala upgrade [app-id] [options]
+```
+
+#### Arguments:
+- `[app-id]`: (Optional) CVM app ID to upgrade. Will be prompted if not provided.
+
+#### Options:
+- `-c, --compose <file>`: Path to the new Docker Compose file
+- `-e, --env-file <file>`: Path to environment file
+- `--private-key <key>`: Private key for signing transactions
+- `--rpc-url <url>`: RPC URL for the blockchain
+- `-i, --interactive`: Enable interactive mode for required parameters
+- `--json`: Output in JSON format (default: true)
+- `--no-json`: Disable JSON output format
+- `--debug`: Enable debug mode
+
+#### Examples:
+
+1. Basic upgrade with interactive prompts:
+   ```
+   phala upgrade
+   ```
+
+2. Non-interactive upgrade with all parameters:
+   ```
+   phala upgrade app_123 -c docker-compose.yml -e .env --private-key 0x... --rpc-url https://...
+   ```
+
+3. Check current CVM status (no changes):
+   ```
+   phala upgrade app_123 --no-json
+   ```
+
+The upgrade process will:
+1. Validate the new Docker Compose configuration
+2. Upload the new configuration
+3. Register the compose hash on-chain (if private key is provided)
+4. Apply the update to the CVM
+
 ## Authentication Commands
 
 ### `phala auth`
@@ -32,7 +101,7 @@ Login to Docker Hub and manage Docker images.
 #### Subcommands:
 
 - **`login`**: Login to Docker Hub
-  
+
 - **`build`**: Build a Docker image for TEE deployment
   - Options:
     - `-t, --tag <tag>`: Tag for the Docker image
@@ -61,7 +130,7 @@ phala nodes [command]
 
 #### Commands:
 - **`list`, `ls`**: List all available worker nodes and their details
-  - Shows TEEPod IDs that can be used with the `replicate` command
+  - Shows Node IDs that can be used with the `deploy` or `replicate` commands
   - Example: `phala nodes` or `phala nodes list` or `phala nodes ls`
 
 #### Examples:
@@ -74,6 +143,73 @@ phala nodes list
 phala nodes ls
 ```
 
+## Deployment Commands
+
+### `phala deploy`
+
+Deploy a new Confidential Virtual Machine (CVM) to Phala Cloud with optional on-chain KMS integration.
+
+#### Options:
+
+**Basic Configuration:**
+- `-n, --name <name>`: Name of the CVM (3-20 chars, alphanumeric with underscores/hyphens)
+- `-c, --compose <path>`: Path to Docker Compose file
+- `--vcpu <number>`: Number of vCPUs (default: 1)
+- `--memory <memory>`: Memory with optional unit (e.g., 2G, 500MB), (default: 2048MB)
+- `--disk-size <diskSize>`: Disk size with optional unit (e.g., 50G, 1T), (default: 20GB)
+- `--node-id <nodeId>`: Node ID to use (will prompt if not provided)
+- `-e, --env-file <envFile>`: Path to environment file
+- `--image <image>`: Version of dstack image to use
+- `--pre-launch-script <preLaunchScript>`: Path to pre-launch script to run before starting the CVM
+- `-i, --interactive`: Enable interactive mode for required parameters
+
+**On-Chain KMS Configuration:**
+- `--kms-id <kmsId>`: KMS ID to use for on-chain key management
+- `--custom-app-id <customAppId>`: Use an existing AppAuth contract address
+- `--private-key <privateKey>`: Private key for on-chain operations (or set `PRIVATE_KEY` environment variable)
+- `--rpc-url <rpcUrl>`: RPC URL for the blockchain
+
+**Output Configuration:**
+- `--json`: Output in JSON format (default: true)
+- `--no-json`: Disable JSON output format
+- `--debug`: Enable debug logging
+
+#### Environment Variables:
+- `PRIVATE_KEY`: Can be used instead of `--private-key` flag
+
+#### Examples:
+
+```bash
+# Basic deployment with interactive prompts (standard CVM without on-chain KMS)
+phala deploy --interactive
+
+# Deploy with on-chain KMS (will deploy a new AppAuth contract)
+export PRIVATE_KEY=your_private_key_here
+phala deploy --name my-app --compose docker-compose.yml --kms-id your_kms_id
+
+# Use an existing AppAuth contract with on-chain KMS (no private key needed)
+phala deploy --name my-app --compose docker-compose.yml --kms-id your_kms_id --custom-app-id 0x1234...
+
+# Full deployment with all options specified (new AppAuth contract)
+phala deploy \
+  --name my-cvm \
+  --compose docker-compose.prod.yml \
+  --env-file .env.prod \
+  --vcpu 2 \
+  --memory 4G \
+  --disk-size 50G \
+  --kms-id your_kms_id \
+  --private-key 0xabc123... \
+  --pre-launch-script ./pre-launch.sh
+```
+
+#### Notes:
+- When using `--kms-id`, the command will use on-chain KMS for key management.
+- **Important**: `--private-key` and `--custom-app-id` are mutually exclusive for AppAuth contract handling:
+  - Use `--private-key` when you need to deploy a new AppAuth contract.
+  - Use `--custom-app-id` when using an existing AppAuth contract (no private key needed for deployment).
+- Environment variables from the specified file will be automatically encrypted and made available to the CVM.
+
 ## CVM Management
 
 ### `phala cvms`
@@ -82,30 +218,79 @@ Manage Phala Confidential Virtual Machines (CVMs).
 
 #### Subcommands:
 
-- **`list`**: List all CVMs
-  
-- **`get <id>`**: Get details of a specific CVM
-  - Arguments:
-    - `id`: ID of the CVM to get details for
-
-- **`create`**: Create a new CVM
+- **`list`, `ls`**: List all CVMs
   - Options:
-    - `-n, --name <n>`: Name of the CVM
-    - `-c, --compose <compose>`: Path to Docker Compose file
-    - `--vcpu <vcpu>`: Number of vCPUs (default: depends on configuration)
-    - `--memory <memory>`: Memory in MB (default: depends on configuration)
-    - `--disk-size <diskSize>`: Disk size in GB (default: depends on configuration)
-    - `--teepod-id <teepodId>`: TEEPod ID to use
-    - `--image <image>`: Version of dstack image to use
+    - `-j, --json`: Output in JSON format
+
+- **`get <app-id>`**: Get details of a specific CVM
+  - Arguments:
+    - `app-id`: App ID of the CVM to get details for
+  - Options:
+    - `-j, --json`: Output in JSON format
+
+- **`commit-provision <app-id> <compose-hash>`**: Provision a new CVM with on-chain KMS integration (two-phase commit)
+  - Arguments:
+    - `app-id`: App ID for the CVM (with 0x prefix for on-chain KMS)
+    - `compose-hash`: Compose hash for the CVM (SHA-256 hex string)
+  - Options:
+    - `-i, --interactive`: Enable interactive mode for required parameters
+    - `--kms-id <kmsId>`: KMS ID for API-based public key retrieval
+    - `--deployer-address <deployerAddress>`: Deployer address for the CVM
     - `-e, --env-file <envFile>`: Path to environment file
-    - `--skip-env`: Skip environment variable prompt
     - `--debug`: Enable debug mode
+    - `-c, --compose <compose>`: Path to Docker Compose file
+    - `--rpc-url <rpcUrl>`: RPC URL for the blockchain
+    - `--json`: Output in JSON format
+    - `--no-json`: Disable JSON output
 
-- **`upgrade <id>`**: Upgrade a CVM
+- **`upgrade-commit <cvm-id> <compose-hash>`**: First phase of CVM upgrade with on-chain KMS integration
   - Arguments:
-    - `id`: ID of the CVM to upgrade
+    - `cvm-id`: ID of the CVM to upgrade
+    - `compose-hash`: Compose hash from the provision step
   - Options:
-    - `--image <image>`: New image version to upgrade to
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `--json`: Output in JSON format
+    - `--no-json`: Disable JSON output
+
+- **`upgrade-provision <cvm-id>`**: Second phase of CVM upgrade with on-chain KMS integration
+  - Arguments:
+    - `cvm-id`: ID of the CVM to complete upgrade for
+  - Options:
+    - `-c, --compose <compose>`: Path to new Docker Compose file
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `--debug`: Enable debug logging
+    - `-i, --interactive`: Enable interactive mode
+    - `--json`: Output in JSON format
+    - `--no-json`: Disable JSON output
+
+- **`provision`**: (Advanced) Provision a new CVM, with optional on-chain KMS integration.
+  - Options:
+    - `-n, --name <name>`: Name of the CVM
+    - `-c, --compose <compose>`: Path to Docker Compose file
+    - `--vcpu <vcpu>`: Number of vCPUs
+    - `--memory <memory>`: Memory with optional unit (e.g., 2G, 500MB)
+    - `--disk-size <diskSize>`: Disk size with optional unit (e.g., 50G, 1T)
+    - `--image <image>`: Version of dstack image to use
+    - `--node-id <nodeId>`: Node ID to use
+    - `-e, --env-file <envFile>`: Path to environment file
+    - `-i, --interactive`: Enable interactive mode for required parameters
+    - `--kms-id <kmsId>`: KMS ID to use
+    - `--pre-launch-script <preLaunchScript>`: Path to pre-launch script
+    - `--json`: Output in JSON format
+    - `--no-json`: Disable JSON output
+
+- **`upgrade [app-id]`**: Upgrade a CVM to a new version
+  - Arguments:
+    - `[app-id]`: CVM app ID to upgrade (will prompt for selection if not provided)
+  - Options:
+    - `-c, --compose <compose>`: Path to new Docker Compose file
+    - `-e, --env-file <envFile>`: Path to new environment file (optional)
+    - `--private-key <privateKey>`: Private key for on-chain operations (or set `PRIVATE_KEY` environment variable)
+    - `--debug`: Enable debug mode
+    - `-i, --interactive`: Enable interactive mode for prompts
+    - `--rpc-url <rpcUrl>`: RPC URL for the blockchain
+    - `--json`: Output in JSON format
+    - `--no-json`: Disable JSON output
 
 - **`start <id>`**: Start a CVM
   - Arguments:
@@ -141,19 +326,21 @@ Manage Phala Confidential Virtual Machines (CVMs).
 
 
 
-- **`replicate <id>`**: Create a replica of an existing CVM
+- **`replicate <cvm-id>`**: Create a replica of an existing CVM
   - Arguments:
-    - `id`: ID of the CVM to replicate (which can be found with `phala cvms ls`)
+    - `cvm-id`: UUID of the CVM to replicate (which can be found with `phala cvms ls`)
   - Options:
-    - `--teepod-id <teepodId>`: TEEPod ID to use for the replica (optional, use `phala nodes list` to see available TEEPod IDs)
+    - `--node-id <nodeId>`: Node ID to use for the replica (use `phala nodes list` to see available Node IDs)
     - `-e, --env-file <envFile>`: Path to environment file for the replica (optional)
+    - `--json`: Output in JSON format
+    - `--no-json`: Disable JSON output
   - Example:
     ```bash
-    # First, list available nodes to find a teepod-id
+    # First, list available nodes to find a node-id
     phala nodes list
     
-    # Then use the teepod-id to create a replica
-    phala cvms replicate <cvm-id> --teepod-id <teepod-id>
+    # Then use the node-id to create a replica
+    phala cvms replicate <cvm-uuid> --node-id <node-id>
     ```
 
 ## Simulator Commands
@@ -178,13 +365,12 @@ Here are some examples of how to use the Phala Cloud CLI:
 # Login to Phala Cloud
 phala auth login
 
-# Create a new CVM
-phala cvms create -n "my-cvm" -c ./docker-compose.yml
+# Deploy a new CVM interactively
+phala deploy --interactive
 
 # List all CVMs
 phala cvms list
 
 # Start the TEE simulator
 phala simulator start
-
 ```

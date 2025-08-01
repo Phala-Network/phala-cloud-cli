@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ZodDecimal as zodDecimal } from '../utils/types';
+import { ProvisionCvmComposeFileUpdateResultSchema } from '@phala/cloud';
 // Docker Config Schema
 export const dockerConfigSchema = z.object({
   password: z.string(),
@@ -55,14 +56,14 @@ export const hostedSchema = z.object({
 export const managedUserSchema = z.object({
   id: z.number(),
   username: z.string()
-});
+}).passthrough();
 
 // Node Schema
 export const nodeSchema = z.object({
   id: z.number(),
   name: z.string(),
   region_identifier: z.string().optional(),
-});
+}).passthrough();
 
 // CVM Instance Schema
 export const cvmInstanceSchema = z.object({
@@ -76,7 +77,7 @@ export const cvmInstanceSchema = z.object({
   dapp_dashboard_url: z.string().nullable(),
   syslog_endpoint: z.string(),
   allow_upgrade: z.boolean()
-});
+}).passthrough();
 
 // POST request CVM Response Schema
 export const postCvmResponseSchema = z.object({
@@ -98,19 +99,22 @@ export const postCvmResponseSchema = z.object({
   memory: z.number(),
   disk_size: z.number(),
   manifest_version: z.number(),
-  version: z.string(),
+  version: z.string().nullable(),
   runner: z.string(),
   docker_compose_file: z.string(),
   features: z.array(z.string()).nullable(),
   created_at: z.string(),
-  encrypted_env_pubkey: z.string()
-});
+  encrypted_env_pubkey: z.string(),
+  device_id: z.string().optional(),
+  kms_contract_address: z.string().optional(),
+  kms_owner_address: z.string().optional(),
+}).passthrough();
 
 // Get Pubkey From CVM Response Schema
 export const getPubkeyFromCvmResponseSchema = z.object({
   app_env_encrypt_pubkey: z.string(),
   app_id_salt: z.string()
-});
+}).passthrough();
 
 // Get CVM By App ID Response Schema
 export const getCvmByAppIdResponseSchema = z.object({
@@ -133,8 +137,10 @@ export const getCvmByAppIdResponseSchema = z.object({
   encrypted_env_pubkey: z.string(),
   listed: z.boolean(),
   project_id: z.string(),
-  project_type: z.string().nullable()
-});
+  project_type: z.string().nullable(),
+  compose_file: composeFileSchema.optional(),
+  kms_info: z.any().optional(),
+}).passthrough();
 
 // Get User Info Response Schema
 export const getUserInfoResponseSchema = z.object({
@@ -148,7 +154,7 @@ export const getUserInfoResponseSchema = z.object({
   team_name: z.string(),
   team_tier: z.string(),
   trial_ended_at: z.string().nullable()
-});
+}).passthrough();
 
 // Get CVMs By User ID Response Schema
 export const getCvmsByUserIdResponseSchema = z.array(cvmInstanceSchema);
@@ -156,13 +162,56 @@ export const getCvmsByUserIdResponseSchema = z.array(cvmInstanceSchema);
 // Upgrade CVM Response Schema
 export const upgradeCvmResponseSchema = z.object({
   detail: z.string()
-});
+}).passthrough();
+
+// Returns null if successful, otherwise returns error message
+const updatePatchCvmComposeErrorDetailSchema = z.object({
+  loc: z.array(z.union([z.string(), z.number()])),
+  msg: z.string(),
+  type: z.string(),
+}).passthrough();
+export const updatePatchCvmComposeResponseSchema = z.union([
+  z.null(),
+  z.object({
+    detail: z.array(updatePatchCvmComposeErrorDetailSchema),
+  }).passthrough(),
+]);
+
+// Update CVM Compose Response Schema
+export const updateCvmComposeResponseSchema = ProvisionCvmComposeFileUpdateResultSchema;
+
+// Get CVM Compose File Response Schema
+export const getCvmComposeFileResponseSchema = z.object({
+  allowed_envs: z.array(z.string()).optional(),
+  bash_script: z.string().nullable().optional(),
+  docker_compose_file: z.string(),
+  kms_enabled: z.boolean().optional(),
+  local_key_provider_enabled: z.boolean().optional(),
+  manifest_version: z.number().optional(),
+  name: z.string().optional(),
+  no_instance_id: z.boolean().optional(),
+  pre_launch_script: z.string().optional(),
+  public_logs: z.boolean().optional(),
+  public_sysinfo: z.boolean().optional(),
+  runner: z.string().optional(),
+  salt: z.string().nullable().optional(),
+  tproxy_enabled: z.boolean().optional(),
+  gateway_enabled: z.boolean().optional(),
+  features: z.array(z.string()).optional(),
+  docker_config: z
+    .object({
+      url: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
+}).passthrough();
 
 // Encrypted Env Item Schema
 export const encryptedEnvItemSchema = z.object({
   key: z.string(),
   value: z.string()
-});
+}).passthrough();
 
 // Image Schema
 export const imageSchema = z.object({
@@ -179,7 +228,7 @@ export const imageSchema = z.object({
   hda: z.string().nullable().optional(),
   rootfs: z.string().optional(),
   bios: z.string().optional()
-});
+}).passthrough();
 
 // TEEPod Schema with extended properties
 export const teepodSchema = z.object({
@@ -197,7 +246,7 @@ export const teepodSchema = z.object({
   support_onchain_kms: z.boolean().optional(),
   fmspc: z.string().nullable().optional(),
   device_id: z.string().nullable().optional(),
-});
+}).passthrough();
 
 // Capacity Schema
 export const capacitySchema = z.object({
@@ -205,7 +254,7 @@ export const capacitySchema = z.object({
   max_vcpu: z.number().nullable(),
   max_memory: z.number().nullable(),
   max_disk: z.number().nullable()
-});
+}).passthrough();
 
 // KMS List Item Schema
 export const kmsListItemSchema = z.object({
@@ -213,10 +262,10 @@ export const kmsListItemSchema = z.object({
   slug: z.string(),
   url: z.string(),
   version: z.string(),
-  chain_id: z.number(),
-  kms_contract_address: z.string(),
+  chain_id: z.number().optional(),
+  kms_contract_address: z.string().optional(),
   gateway_app_id: z.string().nullable().optional(),
-});
+}).passthrough();
 
 // TeepodResponse Schema
 export const teepodResponseSchema = z.object({
@@ -224,7 +273,7 @@ export const teepodResponseSchema = z.object({
   capacity: capacitySchema,
   nodes: z.array(teepodSchema),
   kms_list: z.array(kmsListItemSchema).optional(),
-});
+}).passthrough();
 
 // Get CVM Network Response Schema
 export const getCvmNetworkResponseSchema = z.object({
@@ -237,9 +286,20 @@ export const getCvmNetworkResponseSchema = z.object({
     app: z.string(),
     instance: z.string()
   })),
-});
+}).passthrough();
+
+
+
+// KMS Pubkey Response Schema
+export const kmsPubkeyResponseSchema = z.object({
+  public_key: z.string(),
+  signature: z.string(),
+}).passthrough();
 
 // Type exports
+
+
+export type KmsPubkeyResponse = z.infer<typeof kmsPubkeyResponseSchema>;
 export type KmsListItem = z.infer<typeof kmsListItemSchema>;
 export type DockerConfig = z.infer<typeof dockerConfigSchema>;
 export type ComposeFile = z.infer<typeof composeFileSchema>;
@@ -254,6 +314,9 @@ export type GetCvmByAppIdResponse = z.infer<typeof getCvmByAppIdResponseSchema>;
 export type GetUserInfoResponse = z.infer<typeof getUserInfoResponseSchema>;
 export type GetCvmsByUserIdResponse = z.infer<typeof getCvmsByUserIdResponseSchema>;
 export type UpgradeCvmResponse = z.infer<typeof upgradeCvmResponseSchema>;
+export type UpdateCvmComposeResponse = z.infer<typeof updateCvmComposeResponseSchema>;
+export type UpdatePatchCvmComposeResponse = z.infer<typeof updatePatchCvmComposeResponseSchema>;
+export type GetCvmComposeFileResponse = z.infer<typeof getCvmComposeFileResponseSchema>;
 export type EncryptedEnvItem = z.infer<typeof encryptedEnvItemSchema>;
 export type TEEPod = z.infer<typeof teepodSchema>;
 export type Image = z.infer<typeof imageSchema>;
@@ -261,6 +324,19 @@ export type Capacity = z.infer<typeof capacitySchema>;
 export type TeepodResponse = z.infer<typeof teepodResponseSchema>;
 export type CvmAttestationResponse = z.infer<typeof cvmAttestationResponseSchema>;
 export type GetCvmNetworkResponse = z.infer<typeof getCvmNetworkResponseSchema>;
+
+// Provision CVM Response Schema
+export const provisionCvmResponseSchema = z.object({
+  app_id: z.string().nullable().optional(),
+  app_env_encrypt_pubkey: z.string().nullable().optional(),
+  compose_hash: z.string(),
+  fmspc: z.string().nullable().optional(),
+  device_id: z.string().nullable().optional(),
+  os_image_hash: z.string().nullable().optional(),
+  node_id: z.number().nullable().optional(),
+}).passthrough();
+
+export type ProvisionCvmResponse = z.infer<typeof provisionCvmResponseSchema>;
 /**
  * Certificate naming information
  */
@@ -337,8 +413,8 @@ export const cvmComposeConfigSchema = z.object({
     version: z.string(),
   }),
   env_pubkey: z.string(),
-  salt: z.string(),
-});
+  salt: z.string().nullable(),
+}).passthrough();
 
 export type CvmComposeConfig = z.infer<typeof cvmComposeConfigSchema>;
 
@@ -368,7 +444,7 @@ export const replicateCvmResponseSchema = z.object({
   features: z.array(z.string()).nullable(),
   created_at: z.string(),
   encrypted_env_pubkey: z.string()
-});
+}).passthrough();
 
 export type ReplicateCvmResponse = z.infer<typeof replicateCvmResponseSchema>;
 
@@ -416,4 +492,4 @@ export const cvmAttestationResponseSchema = z.object({
     }))
   }).nullable(),
   compose_file: z.string().nullable()
-});
+}).passthrough();

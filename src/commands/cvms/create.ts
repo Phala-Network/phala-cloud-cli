@@ -181,7 +181,7 @@ export const createCommand = new Command()
 
       // Prepare VM configuration
       const vmConfig = {
-        teepod_id: selectedTeepod.teepod_id,
+        node_id: selectedTeepod.teepod_id,
         name: options.name,
         image: selectedImage.name,
         vcpu: vcpu,
@@ -189,11 +189,6 @@ export const createCommand = new Command()
         disk_size: diskSize,
         compose_manifest: {
           docker_compose_file: composeString,
-          docker_config: {
-            url: '',
-            username: '',
-            password: '',
-          },
           features: ['kms', 'tproxy-net'],
           kms_enabled: true,
           manifest_version: 2,

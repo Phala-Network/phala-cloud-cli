@@ -9,8 +9,11 @@ import { createCommand } from './create';
 import { deleteCommand } from './delete';
 import { upgradeCommand } from './upgrade';
 import { resizeCommand } from './resize';
-import { listNodesCommand } from './list-node';
 import { replicateCommand } from './replicate';
+import { commitProvisionCommand } from './commit-provision';
+import { provisionCommand } from './provision';
+import { upgradeProvisionCommand } from './upgrade-provision';
+import { upgradeCommitCommand } from './upgrade-commit';
 
 export const cvmsCommand = new Command()
   .name('cvms')
@@ -25,6 +28,8 @@ export const cvmsCommand = new Command()
   .addCommand(resizeCommand)
   .addCommand(restartCommand)
   .addCommand(upgradeCommand)
-  .addCommand(listNodesCommand)
-  .addCommand(replicateCommand);
-   
+  .addCommand(replicateCommand)
+  .addCommand(commitProvisionCommand)
+  .addCommand(provisionCommand)
+  .addCommand(upgradeProvisionCommand)
+  .addCommand(upgradeCommitCommand);
