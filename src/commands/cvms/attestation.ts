@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import { checkCvmExists, getCvmAttestation, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import chalk from 'chalk';
@@ -9,7 +10,7 @@ export const attestationCommand = new Command()
   .description('Get attestation information for a CVM')
   .argument('[app-id]', 'CVM app ID (will prompt for selection if not provided)')
   .option('-j, --json', 'Output in JSON format')
-  .action(async (appId?: string, options?: { json?: boolean }) => {
+  .action(async function(this: Command, appId?: string, options?: { json?: boolean }) {
     try {
       let resolvedAppId: string;
       
@@ -17,6 +18,11 @@ export const attestationCommand = new Command()
         logger.info('No CVM specified, fetching available CVMs...');
         const selectedCvm = await selectCvm();
         if (!selectedCvm) {
+          setCommandResult(this, {
+            success: false,
+            error: 'No CVM selected',
+            timestamp: new Date().toISOString()
+          });
           return;
         }
         resolvedAppId = selectedCvm;
@@ -31,9 +37,28 @@ export const attestationCommand = new Command()
         spinner.stop(true);
 
         if (!attestationData || Object.keys(attestationData).length === 0) {
-          logger.info('No attestation information found');
+          const message = 'No attestation information found';
+          setCommandResult(this, {
+            success: false,
+            error: message,
+            appId: resolvedAppId,
+            timestamp: new Date().toISOString()
+          });
+          logger.info(message);
           return;
         }
+
+        // Set command result for telemetry
+        setCommandResult(this, {
+          success: true,
+          appId: resolvedAppId,
+          isOnline: attestationData.is_online,
+          isPublic: attestationData.is_public,
+          hasError: !!attestationData.error,
+          certificateCount: attestationData.app_certificates?.length || 0,
+          hasTcbInfo: !!attestationData.tcb_info,
+          timestamp: new Date().toISOString()
+        });
 
         // If JSON output is requested, just print the raw response
         if (options?.json) {
@@ -137,6 +162,10 @@ export const attestationCommand = new Command()
         throw error;
       }
     } catch (error) {
-      logger.error(`Failed to get attestation information: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setCommandError(this, new Error(errorMessage));
+      logger.error(`Failed to get attestation information: ${errorMessage}`);
+      // Don't throw or exit to allow telemetry to be sent
+      throw error;
     }
   });

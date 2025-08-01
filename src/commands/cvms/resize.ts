@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { checkCvmExists, getCvmByAppId, resizeCvm, selectCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { resolveCvmAppId } from '@/src/utils/cvms';
@@ -15,17 +16,43 @@ export const resizeCommand = new Command()
   .option('-d, --disk-size <diskSize>', 'Disk size in GB')
   .option('-r, --allow-restart <allowRestart>', 'Allow restart of the CVM if needed for resizing')
   .option('-y, --yes', 'Automatically confirm the resize operation')
-  .action(async (appId, options) => {
+  .action(async function(this: Command, appId, options) {
+    // Initialize telemetry data
+    const telemetryData: any = {
+      timestamp: new Date().toISOString(),
+      autoConfirm: options.yes || false,
+      appId: '',
+      originalVcpu: 0,
+      newVcpu: 0,
+      originalMemory: 0,
+      newMemory: 0,
+      originalDiskSize: 0,
+      newDiskSize: 0,
+      allowRestart: false,
+      success: false
+    };
+
     try {
       const resolvedAppId = await resolveCvmAppId(appId);
+      telemetryData.appId = `${resolvedAppId}`;
 
       const cvm = await getCvmByAppId(resolvedAppId);
       
+      // Store original values
+      telemetryData.originalVcpu = cvm.vcpu;
+      telemetryData.originalMemory = cvm.memory;
+      telemetryData.originalDiskSize = cvm.disk_size;
+      
       // Initialize parameters
-      let vcpu: number | undefined = options.vcpu;
-      let memory: number | undefined = options.memory;
-      let diskSize: number | undefined = options.diskSize;
+      let vcpu: number | undefined = options.vcpu ? Number(options.vcpu) : undefined;
+      let memory: number | undefined = options.memory ? Number(options.memory) : undefined;
+      let diskSize: number | undefined = options.diskSize ? Number(options.diskSize) : undefined;
       let allowRestart: boolean | undefined = options.allowRestart;
+      
+      // Update telemetry with new values if provided
+      if (vcpu) telemetryData.newVcpu = vcpu;
+      if (memory) telemetryData.newMemory = memory;
+      if (diskSize) telemetryData.newDiskSize = diskSize;
       // Prompt for vCPU if selected
       if (!vcpu) {
         const response = await inquirer.prompt([
@@ -45,6 +72,7 @@ export const resizeCommand = new Command()
           }
         ]);
         vcpu = response.vcpu;
+        telemetryData.newVcpu = vcpu;
       }
       
       // Prompt for memory
@@ -66,6 +94,7 @@ export const resizeCommand = new Command()
           }
         ]);
         memory = response.memory;
+        telemetryData.newMemory = memory;
       }
       
       // Prompt for disk size
@@ -87,6 +116,7 @@ export const resizeCommand = new Command()
           }
         ]);
         diskSize = response.diskSize;
+        telemetryData.newDiskSize = diskSize;
       }
       
       // Ask about restart permission
@@ -100,6 +130,7 @@ export const resizeCommand = new Command()
           }
         ]);
         allowRestart = response.allowRestart;
+        telemetryData.allowRestart = allowRestart;
       }
       
       // Prepare confirmation message
@@ -123,7 +154,13 @@ export const resizeCommand = new Command()
         ]);
         
         if (!confirm) {
-          logger.info('Resize operation cancelled');
+          const message = 'Resize operation cancelled by user';
+          setCommandResult(this, {
+            ...telemetryData,
+            success: false,
+            message
+          });
+          logger.info(message);
           return;
         }
       }
@@ -136,14 +173,23 @@ export const resizeCommand = new Command()
       await resizeCvm(resolvedAppId, vcpu, memory, diskSize, allowRestartValue);
 
       spinner.stop(true);
+      
+      // Update telemetry data for successful resize
+      telemetryData.success = true;
+      setCommandResult(this, {
+        ...telemetryData,
+        message: 'CVM resize initiated successfully'
+      });
+      
       logger.break();
       logger.success(
         `Your CVM is being resized. You can check the dashboard for more details:\n${CLOUD_URL}/dashboard/cvms/app_${resolvedAppId}`
       );
     } catch (error) {
-      logger.error(
-        `Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`
-      );
-      process.exit(1);
+      const errorMessage = `Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`;
+      setCommandError(this, new Error(errorMessage));
+      logger.error(errorMessage);
+      // Don't call process.exit() to ensure telemetry is sent
+      throw error;
     }
   }); 

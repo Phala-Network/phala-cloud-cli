@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import type { TEEPod, Image } from '@/src/api/types';
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_IMAGE } from '@/src/utils/constants';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
@@ -27,7 +28,31 @@ export const createCommand = new Command()
   .option('-e, --env-file <envFile>', 'Path to environment file')
   .option('--skip-env', 'Skip environment variable prompt', false)
   .option('--debug', 'Enable debug mode', false)
-  .action(async (options) => {
+  .action(async function(this: Command, options) {
+    // Initialize telemetry data
+    const telemetryData: any = {
+      timestamp: new Date().toISOString(),
+      hasCustomName: !!options.name,
+      hasCustomCompose: !!options.compose,
+      hasEnvFile: !!options.envFile,
+      skipEnv: options.skipEnv,
+      debug: options.debug,
+      composeFileProvided: !!options.compose,
+      teepodCount: 0,
+      imageCount: 0,
+      envVarCount: 0,
+      encrypted: false,
+      vcpu: 0,
+      memory: 0,
+      diskSize: 0,
+      selectedTeepodId: 0,
+      selectedTeepodName: '',
+      selectedImage: '',
+      cvmId: '',
+      appId: '',
+      status: ''
+    };
+
     try {
       // Prompt for required options if not provided
       if (!options.name) {
@@ -124,6 +149,11 @@ export const createCommand = new Command()
       const vcpu = Number(options.vcpu) || DEFAULT_VCPU;
       const memory = Number(options.memory) || DEFAULT_MEMORY;
       const diskSize = Number(options.diskSize) || DEFAULT_DISK_SIZE;
+      
+      // Add resource info to telemetry
+      telemetryData.vcpu = vcpu;
+      telemetryData.memory = memory;
+      telemetryData.diskSize = diskSize;
 
       if (Number.isNaN(vcpu) || vcpu <= 0) {
         logger.error(`Invalid number of vCPUs: ${vcpu}`);
@@ -149,6 +179,7 @@ export const createCommand = new Command()
       }
 
       let selectedTeepod: TEEPod;
+      telemetryData.teepodCount = teepods.nodes.length;
       // Fetch available TEEPods
       if (!options.teepodId) {
         selectedTeepod = teepods.nodes[0];
@@ -165,6 +196,7 @@ export const createCommand = new Command()
       }
 
       let selectedImage: Image;
+      telemetryData.imageCount = selectedTeepod.images?.length || 0;
       if (!options.image) {
         selectedImage = selectedTeepod.images?.find(image => image.name === DEFAULT_IMAGE);
         if (!selectedImage) {
@@ -180,6 +212,11 @@ export const createCommand = new Command()
       }
 
       // Prepare VM configuration
+      // Add selected teepod and image to telemetry
+      telemetryData.selectedTeepodId = selectedTeepod.teepod_id;
+      telemetryData.selectedTeepodName = selectedTeepod.name;
+      telemetryData.selectedImage = selectedImage.name;
+      
       const vmConfig = {
         node_id: selectedTeepod.teepod_id,
         name: options.name,
@@ -223,6 +260,10 @@ export const createCommand = new Command()
 
       // Create the CVM
       const createSpinner = logger.startSpinner('Creating CVM');
+      // Add encryption info to telemetry
+      telemetryData.envVarCount = envs.length;
+      telemetryData.encrypted = true;
+      
       const response = await createCvm({
         ...vmConfig,
         encrypted_env,
@@ -232,8 +273,10 @@ export const createCommand = new Command()
       createSpinner.stop(true);
 
       if (!response) {
-        logger.error('Failed to create CVM');
-        process.exit(1);
+        const errorMessage = 'Failed to create CVM: No response from server';
+        setCommandError(this, new Error(errorMessage));
+        logger.error(errorMessage);
+        throw new Error(errorMessage);
       }
 
       logger.success('CVM created successfully');
@@ -249,10 +292,25 @@ export const createCommand = new Command()
         borderStyle: 'rounded'
       });
 
+      // Add response data to telemetry
+      telemetryData.cvmId = response.id;
+      telemetryData.appId = response.app_id;
+      telemetryData.status = response.status;
+      
+      // Set command result for telemetry
+      setCommandResult(this, {
+        success: true,
+        ...telemetryData,
+        message: 'CVM created successfully'
+      });
+      
       logger.info('');
       logger.success(`Your CVM is being created. You can check its status with:\nphala cvms get app_${response.app_id}`);
     } catch (error) {
-      logger.error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
+      const errorMessage = `Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`;
+      setCommandError(this, new Error(errorMessage));
+      logger.error(errorMessage);
+      // Don't call process.exit() to ensure telemetry is sent
+      throw error;
     }
   }); 

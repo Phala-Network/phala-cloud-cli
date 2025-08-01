@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import { getCvmByCvmId, updateCvmCompose, getCvmComposeFile } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import { parseEnv } from '@/src/utils/secrets';
@@ -123,7 +124,7 @@ export const upgradeProvisionCommand = new Command()
   .option('-i, --interactive', 'Enable interactive mode', false)
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
-  .action(async (cvmId: string, options) => {
+  .action(async function(this: Command, cvmId: string, options) {
     try {
       const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(cvmId, options);
       const { composeString, encryptedEnv } = await prepareUpdatePayload(gatheredOptions, currentCvm);
@@ -136,40 +137,62 @@ export const upgradeProvisionCommand = new Command()
       spinner.stop(true);
 
       if (!response || !response.compose_hash) {
-        logger.error('Failed to initiate CVM update or get compose hash.');
-        process.exit(1);
+        const errorMessage = 'Failed to initiate CVM update or get compose hash.';
+        setCommandError(this, new Error(errorMessage));
+        logger.error(errorMessage);
+        throw new Error(errorMessage);
       }
 
-      logger.info(`CVM UUID: ${currentCvm.vm_uuid.replace(/-/g, '')}`);
-      logger.info(`App ID: ${currentCvm.app_id}`);
+      const result = {
+        cvmId: currentCvm.vm_uuid.replace(/-/g, ''),
+        appId: response.app_id,
+        composeHash: response.compose_hash,
+        dashboardUrl: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
+        timestamp: new Date().toISOString()
+      };
+
+      // Set command result for telemetry
+      setCommandResult(this, {
+        success: true,
+        ...result
+      });
+
+      logger.info(`CVM UUID: ${result.cvmId}`);
+      logger.info(`App ID: ${result.appId}`);
 
       if (options.json !== false) {
         console.log(JSON.stringify({
           success: true,
-          data: {
-            cvm_id: currentCvm.vm_uuid.replace(/-/g, ''),
-            app_id: response.app_id,
-            compose_hash: response.compose_hash,
-            dashboard_url: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
-            raw: response
-          }
+          cvm_id: result.cvmId,
+          app_id: result.appId,
+          compose_hash: result.composeHash,
+          dashboard_url: result.dashboardUrl
         }, null, 2));
       } else {
-        logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
-        logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`);
+        logger.success(`CVM update has been provisioned. New compose hash: ${result.composeHash}`);
+        logger.info(`Dashboard: ${result.dashboardUrl}`);
       }
+      
+      return;
 
     } catch (error) {
       const errorMessage = `Failed to provision CVM upgrade: ${error instanceof Error ? error.message : String(error)}`;
+      const errorStack = options.debug && error instanceof Error ? error.stack : undefined;
+      
+      // Set command error for telemetry
+      setCommandError(this, new Error(errorMessage));
+      
       if (options.json !== false) {
         console.error(JSON.stringify({
           success: false,
           error: errorMessage,
-          stack: options.debug && error instanceof Error ? error.stack : undefined
+          stack: errorStack
         }, null, 2));
       } else {
         logger.error(errorMessage);
       }
-      process.exit(1);
+      
+      // Don't call process.exit() as it prevents telemetry from being sent
+      throw error;
     }
   });

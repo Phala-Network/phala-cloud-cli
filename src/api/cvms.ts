@@ -104,7 +104,8 @@ export async function getCvmByCvmId(cvmId: string): Promise<GetCvmByAppIdRespons
     const response = await apiClient.get<GetCvmByAppIdResponse>(API_ENDPOINTS.CVM_BY_CVM_ID(cvmId));
     return getCvmByAppIdResponseSchema.parse(response);
   } catch (error) {
-    throw new Error(`Failed to get CVM by CVM ID: ${error instanceof Error ? error.message : String(error)}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get CVM: ${errorMsg}. Note: Both 'app_' prefixed app IDs and VM UUIDs (without hyphens) are accepted.`);
   }
 }
 
@@ -158,7 +159,6 @@ export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkRespons
 export async function provisionCvm(vmConfig: VMConfig): Promise<ProvisionCvmResponse> {
   try {
     const response = await apiClient.post<ProvisionCvmResponse>(API_ENDPOINTS.CVM_PROVISION, vmConfig);
-    logger.info(JSON.stringify(response));
     return provisionCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to provision CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -173,7 +173,6 @@ export async function provisionCvm(vmConfig: VMConfig): Promise<ProvisionCvmResp
 export async function createCvmOnChainKms(vmConfig: VMConfig): Promise<PostCvmResponse> {
   try {
     const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_CREATE, vmConfig);
-    logger.info(JSON.stringify(response));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to create CVM on-chain KMS: ${error instanceof Error ? error.message : String(error)}`);

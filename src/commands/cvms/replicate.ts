@@ -1,6 +1,7 @@
 import { Command } from 'commander';
-import { replicateCvm, getCvmComposeConfig } from '@/src/api/cvms';
+import { replicateCvm, getCvmComposeConfig, getCvmByCvmId } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,8 +15,15 @@ export const replicateCommand = new Command()
     .option('--json', 'Output in JSON format (default: true)', true)
     .option('--no-json', 'Disable JSON output format')
     .option('--debug', 'Enable debug logging', false)
-    .action(async (cvmId, options) => {
+    .action(async function(this: Command, cvmId, options) {
         try {
+            const telemetryData: any = {
+                sourceCvmId: cvmId.replace(/-/g, ''),
+                timestamp: new Date().toISOString(),
+                hasEnvFile: !!options.envFile,
+                hasNodeId: !!options.nodeId
+            };
+            
             let encryptedEnv: string | undefined;
             cvmId = cvmId.replace(/-/g, '');
 
@@ -65,27 +73,49 @@ export const replicateCommand = new Command()
                 requestBody.encrypted_env = encryptedEnv;
             }
 
+            // Get source CVM details for telemetry
+            const sourceCvm = await getCvmByCvmId(cvmId);
+            if (sourceCvm) {
+                telemetryData.sourceAppId = sourceCvm.app_id;
+                telemetryData.sourceName = sourceCvm.name;
+                telemetryData.sourceStatus = sourceCvm.status;
+            }
+
             // Call the API to create the replica
             const replica = await replicateCvm(cvmId, requestBody);
+            
+            // Update telemetry data with replica details
+            telemetryData.replicaVmUuid = replica.vm_uuid.replace(/-/g, '');
+            telemetryData.replicaAppId = replica.app_id;
+            telemetryData.replicaStatus = replica.status;
+            telemetryData.nodeId = replica.teepod_id;
+            telemetryData.vcpus = replica.vcpu;
+            telemetryData.memoryMb = replica.memory;
+            telemetryData.diskSizeGb = replica.disk_size;
+
+            // Set telemetry success
+            setCommandResult(this, {
+                success: true,
+                ...telemetryData,
+                message: 'CVM replica created successfully'
+            });
 
             if (options.json !== false) {
                 console.log(JSON.stringify({
                     success: true,
-                    data: {
-                        vm_uuid: replica.vm_uuid.replace(/-/g, ''),
-                        app_id: replica.app_id,
-                        name: replica.name,
-                        status: replica.status,
-                        node: {
-                            id: replica.teepod_id,
-                            name: replica.teepod?.name
-                        },
-                        vcpus: replica.vcpu,
-                        memory_mb: replica.memory,
-                        disk_size_gb: replica.disk_size,
-                        app_url: replica.app_url || `${process.env.CLOUD_URL || 'https://cloud.phala.network'}/dashboard/cvms/${replica.vm_uuid.replace(/-/g, '')}`,
-                        raw: replica
-                    }
+                    vm_uuid: replica.vm_uuid.replace(/-/g, ''),
+                    app_id: replica.app_id,
+                    name: replica.name,
+                    status: replica.status,
+                    node: {
+                        id: replica.teepod_id,
+                        name: replica.teepod?.name
+                    },
+                    vcpus: replica.vcpu,
+                    memory_mb: replica.memory,
+                    disk_size_gb: replica.disk_size,
+                    app_url: replica.app_url || `${process.env.CLOUD_URL || 'https://cloud.phala.network'}/dashboard/cvms/${replica.vm_uuid.replace(/-/g, '')}`,
+                    raw: replica
                 }, null, 2));
             } else {
                 logger.success(`Successfully created replica of CVM UUID: ${cvmId} with App ID: ${replica.app_id}`);
@@ -109,6 +139,10 @@ export const replicateCommand = new Command()
             }
         } catch (error) {
             const errorMessage = `Failed to create CVM replica: ${error instanceof Error ? error.message : String(error)}`;
+            
+            // Set telemetry error
+            setCommandError(this, new Error(errorMessage));
+            
             if (options.json !== false) {
                 console.error(JSON.stringify({
                     success: false,
@@ -118,6 +152,7 @@ export const replicateCommand = new Command()
             } else {
                 logger.error(errorMessage);
             }
-            process.exit(1);
+            // Don't call process.exit() to allow telemetry to be sent
+            throw error;
         }
     });

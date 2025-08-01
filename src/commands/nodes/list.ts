@@ -1,16 +1,39 @@
+import { Command } from 'commander';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import { KmsListItem, TEEPod } from '@/src/api/types';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 
-export async function listNodes() {
+export async function listNodes(command?: Command): Promise<void> {
   try {
     const { nodes: teepods, kms_list: kmsList } = await getTeepods();
+    const result: {
+      success: boolean;
+      nodeCount: number;
+      kmsCount: number;
+      nodes?: TEEPod[];
+      kmsInstances?: KmsListItem[];
+    } = {
+      success: true,
+      nodeCount: teepods?.length || 0,
+      kmsCount: kmsList?.length || 0,
+      nodes: [],
+      kmsInstances: []
+    };
 
     if (teepods.length === 0) {
-      logger.info('No available nodes found.');
+      const message = 'No available nodes found.';
+      logger.info(message);
+      if (command) {
+        setCommandResult(command, { ...result, message });
+      }
       return;
     }
 
+    // Store nodes data in result
+    result.nodes = teepods;
+
+    // Log nodes information
     logger.info('Available Nodes:');
     teepods.forEach((teepod: TEEPod) => {
       logger.info('----------------------------------------');
@@ -41,6 +64,9 @@ export async function listNodes() {
     });
 
     if (kmsList && kmsList.length > 0) {
+      // Store KMS instances data in result
+      result.kmsInstances = kmsList;
+
       logger.info('\nAvailable KMS Instances:');
       kmsList.forEach((kms: KmsListItem) => {
         logger.info('----------------------------------------');
@@ -54,8 +80,20 @@ export async function listNodes() {
         }
       });
     }
+    
+    if (command) {
+      setCommandResult(command, result);
+    }
+    
+    return;
   } catch (error) {
-    logger.error(`Failed to list available nodes: ${error instanceof Error ? error.message : String(error)}`);
+    const errorMessage = `Failed to list available nodes: ${error instanceof Error ? error.message : String(error)}`;
+    logger.error(errorMessage);
+    
+    if (command) {
+      setCommandError(command, new Error(errorMessage));
+    }
+    
     throw error;
   }
 }

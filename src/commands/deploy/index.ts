@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { createCvm, createCvmOnChainKms, getPubkeyFromCvm, provisionCvm } from '@/src/api/cvms';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import type { TEEPod, TeepodResponse } from '@/src/api/types';
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from '@/src/utils/constants';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
@@ -55,7 +56,7 @@ async function gatherCvmConfig(options: any) {
 
   if (!options.compose) {
     if (!options.interactive) {
-      logger.info('Docker Compose file is required.\n\nUsage examples:\n  phala deploy --compose docker-compose.yml --node-id 1\n  phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>\n\nMinimal required parameters:\n  --compose <path>    Path to docker-compose.yml\n\nFor on-chain KMS, also provide:\n  --kms-id <id>       KMS ID\n  --private-key <key> Private key for deployment\n  --rpc-url <url>     RPC URL for the blockchain\n\nRun with --interactive for guided setup');
+      logger.info('Docker Compose file is required.\n\nUsage examples:\n  phala deploy --compose docker-compose.yml \n  phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>\n\nMinimal required parameters:\n  --compose <path>    Path to docker-compose.yml\n\nFor on-chain KMS, also provide:\n  --kms-id <id>       KMS ID\n  --private-key <key> Private key for deployment\n\nRun with --interactive for guided setup');
       process.exit(1);
     } else {
       const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
@@ -134,7 +135,7 @@ async function gatherCvmConfig(options: any) {
     }
 
     kmsContractAddress = kmsInfo.kms_contract_address;
-    logger.info(`Using KMS contract address: ${kmsContractAddress} from KMS ID: ${options.kmsId}`);
+    logger.info(`Using DstackKms contract address: ${kmsContractAddress} from KMS ID: ${options.kmsId}`);
   }
 
   let selectedTeepod: TEEPod;
@@ -246,14 +247,10 @@ async function provisionAndLogCvm(vmConfig: any, options: { json?: boolean } = {
 
   if (options?.json !== false) {
     console.log(JSON.stringify({
-      success: true,
-      data: {
-        app_id: provisionResponse.app_id,
-        device_id: provisionResponse.device_id,
-        compose_hash: provisionResponse.compose_hash,
-        os_image_hash: provisionResponse.os_image_hash,
-        raw: provisionResponse
-      }
+      app_id: provisionResponse.app_id,
+      device_id: provisionResponse.device_id,
+      compose_hash: provisionResponse.compose_hash,
+      os_image_hash: provisionResponse.os_image_hash,
     }, null, 2));
   } else {
     logger.success('CVM provisioned successfully!');
@@ -276,7 +273,6 @@ async function createFinalCvm(appAuthResult: any, provisionResponse: any, envs: 
   let kmsId = teepods.kms_list[0].id;
   if (options.kmsId) {
     kmsId = options.kmsId;
-    logger.info(`Using custom KMS ID: ${kmsId}`);
   }
 
   const appId = appAuthResult.appId;
@@ -308,29 +304,28 @@ async function createFinalCvm(appAuthResult: any, provisionResponse: any, envs: 
     throw new Error('Failed to create CVM');
   }
 
-  if (options?.json !== false) {
-    console.log(JSON.stringify({
-      success: true,
-      data: {
-        vm_uuid: finalResponse.vm_uuid.replace(/-/g, ''),
-        name: finalResponse.name,
-        status: finalResponse.status,
-        app_id: finalResponse.app_id,
-        endpoint: `${CLOUD_URL}/dashboard/cvms/${finalResponse.vm_uuid.replace(/-/g, '')}`,
-        raw: finalResponse
-      }
-    }, null, 2));
+  const result = {
+    success: true,
+    vm_uuid: finalResponse.vm_uuid.replace(/-/g, ''),
+    name: finalResponse.name,
+    app_id: finalResponse.app_id,
+    endpoint: `${CLOUD_URL}/dashboard/cvms/${finalResponse.vm_uuid.replace(/-/g, '')}`,
+  } as const;
+
+  if (options.json !== false) {
+    console.log(JSON.stringify(result, null, 2));
   } else {
     logger.success('CVM created successfully!');
     logger.break();
     logger.keyValueTable({
-      'CVM ID': finalResponse.vm_uuid.replace(/-/g, ''),
-      'Name': finalResponse.name,
-      'Status': finalResponse.status,
-      'App ID': finalResponse.app_id,
-      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${finalResponse.vm_uuid.replace(/-/g, '')}`,
+      'CVM ID': result.vm_uuid,
+      'Name': result.name,
+      'App ID': result.app_id,
+      'Endpoint': result.endpoint,
     });
   }
+
+  return result;
 }
 
 async function executeStandardCreation(
@@ -352,37 +347,44 @@ async function executeStandardCreation(
   createSpinner.stop(true);
   if (!response) throw new Error('Failed to create CVM');
 
+  const result = {
+    success: true,
+    vm_uuid: response.vm_uuid.replace(/-/g, ''),
+    app_id: response.app_id,
+    name: response.name,
+    endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+    created_at: response.created_at,
+    ...(response.kms_contract_address && { kms_contract_address: response.kms_contract_address }),
+    ...(response.kms_owner_address && { kms_owner_address: response.kms_owner_address })
+  } as const;
+
   if (options?.json !== false) {
-    const jsonOutput: any = {
+    console.log(JSON.stringify({
       success: true,
-      data: {
-        cvm_id: response.vm_uuid.replace(/-/g, ''),
-        app_id: response.app_id,
-        name: response.name,
-        status: response.status,
-        endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-        created_at: response.created_at,
-        raw: response
-      }
-    };
-    if (response.kms_contract_address) jsonOutput.data.kms_contract_address = response.kms_contract_address;
-    if (response.kms_owner_address) jsonOutput.data.kms_owner_address = response.kms_owner_address;
-    console.log(JSON.stringify(jsonOutput, null, 2));
+      cvm_id: result.vm_uuid,
+      app_id: result.app_id,
+      name: result.name,
+      endpoint: result.endpoint,
+      created_at: result.created_at,
+      ...(result.kms_contract_address && { kms_contract_address: result.kms_contract_address }),
+      ...(result.kms_owner_address && { kms_owner_address: result.kms_owner_address })
+    }, null, 2));
   } else {
     logger.success('CVM created successfully');
     logger.break();
     const tableData: { [key: string]: any } = {
-      'CVM ID': response.vm_uuid.replace(/-/g, ''),
-      'App ID': response.app_id,
-      'Name': response.name,
-      'Status': response.status,
-      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-      'Created At': new Date(response.created_at).toLocaleString(),
+      'CVM ID': result.vm_uuid,
+      'App ID': result.app_id,
+      'Name': result.name,
+      'Endpoint': result.endpoint,
+      'Created At': new Date(result.created_at).toLocaleString(),
     };
-    if (response.kms_contract_address) tableData['KMS Contract Address'] = response.kms_contract_address;
-    if (response.kms_owner_address) tableData['KMS Owner Address'] = response.kms_owner_address;
+    if (result.kms_contract_address) tableData['KMS Contract Address'] = result.kms_contract_address;
+    if (result.kms_owner_address) tableData['KMS Owner Address'] = result.kms_owner_address;
     logger.keyValueTable(tableData);
   }
+
+  return result;
 }
 
 export const deployCommand = new Command()
@@ -424,7 +426,7 @@ export const deployCommand = new Command()
     rpcUrl?: string;
     json?: boolean;
     debug?: boolean;
-  }) => {
+  }, command: Command) => {
     try {
       // Use the compose file from the first argument if provided, otherwise use the one from options or default to 'docker-compose.yml'
       const finalOptions = {
@@ -437,10 +439,12 @@ export const deployCommand = new Command()
 
       // If no KMS ID is provided, use standard creation
       if (!options.kmsId) {
-        await executeStandardCreation(vmConfig, envs, {
+        const result = await executeStandardCreation(vmConfig, envs, {
           json: options.json,
           debug: options.debug
         });
+        // Store the successful result in the command object
+        setCommandResult(command, result);
         return;
       }
       // Step 2: Provision the CVM
@@ -489,7 +493,7 @@ export const deployCommand = new Command()
       // Handle custom app ID case - fetch AppAuth contract details from KMS
       if (options.customAppId) {
         if (options.json === false) {
-          logger.info(`Using custom App ID: ${options.customAppId}, fetching AppAuth details from KMS...`);
+          logger.info(`Using custom App ID: ${options.customAppId}, fetching DstackApp details from DstackKms...`);
         }
 
         // Use the selected KMS or the first available one
@@ -522,7 +526,7 @@ export const deployCommand = new Command()
         try {
           // Ensure the KMS contract address is valid
           if (!ethers.isAddress(kmsContractAddress)) {
-            throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
+            throw new Error(`Invalid DstackKms contract address: ${kmsContractAddress}`);
           }
 
           // Remove 'app_' prefix if present
@@ -549,11 +553,11 @@ export const deployCommand = new Command()
 
           // Validate the response
           if (!isRegistered) {
-            throw new Error(`App ${customAppId} is not registered in KMS contract ${kmsContractAddress}`);
+            throw new Error(`App ${customAppId} is not registered in DstackKms contract ${kmsContractAddress}`);
           }
 
           if (options.json === false) {
-            logger.info(`Successfully verified AppAuth contract for app ${customAppId}`);
+            logger.info(`Successfully verified DstackApp contract for app ${customAppId}`);
           }
 
           appAuthResult = {
@@ -573,20 +577,30 @@ export const deployCommand = new Command()
         appAuthResult = await handleAppAuthDeployment(deployOptions, wallet, kmsContractAddress, selectedKms.chain_id, rpcUrl);
       }
 
-      // Step 4: Create the final CVM
-      await createFinalCvm(appAuthResult, provisionResponse, envs, teepods, options);
+      // Step 4: Create the final CVM with encrypted environment variables
+      const result = await createFinalCvm(appAuthResult, provisionResponse, envs, teepods, options);
+      
+      // Create a new object with the success flag and spread the result properties
+      const commandResult = { success: true, ...result };
+      
+      // Store the successful result in the command object
+      setCommandResult(command, commandResult);
 
     } catch (error) {
       const errorMessage = `Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`;
+      const errorResult = {
+        success: false,
+        error: errorMessage,
+        ...(options.debug && error instanceof Error && { stack: error.stack })
+      };
+      
+      // Store the error in the command object
+      setCommandError(command, new Error(errorMessage));
+      
       if (options.json !== false) {
-        console.error(JSON.stringify({
-          success: false,
-          error: errorMessage,
-          stack: options.debug && error instanceof Error ? error.stack : undefined
-        }, null, 2));
+        console.error(JSON.stringify(errorResult, null, 2));
       } else {
         logger.error(errorMessage);
       }
-      process.exit(1);
     }
   });

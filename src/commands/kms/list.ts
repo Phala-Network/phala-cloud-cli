@@ -1,13 +1,13 @@
 import { Command } from 'commander';
 import { listKmsInstances } from '../../api/kms';
-import { logger } from '../../utils/logger';
+import { setCommandResult, setCommandError } from '../../utils/commander';
 
 export const listCommand = new Command('list')
   .description('List all available KMS instances')
   .option('--page <number>', 'Page number', '1')
   .option('--page-size <number>', 'Number of items per page', '20')
   .option('--onchain', 'Filter by on-chain KMS instances only')
-  .action(async (options) => {
+  .action(async (options, command: Command) => {
     try {
       const listOptions = {
         page: options.page ? parseInt(options.page, 10) : undefined,
@@ -25,9 +25,12 @@ export const listCommand = new Command('list')
         page_size: options.pageSize ? parseInt(options.pageSize, 10) : 20,
       };
       
+      // Store the result in the command object
+      setCommandResult(command, result);
+      // Output the result for the user
       console.log(JSON.stringify(result, null, 2));
     } catch (error) {
-      logger.error(`Failed to list KMS instances: ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
+      setCommandError(command, error as Error);
+      throw error; // Let the error propagate to be handled by the global error handler
     }
   });
