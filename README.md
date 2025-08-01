@@ -24,6 +24,36 @@ ___
 - Commander.js for CLI interface
 - Zod for runtime validation
 
+## 🔍 Analytics & Error Reporting
+
+To help us improve the CLI and better understand usage patterns, we use [Sentry](https://sentry.io) for error tracking and performance monitoring. This helps us identify and fix issues more quickly.
+
+### What We Collect
+
+- Command execution metrics (success/failure)
+- Error messages and stack traces
+- Command usage without sensitive parameters
+- Command execution time
+
+### Privacy & Security
+
+We take your privacy seriously. The following information is **never** collected or transmitted:
+
+- Sensitive command-line arguments (private keys, passwords, etc.)
+- Secret environment variables
+- File contents
+- Personal or identifying information
+
+### Disabling Analytics
+
+If you prefer to disable analytics, you can set the following environment variable:
+
+```bash
+export SENTRY_ENABLED=false
+# Or for a single command
+SENTRY_ENABLED=false phala deploy
+```
+
 ## 🚀 Quick Start (5 Minutes)
 
 1. **Install Prerequisites**:
@@ -63,7 +93,7 @@ ___
    
    To deploy applications to Phala Cloud, you'll need an API key:
 
-   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, registe [here](https://cloud.phala.network/register?invite=beta) or run `npx phala free` in the terminal.
+   - Visit [Phala Cloud](https://cloud.phala.network/login) to log into your Phala Cloud account. If you do not have an account, registe [here](https://cloud.phala.network/register?invite=beta).
    - After logging in, navigate to the "API Keys" section in your profile
    - Create a new API key with an appropriate name (e.g., "CLI Access")
    - Copy the generated API key - you'll need it for authentication
@@ -192,13 +222,13 @@ Upgrade your deployed applications with new configurations:
 
 ```bash
 # Basic upgrade with new compose file
-phala cvms upgrade <app-id> --compose docker-compose.prod.yml
+phala upgrade <app-id> --compose docker-compose.prod.yml
 
 # Upgrade with new compose file and environment variables and private key
-phala cvms upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
+phala upgrade <app-id> --compose docker-compose.prod.yml --env-file .env.prod --private-key $PRIVATE_KEY
 
 # Interactive upgrade with resource adjustments
-phala cvms upgrade <app-id> --interactive --vcpu 4 --memory 8192 --disk-size 50
+phala upgrade <app-id> --interactive --vcpu 4 --memory 8192 --disk-size 50
 ```
 
 #### Two-Phase Provisioning for On-Chain KMS
@@ -723,6 +753,38 @@ Explore these example applications to understand different use cases for TEE dep
 - **[Web Shell](./examples/webshell/)**: Browser-based secure terminal
 - **[Custom Domain](./examples/custom-domain/)**: Deploy with your own domain name
 - **[Private Docker Image](./examples/private-docker-image-deployment/)**: Deploy using private Docker registries
+
+## 📊 Error Tracking with Sentry
+
+The Phala Cloud CLI includes built-in error tracking using [Sentry](https://sentry.io/). This helps us improve the tool by understanding how it's being used and identifying any issues that may arise.
+
+### What's Being Tracked
+
+- Command execution (without sensitive parameters)
+- Error occurrences with stack traces
+- Basic system information (OS, Node.js version, etc.)
+
+### What's NOT Tracked
+
+- Sensitive information (private keys, passwords, tokens, etc.)
+- Full command line arguments
+- File contents
+- Environment variables
+
+### Configuration
+
+To enable Sentry tracking, add the following to your `.env` file:
+
+```bash
+# Get your DSN from https://sentry.io
+SENTRY_DSN=your_sentry_dsn_here
+SENTRY_ENVIRONMENT=development  # development, staging, production, etc.
+SENTRY_TRACES_SAMPLE_RATE=0.1  # Sample 10% of transactions
+```
+
+### Disabling Sentry
+
+To disable Sentry, simply remove or comment out the `SENTRY_DSN` from your `.env` file.
 
 ## 🛠️ Advanced Features
 

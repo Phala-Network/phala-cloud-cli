@@ -137,7 +137,7 @@ async function gatherDeploymentInputs(options: any, wallet: Wallet): Promise<{ d
 }
 
 async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress: string, initialDeviceId: string, composeHash: string, wallet: Wallet, chainId: number, rpcUrl: string): Promise<AppAuthResult> {
-  const spinner = logger.startSpinner(`Deploying AppAuth instance via KmsAuth factory at ${kmsContractAddress}...`);
+  const spinner = logger.startSpinner(`Deploying DstackApp instance via DstackKms factory at ${kmsContractAddress}...`);
   
   try {
     const chain = defineChain({
@@ -172,14 +172,7 @@ async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress:
     
     spinner.stop(true);
     
-    logger.success('AppAuth instance deployed and registered successfully!');
-
-    logger.keyValueTable({ 
-      'App ID': result.appId, 
-      'App Auth Address': result.appAuthAddress, 
-      'Transaction Hash': result.transactionHash 
-    });
-    
+    logger.success('DstackApp instance deployed and registered successfully!');
     return { 
       appId: result.appId,
       proxyAddress: result.appAuthAddress,
@@ -187,7 +180,7 @@ async function deployDefaultAppAuth(kmsContractAddress: string, deployerAddress:
     };
   } catch (error) {
     spinner.stop(true);
-    logger.error('Failed to deploy AppAuth instance:', error instanceof Error ? error.message : String(error));
+    logger.error('Failed to deploy DstackApp instance:', error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
@@ -198,7 +191,7 @@ export async function handleAppAuthDeployment(options: any, wallet: Wallet, kmsC
   }
 
   if (!kmsContractAddress) {
-    throw new Error('KMS Contract Address is required.');
+    throw new Error('DstackKms Address is required.');
   }
 
   const params = await gatherDeploymentInputs(options, wallet);

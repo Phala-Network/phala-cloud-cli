@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import { createCvm, createCvmOnChainKms, getPubkeyFromCvm, provisionCvm } from '@/src/api/cvms';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
@@ -245,28 +246,32 @@ async function provisionAndLogCvm(vmConfig: any, options: any) {
     throw new Error('Failed to provision CVM for on-chain KMS');
   }
 
+  const result = {
+    app_id: provisionResponse.app_id,
+    device_id: provisionResponse.device_id,
+    compose_hash: provisionResponse.compose_hash,
+    os_image_hash: provisionResponse.os_image_hash,
+    vm_uuid: provisionResponse.vm_uuid,
+    name: provisionResponse.name,
+    status: provisionResponse.status
+  };
+
   if (options.json !== false) {
     console.log(JSON.stringify({
       success: true,
-      data: {
-        app_id: provisionResponse.app_id,
-        device_id: provisionResponse.device_id,
-        compose_hash: provisionResponse.compose_hash,
-        os_image_hash: provisionResponse.os_image_hash,
-        raw: provisionResponse
-      }
+      data: result
     }, null, 2));
   } else {
     logger.success('CVM provisioned successfully!');
     logger.keyValueTable({
-      'App ID': provisionResponse.app_id,
-      'Device ID': provisionResponse.device_id,
-      'Compose Hash': provisionResponse.compose_hash,
-      'OS Image Hash': provisionResponse.os_image_hash,
+      'App ID': result.app_id,
+      'Device ID': result.device_id,
+      'Compose Hash': result.compose_hash,
+      'OS Image Hash': result.os_image_hash
     });
   }
-
-  return provisionResponse;
+  
+  return result;
 }
 
 
@@ -288,15 +293,11 @@ async function executeStandardCreation(vmConfig: any, envs: EnvVar[], options: a
   if (options.json !== false) {
     const jsonOutput: any = {
       success: true,
-      data: {
-        cvm_id: response.vm_uuid.replace(/-/g, ''),
-        app_id: response.app_id,
-        name: response.name,
-        status: response.status,
-        endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-        created_at: response.created_at,
-        raw: response
-      }
+      cvm_id: response.vm_uuid.replace(/-/g, ''),
+      app_id: response.app_id,
+      name: response.name,
+      endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+      created_at: response.created_at
     };
     if (response.kms_contract_address) jsonOutput.data.kms_contract_address = response.kms_contract_address;
     if (response.kms_owner_address) jsonOutput.data.kms_owner_address = response.kms_owner_address;
@@ -316,6 +317,8 @@ async function executeStandardCreation(vmConfig: any, envs: EnvVar[], options: a
     if (response.kms_owner_address) tableData['KMS Owner Address'] = response.kms_owner_address;
     logger.keyValueTable(tableData);
   }
+  
+  return response;
 }
 
 export const provisionCommand = new Command()
@@ -335,30 +338,50 @@ export const provisionCommand = new Command()
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
-  .action(async (options) => {
+  .action(async function(this: Command, options) {
     try {
       // Step 1: Gather CVM configuration
       const { vmConfig, envs } = await gatherCvmConfig(options);
 
+      let result;
       // If no KMS ID is provided, use standard creation
       if (!options.kmsId) {
-        await executeStandardCreation(vmConfig, envs, options);
-        return;
+        result = await executeStandardCreation(vmConfig, envs, options);
+      } else {
+        // Step 2: Provision the CVM with KMS
+        result = await provisionAndLogCvm(vmConfig, options);
       }
-      // Step 2: Provision the CVM
-      await provisionAndLogCvm(vmConfig, options);
-
+      
+      // Set command result for telemetry
+      setCommandResult(this, {
+        success: true,
+        cvmId: result?.vm_uuid,
+        appId: result?.app_id,
+        name: result?.name,
+        status: result?.status,
+        kmsId: options.kmsId || null,
+        timestamp: new Date().toISOString()
+      });
+      
+      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = options.debug && error instanceof Error ? error.stack : undefined;
+      
+      // Set command error for telemetry
+      setCommandError(this, new Error(errorMessage));
+      
       if (options.json !== false) {
         console.error(JSON.stringify({
           success: false,
           error: errorMessage,
-          stack: options.debug && error instanceof Error ? error.stack : undefined
+          stack: errorStack
         }, null, 2));
       } else {
         logger.error(`Failed to create CVM: ${errorMessage}`);
       }
-      process.exit(1);
+      
+      // Don't call process.exit() as it prevents telemetry from being sent
+      throw error;
     }
   });

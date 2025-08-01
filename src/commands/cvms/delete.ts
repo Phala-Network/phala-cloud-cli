@@ -1,6 +1,7 @@
 import { Command } from 'commander';
-import { checkCvmExists, deleteCvm, selectCvm } from '@/src/api/cvms';
+import { deleteCvm } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import inquirer from 'inquirer';
 import { resolveCvmAppId } from '@/src/utils/cvms';
 
@@ -9,9 +10,19 @@ export const deleteCommand = new Command()
   .description('Delete a CVM')
   .argument('[app-id]', 'App ID of the CVM to delete (if not provided, a selection prompt will appear)')
   .option('-f, --force', 'Skip confirmation prompt', false)
-  .action(async (appId, options) => {
+  .action(async function(this: Command, appId, options) {
+    // Initialize telemetry data
+    const telemetryData: any = {
+      timestamp: new Date().toISOString(),
+      forceDelete: options.force || false,
+      confirmed: false,
+      appId: '',
+      success: false
+    };
+
     try {
       const resolvedAppId = await resolveCvmAppId(appId);
+      telemetryData.appId = `${resolvedAppId}`;
       
       // Confirm deletion unless force option is used
       if (!options.force) {
@@ -24,10 +35,19 @@ export const deleteCommand = new Command()
           },
         ]);
         
+        telemetryData.confirmed = confirm;
+        
         if (!confirm) {
           logger.info('Deletion cancelled');
+          setCommandResult(this, {
+            ...telemetryData,
+            success: false,
+            message: 'Deletion cancelled by user'
+          });
           return;
         }
+      } else {
+        telemetryData.confirmed = true;
       }
       
       // Delete the CVM
@@ -36,15 +56,25 @@ export const deleteCommand = new Command()
       spinner.stop(true);
       
       if (!success) {
-        logger.error(`Failed to delete CVM app_${resolvedAppId}`);
-        process.exit(1);
+        const errorMessage = `Failed to delete CVM app_${resolvedAppId}`;
+        setCommandError(this, new Error(errorMessage));
+        logger.error(errorMessage);
+        throw new Error(errorMessage);
       }
 
-		logger.success(`CVM app_${resolvedAppId} deleted successfully`);
-	} catch (error) {
-		logger.error(
-			`Failed to delete CVM: ${error instanceof Error ? error.message : String(error)}`
-		);
-		process.exit(1);
-	}
+      // Update telemetry data for successful deletion
+      telemetryData.success = true;
+      setCommandResult(this, {
+        ...telemetryData,
+        message: 'CVM deleted successfully'
+      });
+      
+      logger.success(`CVM app_${resolvedAppId} deleted successfully`);
+    } catch (error) {
+      const errorMessage = `Failed to delete CVM: ${error instanceof Error ? error.message : String(error)}`;
+      setCommandError(this, new Error(errorMessage));
+      logger.error(errorMessage);
+      // Don't call process.exit() to ensure telemetry is sent
+      throw error;
+    }
   }); 

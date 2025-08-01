@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import { logger } from '@/src/utils/logger';
 import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
 import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
@@ -83,7 +84,7 @@ async function getAndEncryptEnvs(options: any): Promise<string> {
 }
 
 async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
-  logger.info(`Using custom App ID: ${options.customAppId}, fetching AppAuth details from KMS...`);
+  logger.info(`Using custom App ID: ${options.customAppId}, fetching DstackApp details from DstackKms...`);
   let kmsInfo;
   let kmsContractAddress;
   let appAuthContractAddress;
@@ -103,7 +104,7 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   }
 
   kmsContractAddress = kmsInfo.kms_contract_address;
-  logger.info(`Using KMS contract address: ${kmsContractAddress} from KMS ID: ${options.kmsId}`);
+  logger.info(`Using DstackKms contract address: ${kmsContractAddress} from KMS ID: ${options.kmsId}`);
 
   // Use the selected KMS
   const kms = kmsInfo;
@@ -135,7 +136,7 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   try {
     // Ensure the KMS contract address is valid
     if (!ethers.isAddress(kmsContractAddress)) {
-      throw new Error(`Invalid KMS contract address: ${kmsContractAddress}`);
+      throw new Error(`Invalid DstackKms contract address: ${kmsContractAddress}`);
     }
 
     // Remove 'app_' prefix if present
@@ -162,10 +163,10 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
 
     // Validate the response
     if (!isRegistered) {
-      throw new Error(`App ${appAddress} is not registered in KMS contract ${kmsContractAddress}`);
+      throw new Error(`App ${appAddress} is not registered in DstackKms contract ${kmsContractAddress}`);
     }
 
-    logger.info(`Successfully verified AppAuth contract for app ${appAddress}`);
+    logger.info(`Successfully verified DstackApp contract for app ${appAddress}`);
     appAuthContractAddress = appAddress;
 
   } catch (error) {
@@ -181,32 +182,30 @@ async function buildVmConfig(options: any, encryptedEnv: string): Promise<any> {
   };
 }
 
-function displayProvisionResult(response: any, options: any): void {
+function displayProvisionResult(response: any, options: any): any {
   logger.success('CVM provisioned successfully');
   logger.break();
   if (options.json !== false) {
     // Output as JSON for script consumption
     const jsonOutput = {
       success: true,
-      data: {
-        cvm_id: response.vm_uuid.replace(/-/g, ''),
-        name: response.name,
-        status: response.status,
-        app_id: response.app_id,
-        endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
-      }
+      cvm_id: response.vm_uuid.replace(/-/g, ''),
+      name: response.name,
+      app_id: response.app_id,
+      endpoint: `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`
     };
     console.log(JSON.stringify(jsonOutput, null, 2));
+    return response;
   } else {
     // Human-readable output
     const tableData = {
       'CVM ID': response.vm_uuid.replace(/-/g, ''),
       'Name': response.name,
-      'Status': response.status,
       'App ID': response.app_id,
-      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`,
+      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${response.vm_uuid.replace(/-/g, '')}`
     };
     logger.keyValueTable(tableData);
+    return response;
   }
 }
 
@@ -224,7 +223,7 @@ export const commitProvisionCommand = new Command()
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
-  .action(async (appId: string, composeHash: string, options) => {
+  .action(async function(this: Command, appId: string, composeHash: string, options) {
     try {
       const encryptedEnv = await getAndEncryptEnvs(options);
       const vmConfig = await buildVmConfig({ ...options, appId, composeHash }, encryptedEnv);
@@ -241,20 +240,35 @@ export const commitProvisionCommand = new Command()
       }
 
       displayProvisionResult(response, options);
-
+      
+      // Set command result for telemetry
+      setCommandResult(this, {
+        success: true,
+        cvmId: response.vm_uuid,
+        appId: response.app_id,
+        name: response.name,
+        status: response.status,
+        kmsId: options.kmsId || null,
+        timestamp: new Date().toISOString()
+      });
+      
+      return;
     } catch (error) {
-      // Spinners are stopped within their respective functions on success or failure.
-      // We just need to log the final error here.
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = options.debug && error instanceof Error ? error.stack : undefined;
+      
+      // Set command error for telemetry
+      setCommandError(this, new Error(errorMessage));
+      
       if (options.json !== false) {
         console.error(JSON.stringify({
           success: false,
           error: errorMessage,
-          stack: options.debug && error instanceof Error ? error.stack : undefined
+          stack: errorStack
         }, null, 2));
       } else {
         logger.error(`Failed to provision CVM: ${errorMessage}`);
-        if (options.debug && error.stack) {
+        if (options.debug && errorStack) {
           logger.error(error.stack);
         }
       }

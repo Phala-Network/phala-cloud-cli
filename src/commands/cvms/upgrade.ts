@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { setCommandResult, setCommandError } from '@/src/utils/commander';
 import { getCvmByCvmId, getCvmComposeFile, updateCvmCompose, updatePatchCvmCompose } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'node:fs';
@@ -15,8 +16,7 @@ import { getChainConfig, getNetworkConfig } from '@/src/utils/blockchain';
 async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   if (!cvmId) {
     if (!options.interactive) {
-      logger.info('CVM ID is required. Use --app-id to enter it');
-      process.exit(1);
+      throw new Error('CVM ID is required. Use --app-id to enter it');
     } else {
       const { id } = await inquirer.prompt([{ type: 'input', name: 'id', message: 'Enter the CVM ID to update:' }]);
       cvmId = id;
@@ -28,8 +28,7 @@ async function gatherUpdateInputs(cvmId: string, options: any): Promise<any> {
   spinner.stop(true);
 
   if (!currentCvm) {
-    logger.error(`CVM with CVM ID ${cvmId} not found`);
-    process.exit(1);
+    throw new Error(`CVM with CVM ID ${cvmId} not found`);
   }
 
   if (!options.compose) {
@@ -210,12 +209,9 @@ async function registerComposeHash(
 
     if (options?.json !== false) {
       console.log(JSON.stringify({
-        success: true,
-        data: {
-          transaction_hash: tx.hash,
-          compose_hash_event: composeHashEvent,
-          event_found: !!log
-        }
+        transaction_hash: tx.hash,
+        compose_hash_event: composeHashEvent,
+        event_found: !!log
       }, null, 2));
     } else {
       logger.success('Compose hash added successfully!');
@@ -237,26 +233,31 @@ async function applyUpdate(
   composeHash: string,
   encryptedEnv: string,
   options: { json?: boolean } = {}
-): Promise<void> {
+): Promise<{ cvmId: string; composeHash: string; message: string }> {
   const spinner = logger.startSpinner('Applying update...');
   try {
     const payload = { compose_hash: composeHash, encrypted_env: encryptedEnv };
     const response = await updatePatchCvmCompose(cvmId, payload);
     spinner.stop(true);
 
+    const result = {
+      cvmId,
+      composeHash,
+      message: 'Update applied successfully'
+    };
+
     if (response === null) {
       if (options?.json !== false) {
         console.log(JSON.stringify({
           success: true,
-          data: {
-            message: 'Update applied successfully',
-            cvm_id: cvmId,
-            compose_hash: composeHash
-          }
+          message: result.message,
+          cvm_id: cvmId,
+          compose_hash: composeHash
         }, null, 2));
       } else {
-        logger.success('Update applied successfully!');
+        logger.success(result.message);
       }
+      return result;
     } else {
       const errorMessage = `Failed to apply update: ${JSON.stringify(response.detail, null, 2)}`;
       if (options?.json !== false) {
@@ -267,7 +268,7 @@ async function applyUpdate(
       } else {
         logger.error(errorMessage);
       }
-      process.exit(1);
+      throw new Error(errorMessage);
     }
   } catch (error) {
     spinner.stop(false);
@@ -287,100 +288,136 @@ export const upgradeCommand = new Command()
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
   .option('--json', 'Output in JSON format (default: true)', true)
   .option('--no-json', 'Disable JSON output format')
-  .action(async (appId, options) => {
+  .action(async function(this: Command, appId, options) {
     try {
       const { cvmId: finalCvmId, currentCvm, ...gatheredOptions } = await gatherUpdateInputs(appId, options);
+      const cvmUuid = currentCvm.vm_uuid.replace(/-/g, '');
+      const dashboardUrl = `${CLOUD_URL}/dashboard/cvms/${cvmUuid}`;
+      
+      const telemetryData: any = {
+        cvmId: cvmUuid,
+        appId: finalCvmId,
+        timestamp: new Date().toISOString(),
+        hasKms: !!currentCvm.kms_info,
+        kmsChainId: currentCvm.kms_info?.chain_id,
+        kmsContractAddress: currentCvm.kms_info?.kms_contract_address
+      };
 
-      const { composeString, encryptedEnv } = await prepareUpdatePayload(gatheredOptions, currentCvm);
-      // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
-      await deleteSimulatorEndpointEnv();
-      // Only show registry info in non-JSON mode
-      if (options.json === false) {
-        if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
-          logger.info("🔐 Using private DockerHub registry credentials...");
-        } else if (process.env.DSTACK_AWS_ACCESS_KEY_ID && process.env.DSTACK_AWS_SECRET_ACCESS_KEY && process.env.DSTACK_AWS_REGION && process.env.DSTACK_AWS_ECR_REGISTRY) {
-          logger.info(`🔐 Using private AWS ECR registry: ${process.env.DSTACK_AWS_ECR_REGISTRY}`);
-        } else {
-          logger.info("🔐 Using public DockerHub registry...");
-        }
-      }
-
-      const spinner = logger.startSpinner(`Updating CVM ${finalCvmId}`);
-      const currentComposeFile = await getCvmComposeFile(finalCvmId);
-      currentComposeFile.docker_compose_file = composeString;
-      currentComposeFile.allowed_envs = gatheredOptions.allowedEnvs;
-      const response = await updateCvmCompose(finalCvmId, currentComposeFile);
-      spinner.stop(true);
-
-      if (!response || !response.compose_hash) {
-        logger.error('Failed to initiate CVM update or get compose hash.');
-        process.exit(1);
-      }
-
-      if (options.json !== false) {
-        console.log(JSON.stringify({
-          success: true,
-          data: {
-            cvm_id: currentCvm.vm_uuid.replace(/-/g, ''),
-            app_id: finalCvmId,
-            compose_hash: response.compose_hash,
-            dashboard_url: `${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`,
-            raw: response
+      try {
+        const { composeString, encryptedEnv } = await prepareUpdatePayload(gatheredOptions, currentCvm);
+        // Delete DSTACK_SIMULATOR_ENDPOINT environment variable
+        await deleteSimulatorEndpointEnv();
+        
+        // Only show registry info in non-JSON mode
+        if (options.json === false) {
+          if (process.env.DSTACK_DOCKER_USERNAME && process.env.DSTACK_DOCKER_PASSWORD) {
+            logger.info("🔐 Using private DockerHub registry...");
+          } else if (process.env.DSTACK_AWS_ACCESS_KEY_ID && process.env.DSTACK_AWS_SECRET_ACCESS_KEY && process.env.DSTACK_AWS_REGION && process.env.DSTACK_AWS_ECR_REGISTRY) {
+            logger.info(`🔐 Using private AWS ECR registry: ${process.env.DSTACK_AWS_ECR_REGISTRY}`);
+          } else {
+            logger.info("🔐 Using public DockerHub registry...");
           }
-        }, null, 2));
-      } else {
-        logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
-        logger.info(`Dashboard: ${CLOUD_URL}/dashboard/cvms/${currentCvm.vm_uuid.replace(/-/g, '')}`);
-      }
-
-      if (currentCvm.kms_info) {
-        // Check for private key in options or environment variables
-        const privateKey = options.privateKey || process.env.PRIVATE_KEY;
-        if (!privateKey) {
-          throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
         }
-        
-        // Get the chain config and determine the RPC URL with proper fallback
-        const chain = getChainConfig(currentCvm.kms_info.chain_id);
-        const rpcUrl = options.rpcUrl || currentCvm.kms_info.url || chain.rpcUrls.default.http[0];
-        
-        const { wallet } = await getNetworkConfig({ privateKey, rpcUrl }, currentCvm.kms_info.chain_id);
+
+        const spinner = logger.startSpinner(`Updating CVM ${finalCvmId}`);
+        const currentComposeFile = await getCvmComposeFile(finalCvmId);
+        currentComposeFile.docker_compose_file = composeString;
+        currentComposeFile.allowed_envs = gatheredOptions.allowedEnvs;
+        const response = await updateCvmCompose(finalCvmId, currentComposeFile);
+        spinner.stop(true);
+
+        if (!response || !response.compose_hash) {
+          throw new Error('Failed to initiate CVM update or get compose hash');
+        }
+
+        // Update telemetry data with compose hash
+        telemetryData.composeHash = response.compose_hash;
+        telemetryData.dashboardUrl = dashboardUrl;
+
         if (options.json !== false) {
           console.log(JSON.stringify({
-            success: true,
-            data: {
-              wallet_address: wallet.address
-            }
+            cvm_id: cvmUuid,
+            app_id: finalCvmId,
+            compose_hash: response.compose_hash,
+            dashboard_url: dashboardUrl,
+            raw: response
           }, null, 2));
         } else {
-          logger.info(`Using wallet: ${wallet.address}`);
+          logger.success(`CVM update has been provisioned. New compose hash: ${response.compose_hash}`);
+          logger.info(`Dashboard: ${dashboardUrl}`);
         }
-        if (options.json === false) {
-          logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
-        }
-        await registerComposeHash(
-          response.compose_hash, 
-          appId, 
-          wallet, 
-          currentCvm.kms_info.kms_contract_address, 
-          rpcUrl, 
-          currentCvm.kms_info.chain_id,
-          { json: options.json }
-        );
-      }
 
-      await applyUpdate(finalCvmId, response.compose_hash, encryptedEnv, { json: options.json });
+        if (currentCvm.kms_info) {
+          // Check for private key in options or environment variables
+          const privateKey = options.privateKey || process.env.PRIVATE_KEY;
+          if (!privateKey) {
+            throw new Error('Private key is required for on-chain KMS operations. Please provide it via --private-key or PRIVATE_KEY environment variable');
+          }
+          
+          // Get the chain config and determine the RPC URL with proper fallback
+          const chain = getChainConfig(currentCvm.kms_info.chain_id);
+          const rpcUrl = options.rpcUrl || currentCvm.kms_info.url || chain.rpcUrls.default.http[0];
+          
+          const { wallet } = await getNetworkConfig({ privateKey, rpcUrl }, currentCvm.kms_info.chain_id);
+          
+          // Add wallet info to telemetry
+          telemetryData.walletAddress = wallet.address;
+          
+          if (options.json !== false) {
+            console.log(JSON.stringify({
+              wallet_address: wallet.address
+            }, null, 2));
+          } else {
+            logger.info(`Using wallet: ${wallet.address}`);
+          }
+          
+          if (options.json === false) {
+            logger.info('This CVM uses on-chain KMS. Registering the new compose hash...');
+          }
+          
+          await registerComposeHash(
+            response.compose_hash, 
+            appId, 
+            wallet, 
+            currentCvm.kms_info.kms_contract_address, 
+            rpcUrl, 
+            currentCvm.kms_info.chain_id,
+            { json: options.json }
+          );
+        }
+
+        const applyResult = await applyUpdate(finalCvmId, response.compose_hash, encryptedEnv, { json: options.json });
+        
+        // Set command result for telemetry
+        setCommandResult(this, {
+          success: true,
+          ...telemetryData,
+          message: 'CVM upgrade completed successfully',
+          ...applyResult
+        });
+        
+        // Don't return the result to match Commander's expected void return type
+      } catch (error) {
+        // Set command error for telemetry
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setCommandError(this, new Error(errorMessage));
+        throw error;
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = options.debug && error instanceof Error ? error.stack : undefined;
+      
       if (options.json !== false) {
         console.error(JSON.stringify({
           success: false,
           error: errorMessage,
-          stack: options.debug && error instanceof Error ? error.stack : undefined
+          stack: errorStack
         }, null, 2));
       } else {
         logger.error(`Failed to upgrade CVM: ${errorMessage}`);
       }
-      process.exit(1);
+      
+      // Don't call process.exit() as it prevents telemetry from being sent
+      throw error;
     }
   }); 
