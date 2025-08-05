@@ -10,10 +10,8 @@ export const statusCommand = new Command()
   .option('-d, --debug', 'Enable debug output')
   .action(async (options) => {
     try {
-      // Enable debug mode if requested
-      if (options.debug) {
-        process.env.DEBUG = 'true';
-      }
+      // Check debug flag from either options or environment
+      const debug = options.debug || process.env.DEBUG?.toLowerCase() === 'true';
       
       const apiKey = await getApiKey();
       
@@ -22,7 +20,9 @@ export const statusCommand = new Command()
         return;
       }
       
-      logger.debug(`Using API key: ${apiKey.substring(0, 5)}...`);
+      if (debug) {
+        logger.debug(`Using API key: ${apiKey.substring(0, 5)}...`);
+      }
       
       try {
         const userInfo = await getUserInfo();
@@ -46,7 +46,7 @@ export const statusCommand = new Command()
         console.error('Authentication failed. Your API key may be invalid or expired.');
         console.log('Please set a new API key with "phala auth login"');
         
-        if (options.debug) {
+        if (debug) {
           logger.debug(`Error details: ${error instanceof Error ? error.message : String(error)}`);
         }
       }

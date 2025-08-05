@@ -5,10 +5,8 @@ import { logger } from '../utils/logger.js';
 
 export async function checkStatus(options: { debug?: boolean; json?: boolean } = {}) {
   try {
-    // Enable debug mode if requested
-    if (options.debug) {
-      process.env.DEBUG = 'true';
-    }
+    // Check debug flag from either options or environment
+    const debug = options.debug || process.env.DEBUG?.toLowerCase() === 'true';
     
     const apiKey = await getApiKey();
     
@@ -17,7 +15,9 @@ export async function checkStatus(options: { debug?: boolean; json?: boolean } =
       return;
     }
     
-    logger.debug(`Using API key: ${apiKey.substring(0, 5)}...`);
+    if (debug) {
+      logger.debug(`Using API key: ${apiKey.substring(0, 5)}...`);
+    }
     
     try {
       const userInfo = await getUserInfo();
@@ -41,7 +41,7 @@ export async function checkStatus(options: { debug?: boolean; json?: boolean } =
       console.error('Authentication failed. Your API key may be invalid or expired.');
       console.log('Please set a new API key with "phala auth login"');
       
-      if (options.debug) {
+      if (debug) {
         logger.debug(`Error details: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
@@ -56,6 +56,4 @@ export const statusCommand = new Command()
   .description('Check Phala Cloud status and authentication')
   .option('-j, --json', 'Output in JSON format')
   .option('-d, --debug', 'Enable debug output')
-  .action(async (options) => {
-    await checkStatus(options);
-  });
+  .action(checkStatus);
