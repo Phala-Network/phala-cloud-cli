@@ -1,5 +1,4 @@
 // API URLs, CLOUD_API_URL now deprecated, use sdk instead
-export const CLOUD_API_URL = process.env.PHALA_CLOUD_API_PREFIX || 'https://cloud-api.phala.network/api/v1';
 export const CLOUD_URL = process.env.CLOUD_URL || 'https://cloud.phala.network';
 
 // CLI Version
