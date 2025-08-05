@@ -6,8 +6,6 @@ import { dockerCommands } from "./commands/docker";
 import { simulatorCommands } from "./commands/simulator";
 import { logger } from "./utils/logger";
 import { cvmsCommand } from "./commands/cvms";
-import { joinCommand } from "./commands/join";
-import { demoCommands } from "./commands/demo";
 import { nodesCommand } from "./commands/nodes";
 
 process.on("SIGINT", () => process.exit(0));
@@ -25,8 +23,6 @@ async function main() {
 			.addCommand(cvmsCommand)
 			.addCommand(dockerCommands)
 			.addCommand(simulatorCommands)
-			.addCommand(demoCommands)
-			.addCommand(joinCommand)
 			.addCommand(nodesCommand);
 
 	program.parse(process.argv);
