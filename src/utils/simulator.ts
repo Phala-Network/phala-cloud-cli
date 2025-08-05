@@ -175,7 +175,7 @@ function isSocketPathTooLong(socketPath: string): boolean {
  * Get the PID of the running simulator process
  * @returns PID as number or null if not running
  */
-function getSimulatorPid(): number | null {
+export function getSimulatorPid(): number | null {
   try {
     const pidFile = getPidFilePath();
     if (fs.existsSync(pidFile)) {
@@ -200,10 +200,12 @@ function getSimulatorPid(): number | null {
  * Save the simulator process PID to a file
  * @param pid Process ID to save
  */
-function saveSimulatorPid(pid: number): void {
+function saveSimulatorPid(pid: number, verbose?: boolean): void {
   try {
     const pidFilePath = getPidFilePath();
-    logger.info(`Saving simulator PID ${pid} to: ${pidFilePath}`);
+    if (verbose) {
+      logger.info(`Saving simulator PID ${pid} to: ${pidFilePath}`);
+    }
     fs.writeFileSync(pidFilePath, pid.toString(), 'utf-8');
   } catch (error) {
     logger.warn('Failed to save simulator PID:', error);
@@ -214,6 +216,7 @@ export async function runSimulator(options: {
   background?: boolean;
   logToFile?: boolean;
   logFilePath?: string;
+  verbose?: boolean;
 } = {}): Promise<ReturnType<typeof spawn>> {
   try {
     const platform = getPlatform();
@@ -250,9 +253,11 @@ export async function runSimulator(options: {
     // Start the simulator
     const executableName = platform === 'win32' ? 'dstack-simulator.exe' : './dstack-simulator';
     
-    // Log the socket path for debugging
-    if (platform !== 'win32') {
-      logger.info(`Using socket path: ${platformConfig.socketPath}`);
+    // Only log verbose information if verbose flag is set
+    if (options.verbose) {
+      if (platform !== 'win32') {
+        logger.info(`Using socket path: ${platformConfig.socketPath}`);
+      }
     }
     
     // Default options
@@ -268,10 +273,14 @@ export async function runSimulator(options: {
       if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
       }
-      logger.info(`Simulator logs will be written to: ${runOptions.logFilePath}`);
+      if (options.verbose) {
+        logger.info(`Simulator logs will be written to: ${runOptions.logFilePath}`);
+      }
     }
     
-    logger.info(`Starting simulator with: ${executableName}`);
+    if (options.verbose) {
+      logger.info(`Starting simulator with: ${executableName}`);
+    }
     
     // Configure stdio based on logging preferences
     const stdio: StdioOptions = runOptions.logToFile 
@@ -304,13 +313,15 @@ export async function runSimulator(options: {
     
     // Save the PID for later reference
     if (simulatorProcess.pid) {
-      saveSimulatorPid(simulatorProcess.pid);
+      saveSimulatorPid(simulatorProcess.pid, options.verbose);
     }
     
     // If running in background, unref to allow the parent process to exit
     if (runOptions.background) {
       simulatorProcess.unref();
-      logger.success('Simulator is running in the background');
+      if (options.verbose) {
+        logger.success('Simulator is running in the background');
+      }
     }
     
     await setSimulatorEndpointEnv();
@@ -330,18 +341,31 @@ export async function ensureSimulatorRunning(options: {
   background?: boolean;
   logToFile?: boolean;
   logFilePath?: string;
+  verbose?: boolean;
 } = {}): Promise<ReturnType<typeof spawn>> {
   if (!isSimulatorInstalled()) {
-    logger.info('Simulator not installed. Installing now...');
-    await installSimulator((message) => logger.info(`Installation progress: ${message}`));
+    if (options.verbose) {
+      logger.info('Simulator not installed. Installing now...');
+      await installSimulator((message) => {
+        if (options.verbose) {
+          logger.info(`Installation progress: ${message}`);
+        }
+      });
+    } else {
+      await installSimulator();
+    }
   }
   
   if (await isSimulatorRunning()) {
-    logger.info('Simulator is already running');
+    if (options.verbose) {
+      logger.info('Simulator is already running');
+    }
     return null;
   }
   
-  logger.info('Starting simulator...');
+  if (options.verbose) {
+    logger.info('Starting simulator...');
+  }
   return await runSimulator(options);
 }
 
@@ -556,11 +580,20 @@ export async function setSimulatorEndpointEnv(endpoint?: string): Promise<string
   try {
     const simulatorEndpoint = getSimulatorEndpoint();
     // Set for the current Node.js process
-    const envEndpoint  =  (endpoint) ? endpoint : simulatorEndpoint;
+    const envEndpoint = endpoint || simulatorEndpoint;
+    
+    // Set both environment variables
     await execSync(`export DSTACK_SIMULATOR_ENDPOINT=${envEndpoint}`);
-    logger.success(`Setting DSTACK_SIMULATOR_ENDPOINT=${envEndpoint} for current process`);
-        
-    return endpoint;
+    
+    // For TAPPD compatibility, use the same socket path but with tappd.sock
+    const tappdEndpoint = envEndpoint.replace(/dstack\.sock$/, 'tappd.sock');
+    await execSync(`export TAPPD_SIMULATOR_ENDPOINT=${tappdEndpoint}`);
+    
+    logger.success('Setting environment for current process...');
+    logger.success(`  DSTACK_SIMULATOR_ENDPOINT=${envEndpoint}`);
+    logger.success(`  TAPPD_SIMULATOR_ENDPOINT=${tappdEndpoint}`);
+    
+    return envEndpoint;
   } catch (error) {
     logger.error('Error setting simulator endpoint environment variable:', error);
     throw new Error(`Failed to set simulator endpoint: ${error}`);
@@ -568,11 +601,17 @@ export async function setSimulatorEndpointEnv(endpoint?: string): Promise<string
 }
 
 /**
- * Deletes the DSTACK_SIMULATOR_ENDPOINT environment variable
+ * Deletes the simulator endpoint environment variables
  * @returns boolean indicating if deletion was successful
  */
 export async function deleteSimulatorEndpointEnv(): Promise<boolean> {
-    await execSync('unset DSTACK_SIMULATOR_ENDPOINT');
-    logger.debug('Deleted DSTACK_SIMULATOR_ENDPOINT from current process');
-    return true;
+    try {
+        await execSync('unset DSTACK_SIMULATOR_ENDPOINT');
+        await execSync('unset TAPPD_SIMULATOR_ENDPOINT');
+        logger.debug('Deleted simulator endpoint environment variables from current process');
+        return true;
+    } catch (error) {
+        logger.warn('Error while unsetting simulator endpoint environment variables:', error);
+        return false;
+    }
 }

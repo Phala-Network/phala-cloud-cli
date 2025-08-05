@@ -160,15 +160,44 @@ Manage Phala Confidential Virtual Machines (CVMs).
 
 ### `phala simulator`
 
-TEE simulator commands.
+TEE simulator commands. When run without subcommands, shows the current status of the simulator.
 
 #### Subcommands:
 
 - **`start`**: Start the TEE simulator
   - Options:
     - `-p, --port <port>`: Port to bind the simulator to (default: 8000)
+    - `-v, --verbose`: Enable verbose output
 
 - **`stop`**: Stop the TEE simulator
+
+#### Usage Examples:
+
+Check simulator status:
+```bash
+phala simulator
+```
+
+Start the simulator:
+```bash
+phala simulator start
+```
+
+Start with verbose output:
+```bash
+phala simulator start --verbose
+```
+
+Stop the simulator:
+```bash
+phala simulator stop
+```
+
+When the simulator is running, you'll need to set these environment variables to use it:
+```bash
+export DSTACK_SIMULATOR_ENDPOINT=/path/to/dstack.sock
+export TAPPD_SIMULATOR_ENDPOINT=/path/to/tappd.sock
+```
 
 ## Examples
 
