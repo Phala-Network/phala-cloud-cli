@@ -339,7 +339,15 @@ phala docker generate --image my-tee-app --tag v1.0.0 --env-file ./.env
 
 ### TEE Simulator Commands
 
-Commands for managing the local TEE simulator for development and testing.
+Commands for managing the local TEE simulator for development and testing. When run without subcommands, shows the current status of the simulator.
+
+#### Check Status
+
+```bash
+phala simulator
+```
+
+Shows the current status of the TEE simulator, including the process ID and endpoint information if running.
 
 #### Start Simulator
 
@@ -352,10 +360,16 @@ Start the TEE simulator locally for development and testing.
 **Options:**
 
 - `-p, --port <port>`: Port to bind the simulator to (default: 8000)
+- `-v, --verbose`: Enable verbose output
 
-**Example:**
+**Examples:**
+
 ```bash
+# Start with default options
 phala simulator start
+
+# Start with verbose output
+phala simulator start --verbose
 ```
 
 #### Stop Simulator
@@ -367,9 +381,21 @@ phala simulator stop
 Stop the running TEE simulator.
 
 **Example:**
+
 ```bash
 phala simulator stop
 ```
+
+#### Environment Variables
+
+When the simulator is running, you'll need to set these environment variables to use it:
+
+```bash
+export DSTACK_SIMULATOR_ENDPOINT=/path/to/dstack.sock
+export TAPPD_SIMULATOR_ENDPOINT=/path/to/tappd.sock
+```
+
+These variables will be automatically displayed when you run `phala simulator` while the simulator is running.
 
 ### Cloud Virtual Machine (CVM) Commands
 
