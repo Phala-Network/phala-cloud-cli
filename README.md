@@ -243,18 +243,21 @@ phala auth logout
 #### Status
 
 ```bash
-phala auth status [options]
+phala status [options]
 ```
 
-Check your authentication status with Phala Cloud. Displays user information in a table format.
+Check your authentication status with Phala Cloud. Displays user information including API endpoint, username, and current workspace.
+
+> **Note**: `phala auth status` is still available for backward compatibility, but it's recommended to use `phala status` instead.
 
 **Options:**
 - `-j, --json`: Output in JSON format
+- `-d, --debug`: Enable debug output
 
 **Example:**
 ```bash
-phala auth status
-phala auth status --json
+phala status
+phala status --json
 ```
 
 ### Docker Management Commands
