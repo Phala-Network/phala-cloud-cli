@@ -9,7 +9,7 @@ import { z } from 'zod';
  */
 export async function getTeepods(): Promise<TeepodResponse> {
   try {
-    const response = await apiClient.get<TeepodResponse>(API_ENDPOINTS.TEEPODS);
+    const response = await (await apiClient).get<TeepodResponse>(API_ENDPOINTS.TEEPODS);
     const parsedResponse = teepodResponseSchema.parse(response);
     return parsedResponse;
   } catch (error) {
@@ -37,7 +37,7 @@ export async function getTeepodImages(teepodId: string): Promise<Image[]> {
     }
     
     // Fallback to the original implementation
-    const response = await apiClient.get<Image[]>(API_ENDPOINTS.TEEPOD_IMAGES(teepodId));
+    const response = await (await apiClient).get<Image[]>(API_ENDPOINTS.TEEPOD_IMAGES(teepodId));
     return z.array(imageSchema).parse(response);
   } catch (error) {
     throw new Error(`Failed to get TEEPod images: ${error instanceof Error ? error.message : String(error)}`);
