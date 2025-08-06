@@ -25,6 +25,7 @@ import type {
 } from './types';
 import inquirer from 'inquirer';
 import { z } from 'zod';
+import { FetchError } from 'ofetch';
 
 /**
  * Get all CVMs for the current user
@@ -347,6 +348,9 @@ export async function replicateCvm(
     );
     return replicateCvmResponseSchema.parse(response);
   } catch (error) {
+    if (error instanceof FetchError) {
+        throw new Error(error.response?._data.detail);
+    }
     throw new Error(
       `Failed to replicate CVM: ${error instanceof Error ? error.message : String(error)}`
     );
