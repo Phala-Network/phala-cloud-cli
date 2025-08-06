@@ -22,7 +22,7 @@ function safeStringify(obj: any): string {
 export async function getUserInfo(): Promise<GetUserInfoResponse> {
   try {
     logger.debug(`Fetching user info from ${API_ENDPOINTS.USER_INFO}`);
-    const response = await (await apiClient).get<any>(API_ENDPOINTS.USER_INFO);
+    const response = await apiClient.get<any>(API_ENDPOINTS.USER_INFO);
     logger.debug(`Received response: ${safeStringify(response)}`);
     
     // Try to parse the response with the schema

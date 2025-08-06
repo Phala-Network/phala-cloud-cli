@@ -32,7 +32,7 @@ import { z } from 'zod';
  */
 export async function getCvms(): Promise<CvmInstance[]> {
   try {
-    const response = await (await apiClient).get<CvmInstance[]>(API_ENDPOINTS.CVMS(0));
+    const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(0));
     return z.array(cvmInstanceSchema).parse(response);
   } catch (error) {
     throw new Error(`Failed to get CVMs: ${error instanceof Error ? error.message : String(error)}`);
@@ -79,7 +79,7 @@ export async function checkCvmExists(appId: string): Promise<string> {
  */
 export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdResponse> {
   try {
-    const response = await (await apiClient).get<GetCvmByAppIdResponse>(API_ENDPOINTS.CVM_BY_APP_ID(appId));
+    const response = await apiClient.get<GetCvmByAppIdResponse>(API_ENDPOINTS.CVM_BY_APP_ID(appId));
     return getCvmByAppIdResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to get CVM by App ID: ${error instanceof Error ? error.message : String(error)}`);
@@ -93,7 +93,7 @@ export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdRespons
  */
 export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFromCvmResponse> {
   try {
-    const response = await (await apiClient).post<GetPubkeyFromCvmResponse>(API_ENDPOINTS.CVM_PUBKEY, vmConfig);
+    const response = await apiClient.post<GetPubkeyFromCvmResponse>(API_ENDPOINTS.CVM_PUBKEY, vmConfig);
     return getPubkeyFromCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to get pubkey from CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -107,7 +107,7 @@ export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFro
  */
 export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkResponse> {
   try {
-    const response = await (await apiClient).get<GetCvmNetworkResponse>(API_ENDPOINTS.CVM_NETWORK(appId));
+    const response = await apiClient.get<GetCvmNetworkResponse>(API_ENDPOINTS.CVM_NETWORK(appId));
     return getCvmNetworkResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to get network information for CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -121,7 +121,7 @@ export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkRespons
  */
 export async function createCvm(vmConfig: VMConfig): Promise<PostCvmResponse> {
   try {
-    const response = await (await apiClient).post<PostCvmResponse>(API_ENDPOINTS.CVM_FROM_CONFIGURATION, vmConfig);
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_FROM_CONFIGURATION, vmConfig);
     return postCvmResponseSchema.parse(response);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -140,7 +140,7 @@ export async function createCvm(vmConfig: VMConfig): Promise<PostCvmResponse> {
  */
 export async function startCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    const response = await (await apiClient).post<PostCvmResponse>(API_ENDPOINTS.CVM_START(appId));
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_START(appId));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to start CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -154,7 +154,7 @@ export async function startCvm(appId: string): Promise<PostCvmResponse> {
  */
 export async function stopCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    const response = await (await apiClient).post<PostCvmResponse>(API_ENDPOINTS.CVM_STOP(appId));
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_STOP(appId));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to stop CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -168,7 +168,7 @@ export async function stopCvm(appId: string): Promise<PostCvmResponse> {
  */
 export async function restartCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    const response = await (await apiClient).post<PostCvmResponse>(API_ENDPOINTS.CVM_RESTART(appId));
+    const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_RESTART(appId));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to restart CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -183,7 +183,7 @@ export async function restartCvm(appId: string): Promise<PostCvmResponse> {
  */
 export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<UpgradeCvmResponse> {
   try {
-    const response = await (await apiClient).put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
+    const response = await apiClient.put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
     return upgradeCvmResponseSchema.parse(response);
   } catch (error) {
     throw new Error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -197,7 +197,7 @@ export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<Upg
  */
 export async function deleteCvm(appId: string): Promise<boolean> {
   try {
-    await (await apiClient).delete(API_ENDPOINTS.CVM_BY_APP_ID(appId));
+    await apiClient.delete(API_ENDPOINTS.CVM_BY_APP_ID(appId));
     return true;
   } catch (error) {
     throw new Error(`Failed to delete CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -211,7 +211,7 @@ export async function deleteCvm(appId: string): Promise<boolean> {
  */
 export async function updateCvm(updatePayload: UpdateCvmPayload): Promise<unknown> {
   try {
-    const response = await (await apiClient).put(API_ENDPOINTS.CVM_BY_APP_ID(updatePayload.app_id), updatePayload);
+    const response = await apiClient.put(API_ENDPOINTS.CVM_BY_APP_ID(updatePayload.app_id), updatePayload);
     return response;
   } catch (error) {
     throw new Error(`Failed to update CVM: ${error instanceof Error ? error.message : String(error)}`);
@@ -264,7 +264,7 @@ export async function selectCvm(): Promise<string | undefined> {
  */
 export async function getCvmAttestation(appId: string): Promise<CvmAttestationResponse> {
   try {
-    const response = await (await apiClient).get<CvmAttestationResponse>(API_ENDPOINTS.CVM_ATTESTATION(appId));
+    const response = await apiClient.get<CvmAttestationResponse>(API_ENDPOINTS.CVM_ATTESTATION(appId));
     
     // Attempt to validate and return the response
     try {
@@ -319,7 +319,7 @@ export interface ResizeCvmPayload {
  */
 export async function getCvmComposeConfig(cvmId: string): Promise<CvmComposeConfig> {
   try {
-    const response = await (await apiClient).get<CvmComposeConfig>(
+    const response = await apiClient.get<CvmComposeConfig>(
       API_ENDPOINTS.CVM_COMPOSE(cvmId)
     );
     return cvmComposeConfigSchema.parse(response);
@@ -341,7 +341,7 @@ export async function replicateCvm(
   }
 ): Promise<ReplicateCvmResponse> {
   try {
-    const response = await (await apiClient).post<ReplicateCvmResponse>(
+    const response = await apiClient.post<ReplicateCvmResponse>(
       API_ENDPOINTS.REPLICATE_CVM(appId),
       payload
     );
@@ -374,7 +374,7 @@ export async function resizeCvm(
       throw new Error('At least one resource parameter must be provided');
     }
     
-    await (await apiClient).patch(API_ENDPOINTS.CVM_RESIZE(appId), resizePayload);
+    await apiClient.patch(API_ENDPOINTS.CVM_RESIZE(appId), resizePayload);
     return true;
   } catch (error) {
     throw new Error(`Failed to resize CVM: ${error instanceof Error ? error.message : String(error)}`);
