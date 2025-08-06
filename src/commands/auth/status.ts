@@ -1,7 +1,8 @@
 import { Command } from 'commander';
 import { getApiKey } from '@/src/utils/credentials';
-import { getUserInfo } from '@/src/api/auth';
 import { logger } from '@/src/utils/logger';
+import { safeGetCurrentUser } from '@phala/cloud';
+import { apiClient } from '@/src/api/client';
 
 export const statusCommand = new Command()
   .name('status')
@@ -25,7 +26,17 @@ export const statusCommand = new Command()
       }
       
       try {
-        const userInfo = await getUserInfo();
+        const result = await safeGetCurrentUser(apiClient);
+        
+        if (!result.success) {
+          logger.error('Failed to get user information');
+          if (result.error) {
+            logger.error(`Error: ${result.error.message}`);
+          }
+          return;
+        }
+        
+        const userInfo = result.data as any;
         const apiUrl = process.env.PHALA_CLOUD_API_PREFIX || 'https://cloud-api.phala.network/api/v1';
         
         if (options.json) {

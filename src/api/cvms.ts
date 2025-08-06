@@ -362,7 +362,7 @@ export async function resizeCvm(
 ): Promise<boolean> {
   try {
     // Only include defined parameters in the payload
-    const resizePayload: ResizeCvmPayload = {};
+    const resizePayload: Record<string, unknown> = {};
     
     if (vcpu !== undefined) resizePayload.vcpu = vcpu;
     if (memory !== undefined) resizePayload.memory = memory;
