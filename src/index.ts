@@ -7,6 +7,7 @@ import { simulatorCommands } from "./commands/simulator";
 import { logger } from "./utils/logger";
 import { cvmsCommand } from "./commands/cvms";
 import { nodesCommand } from "./commands/nodes";
+import { statusCommand } from "./commands/status";
 
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
@@ -19,6 +20,7 @@ async function main() {
 				`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`,
 			)
 			.version("v1.0.15")
+			.addCommand(statusCommand)
 			.addCommand(authCommands)
 			.addCommand(cvmsCommand)
 			.addCommand(dockerCommands)

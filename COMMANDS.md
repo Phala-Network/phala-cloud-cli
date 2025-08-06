@@ -8,6 +8,25 @@ This document provides a comprehensive list of all commands and options availabl
 phala [command] [subcommand] [options]
 ```
 
+## Status Command
+
+### `phala status`
+
+Check your authentication status with Phala Cloud. Displays the following information:
+- Integrated API endpoint
+- Logged in username
+- Current workspace
+
+**Options:**
+- `-j, --json`: Output in JSON format
+- `-d, --debug`: Enable debug output
+
+**Example:**
+```bash
+phala status
+phala status --json
+```
+
 ## Authentication Commands
 
 ### `phala auth`
@@ -21,7 +40,7 @@ Authenticate with Phala Cloud.
 
 - **`logout`**: Remove the saved API key
 
-- **`status`**: Check the current authentication status
+- **`status`**: *(Deprecated)* Check the current authentication status (use `phala status` instead)
 
 ## Docker Management
 
