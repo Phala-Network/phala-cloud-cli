@@ -1,6 +1,7 @@
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from "@/src/utils/constants";
 import { detectFileInCurrentDir, promptForFile } from "@/src/utils/prompts";
 import { Command, Option } from "commander";
+import dedent from "dedent";
 import fs from 'fs-extra';
 import inquirer from 'inquirer';
 import path from 'path';
@@ -24,7 +25,6 @@ import {
 } from "@phala/cloud";
 import { parseDiskSizeInput, parseMemoryInput } from "@/src/utils/units";
 import { apiClient } from "@/src/api";
-import { logger } from "@/src/utils/logger";
 import { getCvmUuid, saveCvmUuid } from "@/src/utils/config";
 
 interface Options {
@@ -75,7 +75,22 @@ const validateBasic = async (options: Options): Promise<{ validatedOptions: Opti
       const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
       options.compose = await promptForFile('Enter the path to your Docker Compose file:', composeFileName, 'file');
     } else {
-      throw new Error('Docker Compose file is required.\n\nUsage examples:\n  phala deploy --compose docker-compose.yml --node-id 1\n  phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>\n\nMinimal required parameters:\n  --compose <path>    Path to docker-compose.yml\n\nFor on-chain KMS, also provide:\n  --kms-id <id>       KMS ID\n  --private-key <key> Private key for deployment\n  --rpc-url <url>     RPC URL for the blockchain\n\nRun with --interactive for guided setup');
+      throw new Error(dedent(`
+        Docker Compose file is required.
+
+        Usage examples:
+          phala deploy --compose docker-compose.yml --node-id 1
+          phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>
+
+        Minimal required parameters:
+          --compose <path>    Path to docker-compose.yml
+
+        For on-chain KMS, also provide:
+          --kms-id <id>       KMS ID
+          --private-key <key> Private key for deployment
+
+        Run with --interactive for guided setup
+      `));
     }
   }
 
@@ -452,25 +467,25 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
     }
   }
   const cvm = commit_result.data as any;
-  const cvmUuid = cvm.vm_uuid.replace(/-/g, '');
-  saveCvmUuid(cvmUuid);
+  saveCvmUuid(cvm.vm_uuid);
   if (validatedOptions?.json !== false) {
     console.log(JSON.stringify({
       success: true,
-      vm_uuid: cvmUuid,
+      vm_uuid: cvm.vm_uuid,
       name: cvm.name,
       app_id: cvm.app_id,
-      endpoint: `${CLOUD_URL}/dashboard/cvms/${cvmUuid}`,
+      endpoint: `${CLOUD_URL}/dashboard/cvms/${cvm.vm_uuid}`,
     }, null, 2));
   } else {
-    logger.success('CVM created successfully!');
-    logger.break();
-    logger.keyValueTable({
-      'CVM ID': cvmUuid,
-      'Name': cvm.name,
-      'App ID': cvm.app_id,
-      'Endpoint': `${CLOUD_URL}/dashboard/cvms/${cvmUuid}`,
-    });
+    const successMessage = dedent`
+      CVM created successfully!
+
+      CVM ID:    ${cvm.vm_uuid}
+      Name:      ${cvm.name}
+      App ID:    ${cvm.app_id}
+      Endpoint:  ${CLOUD_URL}/dashboard/cvms/${cvm.vm_uuid}
+    `;
+    console.log(successMessage);
   }
 }
 
@@ -557,7 +572,7 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
 export const deployCommand = new Command()
   .command('deploy [compose]')
   .description('Create a new CVM with on-chain KMS in one step.')
-  .option('--json', 'Output in JSON format', true)
+  .option('--json', 'Output in JSON format', false)
   .option('--no-json', 'Disable JSON output format')
   .option('--debug', 'Enable debug logging', false)
   .option('--api-key <apiKey>', 'API key for authentication')
@@ -621,7 +636,7 @@ export const deployCommand = new Command()
           stack: options.debug && error instanceof Error ? error.stack : undefined
         }, null, 2));
       } else {
-        console.error(error.message);
+        console.error(dedent`${error.message}`);
       }
       process.exit(1);
     }
