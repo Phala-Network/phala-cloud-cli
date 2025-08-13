@@ -185,7 +185,6 @@ const validateCpuMemoryDiskSize = async (options: Options) => {
   if (options.vcpu) {
     try {
       vcpu = Number(options.vcpu);
-      console.log(`Using vCPUs: ${vcpu} (parsed from: ${options.vcpu})`);
     } catch (error) {
       throw new Error(`Invalid vCPU format '${options.vcpu}'. Using default: ${DEFAULT_VCPU}`);
     }
@@ -195,7 +194,6 @@ const validateCpuMemoryDiskSize = async (options: Options) => {
   if (options.memory) {
     try {
       memoryMB = parseMemoryInput(options.memory);
-      console.log(`Using memory: ${memoryMB}MB (parsed from: ${options.memory})`);
     } catch (error) {
       throw new Error(`Invalid memory format '${options.memory}'. Using default: ${DEFAULT_MEMORY}MB`);
     }
@@ -205,7 +203,6 @@ const validateCpuMemoryDiskSize = async (options: Options) => {
   if (options.diskSize) {
     try {
       diskSizeGB = parseDiskSizeInput(options.diskSize);
-      console.log(`Using disk size: ${diskSizeGB}GB (parsed from: ${options.diskSize})`);
     } catch (error) {
       throw new Error(`Invalid disk size format '${options.diskSize}'. Using default: ${DEFAULT_DISK_SIZE}GB`);
     }
@@ -478,7 +475,6 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
   let encrypted_env: string | undefined;
   if (cvm.kms_info?.chain_id) {
     // Update with decentralized KMS.
-    console.log("Interacting with contract DstackApp");
     if (!validatedOptions.privateKey) {
       throw new Error("Private key is required for contract DstackApp");
     }
@@ -493,8 +489,6 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
     if (!receipt_result.success) {
       throw new Error(`Failed to add compose hash.`);
     }
-    const receipt = receipt_result.data as any;
-    console.log("the receipt: ", receipt);
   } else {
     if (envs.length > 0) {
       const encrypted_env_vars = await encryptEnvVars(envs, cvm.encrypted_env_pubkey!);
