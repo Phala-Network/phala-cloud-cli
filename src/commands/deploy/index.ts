@@ -1,10 +1,27 @@
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL } from "@/src/utils/constants";
 import { detectFileInCurrentDir, promptForFile } from "@/src/utils/prompts";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import fs from 'fs-extra';
 import inquirer from 'inquirer';
 import path from 'path';
-import { addComposeHash, createClient, encryptEnvVars, getCvmComposeFile, getCvmInfo, parseEnvVars, provisionCvmComposeFileUpdate, ProvisionCvmComposeFileUpdateRequest, safeAddComposeHash, safeCommitCvmComposeFileUpdate, safeCommitCvmProvision, safeDeployAppAuth, safeGetAppEnvEncryptPubKey, safeGetAvailableNodes, safeGetCvmComposeFile, safeGetCvmInfo, safeGetKmsList, safeProvisionCvm, safeProvisionCvmComposeFileUpdate, type EnvVar } from "@phala/cloud";
+import {
+  createClient,
+  encryptEnvVars,
+  parseEnvVars,
+  ProvisionCvmComposeFileUpdateRequest,
+  safeAddComposeHash,
+  safeCommitCvmComposeFileUpdate,
+  safeCommitCvmProvision,
+  safeDeployAppAuth,
+  safeGetAppEnvEncryptPubKey,
+  safeGetAvailableNodes,
+  safeGetCvmComposeFile,
+  safeGetCvmInfo,
+  safeGetKmsList,
+  safeProvisionCvm,
+  safeProvisionCvmComposeFileUpdate,
+  type EnvVar
+} from "@phala/cloud";
 import { parseDiskSizeInput, parseMemoryInput } from "@/src/utils/units";
 import { apiClient } from "@/src/api";
 import { logger } from "@/src/utils/logger";
@@ -85,39 +102,56 @@ const validatePrivateKey = async (options: Options, chainId: any) => {
   // 2. Handle KMS related validations
   // TODO: rpc_url needs handling
   if (options.kmsId && chainId) {
+    // TODO: remove customAppId for now
     // If using on-chain KMS, either privateKey or customAppId must be provided
-    if (!options.privateKey && !options.customAppId) {
-      if (options.interactive) {
-        const { authMethod } = await inquirer.prompt([{
-          type: 'list',
-          name: 'authMethod',
-          message: 'Choose authentication method for on-chain KMS:',
-          choices: [
-            { name: 'Deploy with the standard DstackApp contract, you should provide --private-key', value: 'privateKey' },
-            { name: 'Deploy with your own DstackApp contract, you should provide --custom-app-id', value: 'customAppId' }
-          ]
-        }]);
+    // if (!options.privateKey && !options.customAppId) {
+    //   if (options.interactive) {
+    //     const { authMethod } = await inquirer.prompt([{
+    //       type: 'list',
+    //       name: 'authMethod',
+    //       message: 'Choose authentication method for on-chain KMS:',
+    //       choices: [
+    //         { name: 'Deploy with the standard DstackApp contract, you should provide --private-key', value: 'privateKey' },
+    //         { name: 'Deploy with your own DstackApp contract, you should provide --custom-app-id', value: 'customAppId' }
+    //       ]
+    //     }]);
 
-        if (authMethod === 'privateKey') {
-          const { privateKey } = await inquirer.prompt([{
-            type: 'password',
-            name: 'privateKey',
-            message: 'Enter your private key:',
-            validate: (input: string) => input.trim() ? true : 'Private key is required'
-          }]);
-          options.privateKey = privateKey;
-        } else {
-          const { customAppId } = await inquirer.prompt([{
-            type: 'input',
-            name: 'customAppId',
-            message: 'Enter your custom App ID:',
-            validate: (input: string) => input.trim() ? true : 'Custom App ID is required'
-          }]);
-          options.customAppId = customAppId;
-        }
+    //     if (authMethod === 'privateKey') {
+    //       const { privateKey } = await inquirer.prompt([{
+    //         type: 'password',
+    //         name: 'privateKey',
+    //         message: 'Enter your private key:',
+    //         validate: (input: string) => input.trim() ? true : 'Private key is required'
+    //       }]);
+    //       options.privateKey = privateKey;
+    //     } else {
+    //       const { customAppId } = await inquirer.prompt([{
+    //         type: 'input',
+    //         name: 'customAppId',
+    //         message: 'Enter your custom App ID:',
+    //         validate: (input: string) => input.trim() ? true : 'Custom App ID is required'
+    //       }]);
+    //       options.customAppId = customAppId;
+    //     }
+    //   } else {
+    //     throw new Error(
+    //       'When using on-chain KMS, either --private-key (or PRIVATE_KEY env) or --custom-app-id must be provided'
+    //     );
+    //   }
+    // }
+    if (!options.privateKey) {
+      if (options.interactive) {
+        const { privateKey } = await inquirer.prompt([{
+          type: 'password',
+          name: 'privateKey',
+          message: 'Enter your private key:',
+          validate: (input: string) => input.trim() ? true : 'Private key is required'
+        }]);
+        options.privateKey = privateKey;
       } else {
         throw new Error(
-          'When using on-chain KMS, either --private-key (or PRIVATE_KEY env) or --custom-app-id must be provided'
+          // 'When using on-chain KMS, either --private-key (or PRIVATE_KEY env) or --custom-app-id must be provided'
+          'When using on-chain KMS, either --private-key (or PRIVATE_KEY env) must be provided'
         );
       }
     }
@@ -503,7 +537,7 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
     encrypted_env: encrypted_env,
     env_keys: envs.map((env) => env.key),
   });
-  
+
   if (!commitResult.success) {
     throw new Error(`Failed to commit CVM compose file update: ${commitResult.error.message}`);
   }
@@ -538,7 +572,7 @@ export const deployCommand = new Command()
   .option('-i, --interactive', 'Enable interactive mode for required parameters', false)
   .option('--kms-id <kmsId>', 'KMS ID to use.')
   .option('--uuid <uuid>', 'UUID of the CVM to upgrade')
-  .option('--custom-app-id <customAppId>', 'Custom App ID to use.')
+  .addOption(new Option('--custom-app-id <customAppId>', 'Custom App ID to use.').hideHelp())
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
   .option('--private-key <privateKey>', 'Private key for signing transactions.')
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
