@@ -4,7 +4,7 @@ import { Command } from "commander";
 import fs from 'fs-extra';
 import inquirer from 'inquirer';
 import path from 'path';
-import { createClient, encryptEnvVars, parseEnvVars, safeCommitCvmProvision, safeDeployAppAuth, safeGetAppEnvEncryptPubKey, safeGetAvailableNodes, safeGetKmsList, safeProvisionCvm, type EnvVar } from "@phala/cloud";
+import { addComposeHash, createClient, encryptEnvVars, getCvmComposeFile, getCvmInfo, parseEnvVars, provisionCvmComposeFileUpdate, ProvisionCvmComposeFileUpdateRequest, safeAddComposeHash, safeCommitCvmComposeFileUpdate, safeCommitCvmProvision, safeDeployAppAuth, safeGetAppEnvEncryptPubKey, safeGetAvailableNodes, safeGetCvmComposeFile, safeGetCvmInfo, safeGetKmsList, safeProvisionCvm, safeProvisionCvmComposeFileUpdate, type EnvVar } from "@phala/cloud";
 import { parseDiskSizeInput, parseMemoryInput } from "@/src/utils/units";
 import { apiClient } from "@/src/api";
 import { logger } from "@/src/utils/logger";
@@ -426,12 +426,10 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
   if (validatedOptions?.json !== false) {
     console.log(JSON.stringify({
       success: true,
-      data: {
-        vm_uuid: cvmUuid,
-        name: cvm.name,
-        app_id: cvm.app_id,
-        endpoint: `${CLOUD_URL}/dashboard/cvms/${cvmUuid}`,
-      }
+      vm_uuid: cvmUuid,
+      name: cvm.name,
+      app_id: cvm.app_id,
+      endpoint: `${CLOUD_URL}/dashboard/cvms/${cvmUuid}`,
     }, null, 2));
   } else {
     logger.success('CVM created successfully!');
@@ -442,6 +440,89 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
       'App ID': cvm.app_id,
       'Endpoint': `${CLOUD_URL}/dashboard/cvms/${cvmUuid}`,
     });
+  }
+}
+
+
+const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: any) => {
+  const [cvm_result, app_compose_result] = await Promise.all([
+    safeGetCvmInfo(client, {
+      uuid: validatedOptions.uuid,
+    }),
+    safeGetCvmComposeFile(client, {
+      uuid: validatedOptions.uuid,
+    }),
+  ]);
+  if (!cvm_result.success) {
+    throw new Error(`Failed to get cvm info: ${cvm_result.error.message}`);
+  }
+  if (!app_compose_result.success) {
+    throw new Error(`Failed to get cvm compose file: ${app_compose_result.error.message}`);
+  }
+  const cvm = cvm_result.data as any;
+  const app_compose = app_compose_result.data as any;
+
+  // patched the compose_file
+  app_compose.docker_compose_file = docker_compose_yml;
+  app_compose.allowed_envs = envs.map((env) => env.key);
+
+  const provision_result = await safeProvisionCvmComposeFileUpdate(client, {
+    uuid: validatedOptions.uuid,
+    app_compose: app_compose as ProvisionCvmComposeFileUpdateRequest["app_compose"],
+  });
+  if (!provision_result.success) {
+    throw new Error(`Failed to provision cvm compose file: ${provision_result.error.message}`);
+  }
+  const provision = provision_result.data as any;
+
+  let encrypted_env: string | undefined;
+  if (cvm.kms_info?.chain_id) {
+    // Update with decentralized KMS.
+    console.log("Interacting with contract DstackApp");
+    if (!validatedOptions.privateKey) {
+      throw new Error("Private key is required for contract DstackApp");
+    }
+
+    const receipt_result = await safeAddComposeHash({
+      chain: validatedOptions.chain,
+      rpcUrl: validatedOptions.rpcUrl,
+      appId: cvm.app_id as `0x${string}`,
+      composeHash: provision.compose_hash,
+      privateKey: validatedOptions.privateKey as `0x${string}`,
+    });
+    if (!receipt_result.success) {
+      throw new Error(`Failed to add compose hash.`);
+    }
+    const receipt = receipt_result.data as any;
+    console.log("the receipt: ", receipt);
+  } else {
+    if (envs.length > 0) {
+      const encrypted_env_vars = await encryptEnvVars(envs, cvm.encrypted_env_pubkey!);
+      encrypted_env = encrypted_env_vars;
+    }
+  }
+
+  const commitResult = await safeCommitCvmComposeFileUpdate(client, {
+    // @ts-ignore
+    id: validatedOptions.uuid,
+    compose_hash: provision.compose_hash,
+    encrypted_env: encrypted_env,
+    env_keys: envs.map((env) => env.key),
+  });
+  
+  if (!commitResult.success) {
+    throw new Error(`Failed to commit CVM compose file update: ${commitResult.error.message}`);
+  }
+  if (validatedOptions?.json !== false) {
+    console.log(JSON.stringify({
+      success: true,
+      vm_uuid: validatedOptions.uuid,
+      name: cvm.name,
+      app_id: cvm.app_id,
+      endpoint: `${CLOUD_URL}/dashboard/cvms/${validatedOptions.uuid}`,
+    }, null, 2));
+  } else {
+    console.log("CVM compose file updated successfully!");
   }
 }
 
@@ -499,8 +580,7 @@ export const deployCommand = new Command()
       const isUpdate = !!validatedOptions.uuid;
       if (isUpdate) {
         // Update the cvm
-        console.log('Updating CVM...');
-
+        await updateCvm(validatedOptions, docker_compose_yml, envs, client);
       } else {
         // Deploy a new cvm
         await deployNewCvm(validatedOptions, docker_compose_yml, envs, client);
