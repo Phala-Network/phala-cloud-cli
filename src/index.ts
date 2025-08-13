@@ -8,6 +8,7 @@ import { logger } from "./utils/logger";
 import { cvmsCommand } from "./commands/cvms";
 import { nodesCommand } from "./commands/nodes";
 import { statusCommand } from "./commands/status";
+import { deployCommand } from "./commands/deploy";
 
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
@@ -25,7 +26,8 @@ async function main() {
 			.addCommand(cvmsCommand)
 			.addCommand(dockerCommands)
 			.addCommand(simulatorCommands)
-			.addCommand(nodesCommand);
+			.addCommand(nodesCommand)
+			.addCommand(deployCommand);
 
 	program.parse(process.argv);
 }

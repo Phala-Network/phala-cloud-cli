@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import fs from 'fs-extra';
 import path from 'node:path';
 import os from 'node:os';
 import { logger } from './logger';
@@ -76,4 +76,41 @@ export function setConfigValue(key: string, value: any): void {
 // List all configuration values
 export function listConfigValues(): Record<string, any> {
   return loadConfig();
-} 
+}
+
+
+import { join } from 'path';
+function getConfigPath(): string {
+  return join(process.cwd(), '.phala', 'config');
+}
+// Then update the functions to use fs methods:
+function ensureConfigExists(): void {
+  const configPath = getConfigPath();
+  const configDir = join(process.cwd(), '.phala');
+  
+  fs.ensureDirSync(configDir);
+  if (!fs.pathExistsSync(configPath)) {
+    fs.writeJsonSync(configPath, {}, { spaces: 2 });
+  }
+}
+
+function readConfig(): Record<string, any> {
+  ensureConfigExists();
+  return fs.readJsonSync(getConfigPath());
+}
+
+function writeConfig(config: Record<string, any>): void {
+  ensureConfigExists();
+  fs.writeJsonSync(getConfigPath(), config, { spaces: 2 });
+}
+
+export function saveCvmUuid(uuid: string): void {
+  const config = readConfig();
+  config.cvmUuid = uuid;
+  writeConfig(config);
+}
+
+export function getCvmUuid(): string | undefined {
+  const config = readConfig();
+  return config.cvmUuid;
+}
