@@ -9,7 +9,7 @@ export async function checkStatus(options: { debug?: boolean; json?: boolean } =
     // Check debug flag from either options or environment
     const debug = options.debug || process.env.DEBUG?.toLowerCase() === 'true';
 
-    const apiKey = await getApiKey();
+    const apiKey = getApiKey();
 
     if (!apiKey) {
       logger.warn('Not authenticated. Please set an API key with "phala auth login"');
