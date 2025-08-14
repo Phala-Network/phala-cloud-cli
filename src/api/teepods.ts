@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createClient } from '@phala/cloud';
 import { API_ENDPOINTS } from '../utils/constants';
 import { TEEPod, Image, teepodSchema, imageSchema, TeepodResponse, teepodResponseSchema } from './types';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import { z } from 'zod';
  */
 export async function getTeepods(): Promise<TeepodResponse> {
   try {
+    const apiClient = createClient();
     const response = await (await apiClient).get<TeepodResponse>(API_ENDPOINTS.TEEPODS);
     const parsedResponse = teepodResponseSchema.parse(response);
     return parsedResponse;
@@ -27,6 +28,7 @@ export async function getTeepods(): Promise<TeepodResponse> {
  */
 export async function getTeepodImages(teepodId: string): Promise<Image[]> {
   try {
+    const apiClient = createClient();
     // First try to get TEEPod with embedded images
     const teepodsResponse = await getTeepods();
     const teepod = teepodsResponse.nodes.find(pod => pod.teepod_id === Number(teepodId));
@@ -42,4 +44,4 @@ export async function getTeepodImages(teepodId: string): Promise<Image[]> {
   } catch (error) {
     throw new Error(`Failed to get TEEPod images: ${error instanceof Error ? error.message : String(error)}`);
   }
-} 
+}

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { createClient } from '@phala/cloud';
 import { API_ENDPOINTS } from '../utils/constants';
 import { GetUserInfoResponse, getUserInfoResponseSchema } from './types';
 import { logger } from '../utils/logger';
@@ -22,6 +22,7 @@ function safeStringify(obj: any): string {
 export async function getUserInfo(): Promise<GetUserInfoResponse> {
   try {
     logger.debug(`Fetching user info from ${API_ENDPOINTS.USER_INFO}`);
+    const apiClient = createClient();
     const response = await apiClient.get<any>(API_ENDPOINTS.USER_INFO);
     logger.debug(`Received response: ${safeStringify(response)}`);
     
