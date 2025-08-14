@@ -265,7 +265,7 @@ const validateCpuMemoryDiskSize = async (options: Options) => {
   };
 }
 
-const validateNodeandKmsandImage = async (options: Options, client: any) => {
+const validateNodeandKmsandImage = async (options: Options, client: Client) => {
   const nodes_result = await safeGetAvailableNodes(client)
   if (!nodes_result.success) {
     if ("isRequestError" in nodes_result.error) {
