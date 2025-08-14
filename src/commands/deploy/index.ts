@@ -438,7 +438,9 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
       composeHash: compose_hash,
     });
     if (!deploy_result.success) {
-      throw new Error(`Deployment contract failed.`)
+      // @ts-ignore
+      const message = deploy_result?.error?.message;
+      throw new Error(`Deployment contract failed: ${message}`)
     }
     const deployed_contract = deploy_result.data as any;
     const app_id = deployed_contract.appId;
@@ -539,7 +541,9 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
       privateKey: validatedOptions.privateKey as `0x${string}`,
     });
     if (!receipt_result.success) {
-      throw new Error(`Failed to add compose hash.`);
+      // @ts-ignore
+      const message = receipt_result?.error?.message;
+      throw new Error(`Failed to add compose hash: ${message}`);
     }
   } else {
     if (envs.length > 0) {
