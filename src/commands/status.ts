@@ -1,8 +1,8 @@
+import { createClient } from '@phala/cloud';
 import { Command } from 'commander';
 import { getApiKey } from '../utils/credentials.js';
 import { logger } from '../utils/logger.js';
 import { safeGetCurrentUser } from '@phala/cloud';
-import { apiClient } from '../api/client.js';
 
 export async function checkStatus(options: { debug?: boolean; json?: boolean } = {}) {
   try {
@@ -21,6 +21,7 @@ export async function checkStatus(options: { debug?: boolean; json?: boolean } =
     }
 
     try {
+      const apiClient = createClient();
       const result = await safeGetCurrentUser(apiClient);
 
       if (!result.success) {

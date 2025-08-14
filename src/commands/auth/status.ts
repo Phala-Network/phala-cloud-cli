@@ -1,8 +1,8 @@
+import { createClient } from '@phala/cloud';
 import { Command } from 'commander';
 import { getApiKey } from '@/src/utils/credentials';
 import { logger } from '@/src/utils/logger';
 import { safeGetCurrentUser } from '@phala/cloud';
-import { apiClient } from '@/src/api/client';
 
 export const statusCommand = new Command()
   .name('status')
@@ -26,6 +26,7 @@ export const statusCommand = new Command()
       }
       
       try {
+        const apiClient = createClient();
         const result = await safeGetCurrentUser(apiClient);
         
         if (!result.success) {
