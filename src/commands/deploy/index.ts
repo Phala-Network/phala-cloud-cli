@@ -417,6 +417,7 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
       app_id: app.app_id,
       encrypted_env: encrypted_env_vars,
       compose_hash: app.compose_hash,
+      kms_id: kms?.slug,
     });
   } else {
     // For decentralized KMS, we need to deploy the app with on-chain KMS.
