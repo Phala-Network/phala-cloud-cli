@@ -21,10 +21,10 @@ import {
   safeGetKmsList,
   safeProvisionCvm,
   safeProvisionCvmComposeFileUpdate,
-  type EnvVar
+  type EnvVar,
+  type Client
 } from "@phala/cloud";
 import { parseDiskSizeInput, parseMemoryInput } from "@/src/utils/units";
-import { apiClient } from "@/src/api";
 import { getCvmUuid, saveCvmUuid } from "@/src/utils/config";
 
 interface Options {
@@ -36,51 +36,54 @@ interface Options {
   image?: string;
   nodeId?: string;
   envFile?: string | boolean;
+  interactive?: boolean;
   kmsId?: string;
   uuid?: string;
   customAppId?: string;
   preLaunchScript?: string;
   privateKey?: string;
   rpcUrl?: string;
+  json?: boolean;
+  debug?: boolean;
   apiKey?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-const validateBasic = async (options: Options): Promise<{ validatedOptions: Options, client: any }> => {
-  // 1. Handle API Key
-  let client = apiClient;
-  if (!options.apiKey && !process.env.PHALA_CLOUD_API_KEY) {
-    if (options.interactive) {
+async function getApiClient({ apiKey, interactive }: Readonly<Pick<Options, 'apiKey' | 'interactive'>>): Promise<Client> {
+  if (!apiKey && !process.env.PHALA_CLOUD_API_KEY) {
+    if (interactive) {
       const { apiKey } = await inquirer.prompt([{
         type: 'password',
         name: 'apiKey',
         message: 'Enter your API key:',
         validate: (input: string) => input.trim() ? true : 'API key is required'
       }]);
-      options.apiKey = apiKey;
-      client = createClient({ apiKey: apiKey });
+      return createClient({ apiKey: apiKey });
     } else {
       throw new Error(
         'API key is required. Please provide it via --api-key or PHALA_CLOUD_API_KEY environment variable'
       );
     }
-  } else if (options.apiKey) {
-    client = createClient({ apiKey: options.apiKey });
+  } else if (apiKey) {
+    return createClient({ apiKey: apiKey });
   }
+  return createClient();
+}
 
-  // 2. Handle compose file
-  if (!options.compose) {
-    if (options.interactive) {
+async function readDockerComposeFile({ dockerComposePath, interactive }): Promise<string> {
+  // 1. If path is not provided and we're in interactive mode, try to detect it
+  if (!dockerComposePath) {
+    if (interactive) {
       const possibleFiles = ['docker-compose.yml', 'docker-compose.yaml'];
       const composeFileName = detectFileInCurrentDir(possibleFiles, 'Detected docker compose file: {path}');
-      options.compose = await promptForFile('Enter the path to your Docker Compose file:', composeFileName, 'file');
+      dockerComposePath = await promptForFile('Enter the path to your Docker Compose file:', composeFileName, 'file');
     } else {
       throw new Error(dedent(`
         Docker Compose file is required.
 
         Usage examples:
-          phala deploy --compose docker-compose.yml --node-id 1
-          phala deploy --compose docker-compose.yml --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url>
+          phala deploy --node-id 1 docker-compose.yml
+          phala deploy --node-id 6 --kms-id t16z-dev --private-key <your-private-key> --rpc-url <rpc-url> docker-compose.yml
 
         Minimal required parameters:
           --compose <path>    Path to docker-compose.yml
@@ -94,19 +97,19 @@ const validateBasic = async (options: Options): Promise<{ validatedOptions: Opti
     }
   }
 
-  // 3. Check if compose file exists
-  if (!fs.existsSync(options.compose)) {
-    throw new Error(`Docker compose file not found: ${options.compose}`);
+  // 2. Validate the file exists
+  if (!fs.existsSync(dockerComposePath)) {
+    throw new Error(`Docker compose file not found: ${dockerComposePath}`);
   }
 
-  // 4. Handle UUID from environment
-  const existingUuid = getCvmUuid();
-  if (!options.uuid && existingUuid) {
-    options.uuid = existingUuid;
-  }
+  // 3. Read and return the file content
+  return fs.readFileSync(dockerComposePath, 'utf8');
+}
 
-  return { validatedOptions: options, client };
-};
+function readCvmUuid({ uuid }: { uuid?: string } = {}): string | undefined {
+  // Return the provided UUID if it exists, otherwise get it from config
+  return uuid || getCvmUuid();
+}
 
 const validatePrivateKey = async (options: Options, chainId: any) => {
   // 1. Handle Private Key from environment
@@ -224,9 +227,7 @@ const validateEnvFile = async (options: Options) => {
       throw new Error(`Error reading environment file ${envFilePath}:`, error);
     }
   }
-  return {
-    envs
-  }
+  return envs;
 }
 
 const validateCpuMemoryDiskSize = async (options: Options) => {
@@ -334,7 +335,7 @@ const validateNodeandKmsandImage = async (options: Options, client: any) => {
         kms = kmsChoice;
         options.kmsId = kmsChoice.slug;
       } else {
-        throw new Error(`Node ${options.nodeId} requires a KMS ID for Contract Owned CVM, available kms: ${kms_list.items.map(t => t.slug).join(', ')}`);
+        throw new Error(`Node ${target.name} requires a KMS ID for Contract Owned CVM, available kms: ${kms_list.items.map(t => t.slug).join(', ')}`);
       }
     } else {
       // Find the specified kms
@@ -382,7 +383,7 @@ const validateNodeandKmsandImage = async (options: Options, client: any) => {
 }
 
 
-const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: any) => {
+const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: Client) => {
   // await validateKMSId(validatedOptions);
   await validateName(validatedOptions);
   const { vcpu, memoryMB, diskSizeGB } = await validateCpuMemoryDiskSize(validatedOptions);
@@ -474,7 +475,7 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
       vm_uuid: cvm.vm_uuid,
       name: cvm.name,
       app_id: cvm.app_id,
-      endpoint: `${CLOUD_URL}/dashboard/cvms/${cvm.vm_uuid}`,
+      dashboard_url: `${CLOUD_URL}/dashboard/cvms/${cvm.vm_uuid}`,
     }, null, 2));
   } else {
     const successMessage = dedent`
@@ -483,14 +484,14 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
       CVM ID:    ${cvm.vm_uuid}
       Name:      ${cvm.name}
       App ID:    ${cvm.app_id}
-      Endpoint:  ${CLOUD_URL}/dashboard/cvms/${cvm.vm_uuid}
+      Dashboard URL:  ${CLOUD_URL}/dashboard/cvms/${cvm.vm_uuid}
     `;
     console.log(successMessage);
   }
 }
 
 
-const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: any) => {
+const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: Client) => {
   const [cvm_result, app_compose_result] = await Promise.all([
     safeGetCvmInfo(client, {
       uuid: validatedOptions.uuid,
@@ -512,6 +513,7 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
   app_compose.docker_compose_file = docker_compose_yml;
   app_compose.allowed_envs = envs.map((env) => env.key);
 
+  console.log(`Preparing update for CVM ${validatedOptions.uuid}...`);
   const provision_result = await safeProvisionCvmComposeFileUpdate(client, {
     uuid: validatedOptions.uuid,
     app_compose: app_compose as ProvisionCvmComposeFileUpdateRequest["app_compose"],
@@ -529,7 +531,7 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
     }
 
     const receipt_result = await safeAddComposeHash({
-      chain: validatedOptions.chain,
+      chain: cvm.kms_info?.chain,
       rpcUrl: validatedOptions.rpcUrl,
       appId: cvm.app_id as `0x${string}`,
       composeHash: provision.compose_hash,
@@ -562,7 +564,7 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
       vm_uuid: validatedOptions.uuid,
       name: cvm.name,
       app_id: cvm.app_id,
-      endpoint: `${CLOUD_URL}/dashboard/cvms/${validatedOptions.uuid}`,
+      dashboard_url: `${CLOUD_URL}/dashboard/cvms/${validatedOptions.uuid}`,
     }, null, 2));
   } else {
     console.log("CVM compose file updated successfully!");
@@ -591,42 +593,37 @@ export const deployCommand = new Command()
   .option('--pre-launch-script <preLaunchScript>', 'Path to pre-launch script')
   .option('--private-key <privateKey>', 'Private key for signing transactions.')
   .option('--rpc-url <rpcUrl>', 'RPC URL for the blockchain.')
-  .action(async (composeFile: string | undefined, options: {
-    name?: string;
-    compose?: string;
-    vcpu?: string;
-    memory?: string;
-    diskSize?: string;
-    image?: string;
-    nodeId?: string;
-    envFile?: string | boolean;
-    interactive?: boolean;
-    kmsId?: string;
-    uuid?: string;
-    customAppId?: string;
-    preLaunchScript?: string;
-    privateKey?: string;
-    rpcUrl?: string;
-    json?: boolean;
-    debug?: boolean;
-    apiKey?: string;
-  }) => {
+  .action(async (composeFile: string | undefined, options: Options) => {
     try {
       // Use positional argument if provided, otherwise use the --compose option
-      if (composeFile) {
-        options.compose = composeFile;
-      }
-      const { validatedOptions, client } = await validateBasic(options);
-      const { envs } = await validateEnvFile(validatedOptions);
-      const docker_compose_yml = fs.readFileSync(validatedOptions.compose, "utf8");
+      const dockerComposePath = composeFile || options.compose;
+      
+      const client = await getApiClient({ 
+        apiKey: options.apiKey, 
+        interactive: options.interactive 
+      });
+      
+      const docker_compose_yml = await readDockerComposeFile({
+        dockerComposePath: dockerComposePath,
+        interactive: options.interactive
+      });
+      
+      const uuid = readCvmUuid({ uuid: options.uuid });
+      const envs = await validateEnvFile(options);
 
-      const isUpdate = !!validatedOptions.uuid;
+      const isUpdate = !!uuid;
       if (isUpdate) {
         // Update the cvm
-        await updateCvm(validatedOptions, docker_compose_yml, envs, client);
+        await updateCvm({
+          ...options,
+          uuid,
+        }, docker_compose_yml, envs, client);
       } else {
         // Deploy a new cvm
-        await deployNewCvm(validatedOptions, docker_compose_yml, envs, client);
+        await deployNewCvm({
+          ...options,
+          uuid,
+        }, docker_compose_yml, envs, client);
       }
     } catch (error) {
       if (options.json !== false) {

@@ -111,6 +111,11 @@ export function saveCvmUuid(uuid: string): void {
 }
 
 export function getCvmUuid(): string | undefined {
+  // Check environment variable first
+  if (process.env.PHALA_CLOUD_CVM_UUID) {
+    return process.env.PHALA_CLOUD_CVM_UUID;
+  }
+  // Fall back to config file
   const config = readConfig();
   return config.cvmUuid;
 }
