@@ -4,12 +4,12 @@ import { getApiKey } from '../utils/credentials.js';
 import { logger } from '../utils/logger.js';
 import { safeGetCurrentUser } from '@phala/cloud';
 
-export async function checkStatus(options: { debug?: boolean; json?: boolean } = {}) {
+export async function checkStatus(options: { debug?: boolean; json?: boolean; apiKey?: string } = {}) {
   try {
     // Check debug flag from either options or environment
     const debug = options.debug || process.env.DEBUG?.toLowerCase() === 'true';
 
-    const apiKey = getApiKey();
+    const apiKey = options.apiKey || getApiKey();
 
     if (!apiKey) {
       logger.warn('Not authenticated. Please set an API key with "phala auth login"');
@@ -21,7 +21,7 @@ export async function checkStatus(options: { debug?: boolean; json?: boolean } =
     }
 
     try {
-      const apiClient = createClient();
+      const apiClient = createClient({ apiKey: apiKey });
       const result = await safeGetCurrentUser(apiClient);
 
       if (!result.success) {
@@ -65,6 +65,7 @@ export async function checkStatus(options: { debug?: boolean; json?: boolean } =
 export const statusCommand = new Command()
   .name('status')
   .description('Check Phala Cloud status and authentication')
+  .option('--api-key <apiKey>', 'API key for authentication')
   .option('-j, --json', 'Output in JSON format')
   .option('-d, --debug', 'Enable debug output')
   .action(checkStatus);
