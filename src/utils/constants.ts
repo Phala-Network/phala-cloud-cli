@@ -11,8 +11,8 @@ export const DOCKER_HUB_API_URL = 'https://hub.docker.com/v2';
 export const TEE_SIMULATOR = 'phalanetwork/tappd-simulator:latest';
 
 // Default resource configurations
-export const DEFAULT_VCPU = 2;
-export const DEFAULT_MEMORY = 4096; // MB
+export const DEFAULT_VCPU = 1;
+export const DEFAULT_MEMORY = 2048; // MB
 export const DEFAULT_DISK_SIZE = 40; // GB
 
 // Default TEEPod Image

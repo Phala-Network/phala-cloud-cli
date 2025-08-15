@@ -9,7 +9,7 @@ export const loginCommand = new Command()
   .name('login')
   .description('Set the API key for authentication')
   .argument('[api-key]', 'Phala Cloud API key to set')
-  .action(async (apiKey?: string) => {
+  .action(async (apiKey?: string): Promise<void> => {
     try {
       let checkUserInfo;
       // If no API key is provided, prompt for it
@@ -27,10 +27,10 @@ export const loginCommand = new Command()
               checkUserInfo = await getUserInfo();
               if (!checkUserInfo.username) {
                   await removeApiKey();
-                return 'Invalid API key';
+                throw new Error('Invalid API key');
               }
             } catch (error) {
-              return 'Invalid API key';
+              throw new Error('Invalid API key');
             }
             return true;
           }
@@ -40,10 +40,10 @@ export const loginCommand = new Command()
       } else {
         await saveApiKey(apiKey);
         // Validate the API key
-        checkUserInfo = await getUserInfo();
+        checkUserInfo = await getUserInfo(apiKey);
         if (!checkUserInfo.username) {
           await removeApiKey();
-          return 'Invalid API key';
+          throw new Error('Invalid API key');
         }
       }
       
