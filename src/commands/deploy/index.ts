@@ -116,11 +116,9 @@ function readCvmUuid({ uuid }: { uuid?: string } = {}): string | undefined {
   return uuid || getCvmUuid();
 }
 
-const validatePrivateKey = async (options: Options, chainId: any) => {
-  // 1. Handle Private Key from environment
-  if (!options.privateKey && process.env.PRIVATE_KEY) {
-    options.privateKey = process.env.PRIVATE_KEY;
-  }
+const validatePrivateKey = async (options: Options, chainId: any): Promise<string | undefined> => {
+  // 1. Get private key from options or environment
+  let privateKey = options.privateKey || process.env.PRIVATE_KEY;
 
   // 2. Handle KMS related validations
   // TODO: rpc_url needs handling
@@ -164,13 +162,13 @@ const validatePrivateKey = async (options: Options, chainId: any) => {
     // }
     if (!options.privateKey) {
       if (options.interactive) {
-        const { privateKey } = await inquirer.prompt([{
+        const result = await inquirer.prompt([{
           type: 'password',
           name: 'privateKey',
           message: 'Enter your private key:',
           validate: (input: string) => input.trim() ? true : 'Private key is required'
         }]);
-        options.privateKey = privateKey;
+        privateKey = result.privateKey;
       } else {
         throw new Error(
           // 'When using on-chain KMS, either --private-key (or PRIVATE_KEY env) or --custom-app-id must be provided'
@@ -179,9 +177,11 @@ const validatePrivateKey = async (options: Options, chainId: any) => {
       }
     }
   }
+  return privateKey;
 }
 
-const validateName = async (options: Options) => {
+const validateName = async (options: Options): Promise<string | undefined> => {
+  let name = options.name;
   if (!options.name) {
     let folderName = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
     // Ensure folder name is at least 3 characters by appending 'cvm' if needed
@@ -191,9 +191,9 @@ const validateName = async (options: Options) => {
     const validFolderName = folderName.slice(0, 20); // Ensure max length of 20
 
     if (!options.interactive) {
-      options.name = validFolderName;
+      name = validFolderName;
     } else {
-      const { name } = await inquirer.prompt([
+      const result = await inquirer.prompt([
         {
           type: 'input',
           name: 'name',
@@ -208,9 +208,10 @@ const validateName = async (options: Options) => {
           }
         }
       ]);
-      options.name = name;
+      name = result.name;
     }
   }
+  return name;
 }
 
 const validateEnvFile = async (options: Options) => {
@@ -282,6 +283,7 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
   const nodes = nodes_result.data as any;
   let target = null;
   let kms = null;
+  let privateKey = options.privateKey;
   // If specified node, find it
   if (options.nodeId) {
     target = nodes.nodes.find((node) => node.teepod_id === Number(options.nodeId));
@@ -301,11 +303,9 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
         }))
       }]);
       target = node;
-      options.nodeId = node.teepod_id;
     } else {
       // If no specified node, use the first one.
       target = nodes.nodes[0];
-      options.nodeId = nodes.nodes[0].teepod_id;
     }
   }
   if (!target) {
@@ -338,7 +338,6 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
           }
         ]);
         kms = kmsChoice;
-        options.kmsId = kmsChoice.slug;
       } else {
         throw new Error(`Node ${target.name} requires a KMS ID for Contract Owned CVM, available kms: ${kms_list.items.map(t => t.slug).join(', ')}`);
       }
@@ -349,7 +348,7 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
     if (!kms) {
       throw new Error(`KMS ${options.kmsId} not found, available kms: ${kms_list.items.map(t => t.slug).join(', ')}`);
     } else {
-      await validatePrivateKey(options, kms.chain_id);
+      privateKey = await validatePrivateKey({ ...options, kmsId: kms.id }, kms.chain_id);
     }
   }
 
@@ -383,19 +382,20 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
   return {
     target,
     kms,
-    image
+    image,
+    privateKey
   }
 }
 
 
 const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: Client) => {
   // await validateKMSId(validatedOptions);
-  await validateName(validatedOptions);
+  const name = await validateName(validatedOptions);
   const { vcpu, memoryMB, diskSizeGB } = await validateCpuMemoryDiskSize(validatedOptions);
-  const { target, kms, image } = await validateNodeandKmsandImage(validatedOptions, client);
+  const { target, kms, image, privateKey } = await validateNodeandKmsandImage(validatedOptions, client);
 
   const app_compose = {
-    name: validatedOptions.name,
+    name: name,
     compose_file: {
       docker_compose_file: docker_compose_yml,
     },
@@ -406,6 +406,8 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
     image: image.name,
     kms_id: kms?.slug,
   };
+
+  console.log(`Deploying CVM ${name}...`);
 
   // Deploy the app with Centralized KMS
   const provision_result = await safeProvisionCvm(client, app_compose);
@@ -429,7 +431,6 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
     const kms_slug = kms.slug;
     const kms_contract_address = kms.kms_contract_address;
     const chain = kms.chain;
-    const privateKey = validatedOptions.privateKey;
     const compose_hash = app.compose_hash;
     const device_id = target.device_id;
     const rpc_url = validatedOptions.rpcUrl;
@@ -607,17 +608,17 @@ export const deployCommand = new Command()
     try {
       // Use positional argument if provided, otherwise use the --compose option
       const dockerComposePath = composeFile || options.compose;
-      
-      const client = await getApiClient({ 
-        apiKey: options.apiKey, 
-        interactive: options.interactive 
+
+      const client = await getApiClient({
+        apiKey: options.apiKey,
+        interactive: options.interactive
       });
-      
+
       const docker_compose_yml = await readDockerComposeFile({
         dockerComposePath: dockerComposePath,
         interactive: options.interactive
       });
-      
+
       const uuid = readCvmUuid({ uuid: options.uuid });
       const envs = await validateEnvFile(options);
 
