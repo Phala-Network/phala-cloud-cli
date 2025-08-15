@@ -26,7 +26,7 @@ export const statusCommand = new Command()
       }
       
       try {
-        const apiClient = createClient();
+        const apiClient = createClient({ apiKey: apiKey });
         const result = await safeGetCurrentUser(apiClient);
         
         if (!result.success) {

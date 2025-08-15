@@ -26,6 +26,7 @@ import {
 } from "@phala/cloud";
 import { parseDiskSizeInput, parseMemoryInput } from "@/src/utils/units";
 import { getCvmUuid, saveCvmUuid } from "@/src/utils/config";
+import { getApiKey } from '@/src/utils/credentials';
 
 interface Options {
   name?: string;
@@ -60,9 +61,13 @@ async function getApiClient({ apiKey, interactive }: Readonly<Pick<Options, 'api
       }]);
       return createClient({ apiKey: apiKey });
     } else {
-      throw new Error(
-        'API key is required. Please provide it via --api-key or PHALA_CLOUD_API_KEY environment variable'
-      );
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error(
+          'API key is required. Please provide it via --api-key or PHALA_CLOUD_API_KEY environment variable'
+        );
+      }
+      return createClient({ apiKey: apiKey });
     }
   } else if (apiKey) {
     return createClient({ apiKey: apiKey });

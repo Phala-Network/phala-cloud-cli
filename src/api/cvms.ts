@@ -25,6 +25,7 @@ import type {
 } from './types';
 import inquirer from 'inquirer';
 import { z } from 'zod';
+import { getApiKey } from '@/src/utils/credentials';
 
 /**
  * Get all CVMs for the current user
@@ -32,7 +33,8 @@ import { z } from 'zod';
  */
 export async function getCvms(): Promise<CvmInstance[]> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.get<CvmInstance[]>(API_ENDPOINTS.CVMS(0));
     return z.array(cvmInstanceSchema).parse(response);
   } catch (error) {
@@ -80,7 +82,8 @@ export async function checkCvmExists(appId: string): Promise<string> {
  */
 export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.get<GetCvmByAppIdResponse>(API_ENDPOINTS.CVM_BY_APP_ID(appId));
     return getCvmByAppIdResponseSchema.parse(response);
   } catch (error) {
@@ -95,7 +98,8 @@ export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdRespons
  */
 export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFromCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.post<GetPubkeyFromCvmResponse>(API_ENDPOINTS.CVM_PUBKEY, vmConfig);
     return getPubkeyFromCvmResponseSchema.parse(response);
   } catch (error) {
@@ -110,7 +114,8 @@ export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFro
  */
 export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.get<GetCvmNetworkResponse>(API_ENDPOINTS.CVM_NETWORK(appId));
     return getCvmNetworkResponseSchema.parse(response);
   } catch (error) {
@@ -125,7 +130,8 @@ export async function getCvmNetwork(appId: string): Promise<GetCvmNetworkRespons
  */
 export async function createCvm(vmConfig: VMConfig): Promise<PostCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_FROM_CONFIGURATION, vmConfig);
     return postCvmResponseSchema.parse(response);
   } catch (error) {
@@ -145,7 +151,8 @@ export async function createCvm(vmConfig: VMConfig): Promise<PostCvmResponse> {
  */
 export async function startCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_START(appId));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
@@ -160,7 +167,8 @@ export async function startCvm(appId: string): Promise<PostCvmResponse> {
  */
 export async function stopCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_STOP(appId));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
@@ -175,7 +183,8 @@ export async function stopCvm(appId: string): Promise<PostCvmResponse> {
  */
 export async function restartCvm(appId: string): Promise<PostCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.post<PostCvmResponse>(API_ENDPOINTS.CVM_RESTART(appId));
     return postCvmResponseSchema.parse(response);
   } catch (error) {
@@ -191,7 +200,8 @@ export async function restartCvm(appId: string): Promise<PostCvmResponse> {
  */
 export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<UpgradeCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
     return upgradeCvmResponseSchema.parse(response);
   } catch (error) {
@@ -206,7 +216,8 @@ export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<Upg
  */
 export async function deleteCvm(appId: string): Promise<boolean> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     await apiClient.delete(API_ENDPOINTS.CVM_BY_APP_ID(appId));
     return true;
   } catch (error) {
@@ -221,7 +232,8 @@ export async function deleteCvm(appId: string): Promise<boolean> {
  */
 export async function updateCvm(updatePayload: UpdateCvmPayload): Promise<unknown> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.put(API_ENDPOINTS.CVM_BY_APP_ID(updatePayload.app_id), updatePayload);
     return response;
   } catch (error) {
@@ -275,7 +287,8 @@ export async function selectCvm(): Promise<string | undefined> {
  */
 export async function getCvmAttestation(appId: string): Promise<CvmAttestationResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.get<CvmAttestationResponse>(API_ENDPOINTS.CVM_ATTESTATION(appId));
     
     // Attempt to validate and return the response
@@ -331,7 +344,8 @@ export interface ResizeCvmPayload {
  */
 export async function getCvmComposeConfig(cvmId: string): Promise<CvmComposeConfig> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.get<CvmComposeConfig>(
       API_ENDPOINTS.CVM_COMPOSE(cvmId)
     );
@@ -354,7 +368,8 @@ export async function replicateCvm(
   }
 ): Promise<ReplicateCvmResponse> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.post<ReplicateCvmResponse>(
       API_ENDPOINTS.REPLICATE_CVM(appId),
       payload
@@ -375,7 +390,8 @@ export async function resizeCvm(
   allowRestart?: number
 ): Promise<boolean> {
   try {
-    const apiClient = createClient();
+    const apiKey = getApiKey();
+    const apiClient = createClient({ apiKey: apiKey });
     // Only include defined parameters in the payload
     const resizePayload: Record<string, unknown> = {};
     
