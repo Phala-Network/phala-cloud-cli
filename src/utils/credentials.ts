@@ -94,7 +94,7 @@ export async function saveApiKey(apiKey: string): Promise<void> {
   }
 }
 
-export async function getApiKey(): Promise<string | null> {
+export function getApiKey(): string | null {
   try {
     if (fs.existsSync(API_KEY_FILE)) {
       const encryptedApiKey = fs.readFileSync(API_KEY_FILE, 'utf8').trim();

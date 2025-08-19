@@ -142,13 +142,8 @@ export const getUserInfoResponseSchema = z.object({
   email: z.string(),
   credits: zodDecimal.create({ coerce: true }),
   granted_credits: zodDecimal.create({ coerce: true }),
-  role: z.string(),
   avatar: z.string(),
-  flag_reset_password: z.boolean(),
-  team_name: z.string(),
-  team_tier: z.string(),
-  trial_ended_at: z.string().nullable()
-});
+}).passthrough();
 
 // Get CVMs By User ID Response Schema
 export const getCvmsByUserIdResponseSchema = z.array(cvmInstanceSchema);

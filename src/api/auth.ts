@@ -19,10 +19,10 @@ function safeStringify(obj: any): string {
  * Get user information
  * @returns User information
  */
-export async function getUserInfo(): Promise<GetUserInfoResponse> {
+export async function getUserInfo(apiKey?: string): Promise<GetUserInfoResponse> {
   try {
     logger.debug(`Fetching user info from ${API_ENDPOINTS.USER_INFO}`);
-    const apiClient = createClient();
+    const apiClient = createClient({ apiKey: apiKey });
     const response = await apiClient.get<any>(API_ENDPOINTS.USER_INFO);
     logger.debug(`Received response: ${safeStringify(response)}`);
     
