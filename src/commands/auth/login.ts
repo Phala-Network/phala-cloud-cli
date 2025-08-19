@@ -24,7 +24,7 @@ export const loginCommand = new Command()
             }
             try {
               await saveApiKey(value);
-              checkUserInfo = await getUserInfo();
+              checkUserInfo = await getUserInfo(value);
               if (!checkUserInfo.username) {
                   await removeApiKey();
                 throw new Error('Invalid API key');
