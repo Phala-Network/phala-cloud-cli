@@ -398,6 +398,7 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
     name: name,
     compose_file: {
       docker_compose_file: docker_compose_yml,
+      allowed_envs: envs.map((env) => env.key),
     },
     vcpu: vcpu,
     memory: memoryMB,
