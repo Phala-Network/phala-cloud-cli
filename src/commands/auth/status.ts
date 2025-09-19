@@ -14,7 +14,7 @@ export const statusCommand = new Command()
       // Check debug flag from either options or environment
       const debug = options.debug || process.env.DEBUG?.toLowerCase() === 'true';
       
-      const apiKey = await getApiKey();
+      const apiKey = getApiKey();
       
       if (!apiKey) {
         console.log('Not authenticated. Please set an API key with "phala auth login"');
@@ -26,7 +26,7 @@ export const statusCommand = new Command()
       }
       
       try {
-        const apiClient = createClient();
+        const apiClient = createClient({ apiKey: apiKey });
         const result = await safeGetCurrentUser(apiClient);
         
         if (!result.success) {
