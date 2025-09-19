@@ -9,6 +9,16 @@ import { cvmsCommand } from "./commands/cvms";
 import { nodesCommand } from "./commands/nodes";
 import { statusCommand } from "./commands/status";
 import { deployCommand } from "./commands/deploy";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const packageJsonPath = join(__dirname, "../package.json");
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+const version = `v${packageJson.version}`;
 
 process.on("SIGINT", () => process.exit(0));
 process.on("SIGTERM", () => process.exit(0));
@@ -20,7 +30,7 @@ async function main() {
 			.description(
 				`${logo}\nPhala Cloud CLI - Manage your Phala Cloud Deployments`,
 			)
-			.version("v1.0.15")
+			.version(version)
 			.addCommand(statusCommand)
 			.addCommand(authCommands)
 			.addCommand(cvmsCommand)
