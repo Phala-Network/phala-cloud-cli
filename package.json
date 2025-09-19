@@ -1,6 +1,6 @@
 {
   "name": "phala",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "CLI for Managing Phala Cloud Services",
   "author": {
     "name": "Phala Network",
@@ -39,7 +39,6 @@
     "@babel/plugin-transform-typescript": "^7.26.7",
     "@noble/curves": "^1.8.1",
     "@phala/cloud": "^0.0.10",
-    "@phala/dstack-sdk": "^0.1.10",
     "axios": "^1.7.9",
     "chalk": "5.2.0",
     "commander": "^10.0.1",

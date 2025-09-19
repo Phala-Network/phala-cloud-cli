@@ -216,7 +216,7 @@ const validateName = async (options: Options): Promise<string | undefined> => {
 
 const validateEnvFile = async (options: Options) => {
   // Handle environment variables
-  let envs: EnvVar[] = [];
+  let envs: EnvVar[] | undefined = undefined;
   let envFilePath = options.envFile;
 
   // Handle environment file path resolution
@@ -501,7 +501,7 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
 }
 
 
-const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[], client: Client) => {
+const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, envs: EnvVar[] | undefined, client: Client) => {
   const [cvm_result, app_compose_result] = await Promise.all([
     safeGetCvmInfo(client, {
       uuid: validatedOptions.uuid,
@@ -521,7 +521,9 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
 
   // patched the compose_file
   app_compose.docker_compose_file = docker_compose_yml;
-  app_compose.allowed_envs = envs.map((env) => env.key);
+  if (envs) {
+    app_compose.allowed_envs = envs.map((env) => env.key);
+  }
 
   console.log(`Preparing update for CVM ${validatedOptions.uuid}...`);
   const provision_result = await safeProvisionCvmComposeFileUpdate(client, {
@@ -553,19 +555,20 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
       throw new Error(`Failed to add compose hash: ${message}`);
     }
   } else {
-    if (envs.length > 0) {
+    if (envs && envs.length > 0) {
       const encrypted_env_vars = await encryptEnvVars(envs, cvm.encrypted_env_pubkey!);
       encrypted_env = encrypted_env_vars;
     }
   }
 
-  const commitResult = await safeCommitCvmComposeFileUpdate(client, {
-    // @ts-ignore
+  const data = {
     id: validatedOptions.uuid,
     compose_hash: provision.compose_hash,
     encrypted_env: encrypted_env,
-    env_keys: envs.map((env) => env.key),
-  });
+    env_keys: envs?.length ? envs.map((env) => env.key) : undefined,
+  }
+  // @ts-ignore
+  const commitResult = await safeCommitCvmComposeFileUpdate(client, data);
 
   if (!commitResult.success) {
     throw new Error(`Failed to commit CVM compose file update: ${commitResult.error.message}`);

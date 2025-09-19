@@ -8,7 +8,8 @@
     },
     "rootDir": "src",
     "moduleResolution": "Node",
-    "module": "CommonJS",
+    "module": "ESNext",
+    "target": "ESNext",
     "outDir": "./dist",
     "esModuleInterop": true,
     "resolveJsonModule": true

@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+import type { EnvVar } from '@phala/cloud';
 
 export const parseEnv = (envs: string[], envFile: string): EnvVar[] => {
     const envVars: Record<string, string> = {};
