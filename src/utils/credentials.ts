@@ -96,6 +96,9 @@ export async function saveApiKey(apiKey: string): Promise<void> {
 
 export function getApiKey(): string | null {
   try {
+    if (process.env.PHALA_CLOUD_API_KEY) {
+      return process.env.PHALA_CLOUD_API_KEY;
+    }
     if (fs.existsSync(API_KEY_FILE)) {
       const encryptedApiKey = fs.readFileSync(API_KEY_FILE, 'utf8').trim();
       // Decrypt the API key
