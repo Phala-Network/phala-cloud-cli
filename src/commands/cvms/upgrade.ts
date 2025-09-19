@@ -1,10 +1,10 @@
 import { Command } from 'commander';
-import { upgradeCvm, getCvmByAppId, selectCvm, checkCvmExists } from '@/src/api/cvms';
+import { upgradeCvm, getCvmByAppId } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'node:fs';
 import { detectFileInCurrentDir, promptForFile } from '@/src/utils/prompts';
 import { parseEnv } from '@/src/utils/secrets';
-import { encryptEnvVars, type EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+import { encryptEnvVars, type EnvVar } from '@phala/cloud';
 import { deleteSimulatorEndpointEnv } from '@/src/utils/simulator';
 import { resolveCvmAppId } from '@/src/utils/cvms';
 import { CLOUD_URL } from '@/src/utils/constants';

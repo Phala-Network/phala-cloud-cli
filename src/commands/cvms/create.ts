@@ -4,8 +4,7 @@ import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
 import type { TEEPod, Image } from '@/src/api/types';
 import { DEFAULT_VCPU, DEFAULT_MEMORY, DEFAULT_DISK_SIZE, CLOUD_URL, DEFAULT_IMAGE } from '@/src/utils/constants';
-import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
-import type { EnvVar } from '@phala/dstack-sdk/encrypt-env-vars';
+import { encryptEnvVars, type EnvVar } from '@phala/cloud';
 
 import fs from 'node:fs';
 import path from 'node:path';

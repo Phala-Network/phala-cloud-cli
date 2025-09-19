@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { replicateCvm, getCvmComposeConfig } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
-import { encryptEnvVars } from '@phala/dstack-sdk/encrypt-env-vars';
+import { encryptEnvVars } from '@phala/cloud';
 import fs from 'node:fs';
 import path from 'node:path';
 
