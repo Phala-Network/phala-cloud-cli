@@ -65,7 +65,7 @@ export const upgradeCommand = new Command()
       }
 
       // Process environment variables if provided
-      let encrypted_env = "";
+      let encrypted_env: string | undefined = undefined;
       if (options.envFile) {
         let envs: EnvVar[] = [];
         
