@@ -120,14 +120,24 @@ export const upgradeCommand = new Command()
       );
     } catch (error) {
       logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
-      if (error instanceof FetchError) {
+
+      // Multiple ways to check if it's a FetchError:
+      // 1. instanceof check (standard but may fail due to module loading)
+      // 2. Check constructor.name (works across module boundaries)
+      // 3. Check for FetchError-specific properties (status, statusText, data, request)
+      const isFetchError = error instanceof FetchError ||
+        (error as any)?.constructor?.name === 'FetchError' ||
+        (error && typeof error === 'object' && 'status' in error && 'statusText' in error && 'data' in error);
+
+      if (isFetchError) {
+        const fetchError = error as FetchError;
         logger.error('=== HTTP Error Details ===');
-        logger.error('Status:', error.status);
-        logger.error('Status Text:', error.statusText);
-        logger.error('URL:', error.request);
-        logger.error('Response Body:', JSON.stringify(error.data, null, 2));
+        logger.error('Status:', fetchError.status);
+        logger.error('Status Text:', fetchError.statusText);
+        logger.error('URL:', fetchError.request);
+        logger.error('Response Body:', JSON.stringify(fetchError.data, null, 2));
         if (options.debug) {
-          logger.error('Full Error:', JSON.stringify(error, null, 2));
+          logger.error('Full Error Object:', error);
         }
       } else if (options.debug) {
         logger.error('Full Error:', error);
