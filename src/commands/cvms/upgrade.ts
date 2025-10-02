@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { FetchError } from 'ofetch';
 import { upgradeCvm, getCvmByAppId } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'node:fs';
@@ -44,6 +45,7 @@ export const upgradeCommand = new Command()
       
       // Update Docker Compose file if provided
       let composeString = '';
+      let env_keys = [];
       if (options.compose) {
         try {
           composeString = fs.readFileSync(options.compose, 'utf8');
@@ -74,6 +76,7 @@ export const upgradeCommand = new Command()
           try {
             envs = parseEnv([], options.envFile);
             encrypted_env = await encryptEnvVars(envs, currentCvm.encrypted_env_pubkey);
+            env_keys = envs.map(i => i.key)
           } catch (error) {
             logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
             process.exit(1);
@@ -90,9 +93,11 @@ export const upgradeCommand = new Command()
           version: "1.0.0",
           features: ["kms", "tproxy-net"],
           name: `app_${resolvedAppId}`,
+          allowed_envs: env_keys,
         },
         encrypted_env,
         allow_restart: true,
+        env_keys: env_keys,
       };
       
       // Upgrade the CVM
@@ -116,6 +121,28 @@ export const upgradeCommand = new Command()
       );
     } catch (error) {
       logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
+
+      // Multiple ways to check if it's a FetchError:
+      // 1. instanceof check (standard but may fail due to module loading)
+      // 2. Check constructor.name (works across module boundaries)
+      // 3. Check for FetchError-specific properties (status, statusText, data, request)
+      const isFetchError = error instanceof FetchError ||
+        (error as any)?.constructor?.name === 'FetchError' ||
+        (error && typeof error === 'object' && 'status' in error && 'statusText' in error && 'data' in error);
+
+      if (isFetchError) {
+        const fetchError = error as FetchError;
+        logger.error('=== HTTP Error Details ===');
+        logger.error('Status:', fetchError.status);
+        logger.error('Status Text:', fetchError.statusText);
+        logger.error('URL:', fetchError.request);
+        logger.error('Response Body:', JSON.stringify(fetchError.data, null, 2));
+        if (options.debug) {
+          logger.error('Full Error Object:', error);
+        }
+      } else if (options.debug) {
+        logger.error('Full Error:', error);
+      }
       process.exit(1);
     }
   }); 

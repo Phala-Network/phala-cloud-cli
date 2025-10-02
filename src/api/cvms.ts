@@ -199,14 +199,10 @@ export async function restartCvm(appId: string): Promise<PostCvmResponse> {
  * @returns Upgrade response
  */
 export async function upgradeCvm(appId: string, vmConfig: VMConfig): Promise<UpgradeCvmResponse> {
-  try {
-    const apiKey = getApiKey();
-    const apiClient = createClient({ apiKey: apiKey });
-    const response = await apiClient.put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
-    return upgradeCvmResponseSchema.parse(response);
-  } catch (error) {
-    throw new Error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  const apiKey = getApiKey();
+  const apiClient = createClient({ apiKey: apiKey });
+  const response = await apiClient.put<UpgradeCvmResponse>(API_ENDPOINTS.CVM_UPGRADE(appId), vmConfig);
+  return upgradeCvmResponseSchema.parse(response);
 }
 
 /**
