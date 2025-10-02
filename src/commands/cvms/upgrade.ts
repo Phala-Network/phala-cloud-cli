@@ -44,6 +44,7 @@ export const upgradeCommand = new Command()
       
       // Update Docker Compose file if provided
       let composeString = '';
+      let env_keys = [];
       if (options.compose) {
         try {
           composeString = fs.readFileSync(options.compose, 'utf8');
@@ -74,6 +75,7 @@ export const upgradeCommand = new Command()
           try {
             envs = parseEnv([], options.envFile);
             encrypted_env = await encryptEnvVars(envs, currentCvm.encrypted_env_pubkey);
+            env_keys = envs.map(i => i.keys)
           } catch (error) {
             logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
             process.exit(1);
@@ -93,6 +95,7 @@ export const upgradeCommand = new Command()
         },
         encrypted_env,
         allow_restart: true,
+        env_keys: env_keys,
       };
       
       // Upgrade the CVM
