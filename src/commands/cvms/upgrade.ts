@@ -76,7 +76,7 @@ export const upgradeCommand = new Command()
           try {
             envs = parseEnv([], options.envFile);
             encrypted_env = await encryptEnvVars(envs, currentCvm.encrypted_env_pubkey);
-            env_keys = envs.map(i => i.keys)
+            env_keys = envs.map(i => i.key)
           } catch (error) {
             logger.error(`Failed to read environment file: ${error instanceof Error ? error.message : String(error)}`);
             process.exit(1);
