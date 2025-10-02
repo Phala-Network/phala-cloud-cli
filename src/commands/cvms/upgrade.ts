@@ -121,9 +121,16 @@ export const upgradeCommand = new Command()
     } catch (error) {
       logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
       if (error instanceof FetchError) {
-        logger.error('Response body:', JSON.stringify(error.data, null, 2));
+        logger.error('=== HTTP Error Details ===');
         logger.error('Status:', error.status);
-        logger.error('Status text:', error.statusText);
+        logger.error('Status Text:', error.statusText);
+        logger.error('URL:', error.request);
+        logger.error('Response Body:', JSON.stringify(error.data, null, 2));
+        if (options.debug) {
+          logger.error('Full Error:', JSON.stringify(error, null, 2));
+        }
+      } else if (options.debug) {
+        logger.error('Full Error:', error);
       }
       process.exit(1);
     }
