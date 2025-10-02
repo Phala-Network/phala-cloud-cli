@@ -531,6 +531,11 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
     app_compose: app_compose as ProvisionCvmComposeFileUpdateRequest["app_compose"],
   });
   if (!provision_result.success) {
+    if ("isRequestError" in provision_result.error) {
+      console.error('HTTP Error:', provision_result.error.status, provision_result.error.statusText);
+      console.error('Error message:', provision_result.error.message);
+      console.error('Response body:', JSON.stringify(provision_result.error.data, null, 2));
+    }
     throw new Error(`Failed to provision cvm compose file: ${provision_result.error.message}`);
   }
   const provision = provision_result.data as any;
@@ -571,6 +576,11 @@ const updateCvm = async (validatedOptions: Options, docker_compose_yml: string, 
   const commitResult = await safeCommitCvmComposeFileUpdate(client, data);
 
   if (!commitResult.success) {
+    if ("isRequestError" in commitResult.error) {
+      console.error('HTTP Error:', commitResult.error.status, commitResult.error.statusText);
+      console.error('Error message:', commitResult.error.message);
+      console.error('Response body:', JSON.stringify(commitResult.error.data, null, 2));
+    }
     throw new Error(`Failed to commit CVM compose file update: ${commitResult.error.message}`);
   }
   if (validatedOptions?.json !== false) {

@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { FetchError } from 'ofetch';
 import { upgradeCvm, getCvmByAppId } from '@/src/api/cvms';
 import { logger } from '@/src/utils/logger';
 import fs from 'node:fs';
@@ -119,6 +120,11 @@ export const upgradeCommand = new Command()
       );
     } catch (error) {
       logger.error(`Failed to upgrade CVM: ${error instanceof Error ? error.message : String(error)}`);
+      if (error instanceof FetchError) {
+        logger.error('Response body:', JSON.stringify(error.data, null, 2));
+        logger.error('Status:', error.status);
+        logger.error('Status text:', error.statusText);
+      }
       process.exit(1);
     }
   }); 
