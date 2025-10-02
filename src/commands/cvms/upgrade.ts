@@ -93,6 +93,7 @@ export const upgradeCommand = new Command()
           version: "1.0.0",
           features: ["kms", "tproxy-net"],
           name: `app_${resolvedAppId}`,
+          allowed_envs: env_keys,
         },
         encrypted_env,
         allow_restart: true,
