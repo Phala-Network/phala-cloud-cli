@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { FetchError } from 'ofetch'
 import { createCvm, getPubkeyFromCvm } from '@/src/api/cvms';
 import { getTeepods } from '@/src/api/teepods';
 import { logger } from '@/src/utils/logger';
@@ -140,7 +141,7 @@ export const createCommand = new Command()
       }
 
       const teepodsSpinner = logger.startSpinner('Fetching available TEEPods');
-      const teepods = await getTeepods();
+      const teepods = await getTeepods(true);
       teepodsSpinner.stop(true);
       if (teepods.nodes.length === 0) {
         logger.error('No TEEPods available. Please try again later.');
@@ -256,7 +257,14 @@ export const createCommand = new Command()
       logger.info('');
       logger.success(`Your CVM is being created. You can check its status with:\nphala cvms get app_${response.app_id}`);
     } catch (error) {
-      logger.error(`Failed to create CVM: ${error instanceof Error ? error.message : String(error)}`);
+      console.log('')
+      if (error instanceof FetchError) {
+        console.error('Status:', error.status);
+        console.error('Status Text:', error.statusText);
+        console.error(error.data)
+      } else {
+        console.error(error)
+      }
       process.exit(1);
     }
   }); 
