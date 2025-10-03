@@ -97,14 +97,10 @@ export async function getCvmByAppId(appId: string): Promise<GetCvmByAppIdRespons
  * @returns Public key
  */
 export async function getPubkeyFromCvm(vmConfig: VMConfig): Promise<GetPubkeyFromCvmResponse> {
-  try {
-    const apiKey = getApiKey();
-    const apiClient = createClient({ apiKey: apiKey });
-    const response = await apiClient.post<GetPubkeyFromCvmResponse>(API_ENDPOINTS.CVM_PUBKEY, vmConfig);
-    return getPubkeyFromCvmResponseSchema.parse(response);
-  } catch (error) {
-    throw new Error(`Failed to get pubkey from CVM: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  const apiKey = getApiKey();
+  const apiClient = createClient({ apiKey: apiKey });
+  const response = await apiClient.post<GetPubkeyFromCvmResponse>(API_ENDPOINTS.CVM_PUBKEY, vmConfig);
+  return getPubkeyFromCvmResponseSchema.parse(response);
 }
 
 /**

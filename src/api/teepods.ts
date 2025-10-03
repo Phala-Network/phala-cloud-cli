@@ -8,11 +8,15 @@ import { getApiKey } from '@/src/utils/credentials';
  * Get all TEEPods with their images
  * @returns List of TEEPods with embedded images
  */
-export async function getTeepods(): Promise<TeepodResponse> {
+export async function getTeepods(v03x_only: boolean = false): Promise<TeepodResponse> {
   try {
     const apiKey = getApiKey();
     const apiClient = createClient({ apiKey: apiKey });
-    const response = await (await apiClient).get<TeepodResponse>(API_ENDPOINTS.TEEPODS);
+    let url = 'teepods/available'
+    if (v03x_only) {
+      url += '?v03x_only=1'
+    }
+    const response = await (await apiClient).get<TeepodResponse>(url);
     const parsedResponse = teepodResponseSchema.parse(response);
     return parsedResponse;
   } catch (error) {
