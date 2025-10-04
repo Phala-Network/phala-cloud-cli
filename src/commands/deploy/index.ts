@@ -280,15 +280,17 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
       throw new Error(`Validation error: ${nodes_result.error.issues}`)
     }
   }
-  const nodes = nodes_result.data as any;
+  const nodesData = nodes_result.data as any;
+  // Handle both possible data structures
+  const nodes = nodesData.nodes || nodesData;
   let target = null;
   let kms = null;
   let privateKey = options.privateKey;
   // If specified node, find it
   if (options.nodeId) {
-    target = nodes.nodes.find((node) => node.teepod_id === Number(options.nodeId));
+    target = nodes.find((node) => node.teepod_id === Number(options.nodeId));
     if (!target) {
-      throw new Error(`Node ${options.nodeId} not found, available nodes: ${nodes.nodes.map(t => t.teepod_id).join(', ')}`);
+      throw new Error(`Node ${options.nodeId} not found, available nodes: ${nodes.map(t => t.teepod_id).join(', ')}`);
     }
   } else {
     // If interactive, let user select a node
@@ -297,7 +299,7 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
         type: 'list',
         name: 'node',
         message: 'Select a Node to use:',
-        choices: nodes.nodes.map(t => ({
+        choices: nodes.map(t => ({
           name: `${t.name} (Region: ${t.region_identifier})`,
           value: t
         }))
@@ -305,11 +307,11 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
       target = node;
     } else {
       // If no specified node, use the first one.
-      target = nodes.nodes[0];
+      target = nodes[0];
     }
   }
   if (!target) {
-    throw new Error(`No available nodes found, available nodes: ${nodes.nodes.map(t => t.teepod_id).join(', ')}`);
+    throw new Error(`No available nodes found, available nodes: ${nodes.map(t => t.teepod_id).join(', ')}`);
   }
   // If the target node supports on-chain kms, check if kms is specified
   if (target.support_onchain_kms) {
@@ -321,7 +323,9 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
         throw new Error(`Validation error: ${kms_result.error.issues}`)
       }
     }
-    const kms_list = kms_result.data as any;
+    const kmsData = kms_result.data as any;
+    // Handle both possible data structures
+    const kms_list = kmsData.items || kmsData;
     if (!options.kmsId) {
       if (options.interactive) {
         const { kmsChoice } = await inquirer.prompt([
@@ -329,7 +333,7 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
             type: 'list',
             name: 'kmsChoice',
             message: 'Select a KMS to use:',
-            choices: kms_list.items.map(t => ({
+            choices: kms_list.map(t => ({
               name: t.chain_id ?
                 `${t.slug} (Chain ID: ${t.chain_id})` :
                 `${t.slug} (No chain required)`,
@@ -339,25 +343,25 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
         ]);
         kms = kmsChoice;
       } else {
-        throw new Error(`Node ${target.name} requires a KMS ID for Contract Owned CVM, available kms: ${kms_list.items.map(t => t.slug).join(', ')}`);
+        throw new Error(`Node ${target.name} requires a KMS ID for Contract Owned CVM, available kms: ${kms_list.map(t => t.slug).join(', ')}`);
       }
     } else {
       // Find the specified kms
-      kms = kms_list.items.find((kms) => kms.slug === options.kmsId || kms.id === options.kmsId);
+      kms = kms_list.find((kms) => kms.slug === options.kmsId || kms.id === options.kmsId);
     }
     if (!kms) {
-      throw new Error(`KMS ${options.kmsId} not found, available kms: ${kms_list.items.map(t => t.slug).join(', ')}`);
+      throw new Error(`KMS ${options.kmsId} not found, available kms: ${kms_list.map(t => t.slug).join(', ')}`);
     } else {
       privateKey = await validatePrivateKey({ ...options, kmsId: kms.id }, kms.chain_id);
     }
   }
 
   // Default image is the first one
-  let image = target.images[0];
+  let image = target.images && target.images[0];
   if (options.image) {
-    image = target.images.find((image) => image.name === options.image);
+    image = target.images && target.images.find((image) => image.name === options.image);
     if (!image) {
-      throw new Error(`Image ${options.image} not found in the node ${target.name}, available images: ${target.images.map(t => t.name).join(', ')}.`);
+      throw new Error(`Image ${options.image} not found in the node ${target.name}, available images: ${target.images ? target.images.map(t => t.name).join(', ') : 'NO IMAGES'}.`);
     }
   } else {
     if (options.interactive) {
@@ -366,17 +370,17 @@ const validateNodeandKmsandImage = async (options: Options, client: Client) => {
           type: 'list',
           name: 'imageChoice',
           message: 'Select an image to use:',
-          choices: target.images.map(t => ({
+          choices: target.images ? target.images.map(t => ({
             name: `${t.name}`,
             value: t
-          }))
+          })) : []
         }
       ]);
       image = imageChoice;
     }
   }
   if (!image) {
-    throw new Error(`No available OS images found in the node ${target.name}, available images: ${target.images.map(t => t.name).join(', ')}.`);
+    throw new Error(`No available OS images found in the node ${target.name}, available images: ${target.images ? target.images.map(t => t.name).join(', ') : 'NO IMAGES'}.`);
   }
 
   return {
@@ -398,7 +402,7 @@ const deployNewCvm = async (validatedOptions: Options, docker_compose_yml: strin
     name: name,
     compose_file: {
       docker_compose_file: docker_compose_yml,
-      allowed_envs: envs.map((env) => env.key),
+      allowed_envs: envs ? envs.map((env) => env.key) : [],
     },
     vcpu: vcpu,
     memory: memoryMB,
